@@ -8,7 +8,7 @@ WIDTH = 1280
 HEIGHT = 720
 TITLE = "UI test"
 
-ASSETS = Path(__file__).parent / "assets"
+ASSETS = Path(__file__).parent / "assets" / "ui"
 BACKGROUND = (238, 240, 244)
 
 PHASE_NAMES = ["Morning", "Afternoon", "Evening", "Night"]
