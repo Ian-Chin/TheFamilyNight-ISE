@@ -36,7 +36,18 @@ WALK_FRAME_TIME = 0.11
 IDLE_PERIOD = 1.6
 JUMP_DURATION = 0.5
 JUMP_HEIGHT = 70.0
-TERRY_HEIGHT = 96
+TERRY_HEIGHT = 118
+
+# The ground shadow is an ellipse under Terry's feet, sized off his sprite and
+# shrinking as he leaves the ground.
+SHADOW_WIDTH = 0.62    # fraction of the sprite's width
+SHADOW_ASPECT = 0.34   # ellipse height over its width
+# The ellipse sits just under the bottom of the sprite box, so it reads as
+# ground under Terry's shoes rather than as a stain behind them.
+SHADOW_RISE = -2       # canvas units the ellipse sits above the sprite box
+SHADOW_COLOR = (18, 14, 10)
+SHADOW_ALPHA = 150
+SHADOW_JUMP_SHRINK = 0.4   # how much of the shadow a full jump takes away
 
 # --- Menu layout, in canvas units --------------------------------------------
 MENU_ITEMS = [
@@ -78,6 +89,30 @@ CHAO_STOP_Y = 470
 CHAO_FADE_IN = 1.6   # seconds of black at the top of the scene
 # The garden is fenced in, so Terry walks the ground inside it.
 CHAO_WALK_BOUNDS = (60, WIDTH - 60, 60, HEIGHT - 60)
+
+# --- In-scene HUD, in canvas units -------------------------------------------
+DAYCYCLE_SHEET = "Daycycle.png"
+# Daycycle.png stacks one badge per phase; these are their boxes in the sheet.
+DAY_BADGE_BOXES = (
+    (71, 112, 838, 298),
+    (71, 442, 838, 298),
+    (71, 772, 838, 298),
+    (71, 1099, 838, 298),
+)
+PHASE_NAMES = ("Morning", "Afternoon", "Evening", "Night")
+HUD_MARGIN = 22
+HUD_GAP = 18
+HUD_BADGE_H = 58
+HUD_SETTINGS_H = 50
+HUD_BACKPACK_H = 58
+HUD_MAP_H = 104
+HUD_HOVER_GROW = 1.06
+# The garden art is busy, so the bare icons sit on a dark plate to stand out.
+HUD_PLATE_INSET = 12   # canvas units of plate around an icon
+HUD_PLATE_PAD = 8      # room around the plate for its shadow
+HUD_PLATE_FILL = (24, 18, 14, 175)
+HUD_PLATE_HOVER = (62, 44, 26, 205)
+HUD_PLATE_EDGE = (240, 228, 198, 210)
 
 # --- Pause overlay, in canvas units ------------------------------------------
 PAUSE_ITEMS = [

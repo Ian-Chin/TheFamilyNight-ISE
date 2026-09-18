@@ -10,8 +10,8 @@ import arcade
 import PIL.Image
 
 from .art.spritesheet import load_terry_frames
-from .art.widgets import draw_card, draw_disc, draw_plank
-from .config import BACKGROUND_DIR, ICON_DIR, UI_DIR
+from .art.widgets import draw_card, draw_disc, draw_hud_plate, draw_plank
+from .config import BACKGROUND_DIR, DAY_BADGE_BOXES, DAYCYCLE_SHEET, ICON_DIR, UI_DIR
 
 
 def _texture(image):
@@ -34,6 +34,11 @@ def plank(width, height, pad, hovered):
 @functools.lru_cache(maxsize=32)
 def disc(diameter, pad, hovered):
     return _texture(draw_disc(diameter, pad, hovered))
+
+
+@functools.lru_cache(maxsize=32)
+def hud_plate(width, height, pad, hovered):
+    return _texture(draw_hud_plate(width, height, pad, hovered))
 
 
 @functools.lru_cache(maxsize=16)
@@ -61,3 +66,13 @@ def background(name):
 @functools.lru_cache(maxsize=16)
 def ui_image(name):
     return arcade.load_texture(UI_DIR / name)
+
+
+@functools.lru_cache(maxsize=1)
+def day_badges():
+    """One texture per phase, sliced out of the day cycle sheet."""
+    sheet = PIL.Image.open(UI_DIR / DAYCYCLE_SHEET).convert("RGBA")
+    return tuple(
+        _texture(sheet.crop((x, y, x + w, y + h)))
+        for x, y, w, h in DAY_BADGE_BOXES
+    )

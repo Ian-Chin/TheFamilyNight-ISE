@@ -15,6 +15,14 @@ from .pause import PauseMenu
 from .sprites import Terry
 from .views import StageView
 
+# --- HUD, parked ------------------------------------------------------------
+# The day cycle badge, settings, backpack and map are built and working in
+# game/hud.py, but kept out of the scene for now. To put them back, uncomment
+# the four blocks marked "HUD:" below and these two imports.
+# from .config import PANEL_H, PANEL_W
+# from .hud import HUD
+# from .ui import Card
+
 
 def cover_rect(texture, rect):
     """Fill `rect` with `texture` without distorting it."""
@@ -39,8 +47,13 @@ class ChaoDinnerView(StageView):
         self.walking_in = True
         self.held = set()
 
+        self.panel = None   # the label of the open HUD popup, or None
         self.pause_menu = PauseMenu()
         self.widgets = [self.pause_menu]
+        # HUD: build it and lay it out with the other widgets.
+        # self.hud = HUD()
+        # self.placeholder = Card(PANEL_W, PANEL_H, "", ["Nothing here yet."])
+        # self.widgets = [self.hud, self.placeholder, self.pause_menu]
 
         # The camera projects the fixed canvas into the letterboxed stage, so
         # Terry's coordinates stay in canvas units whatever the window size.
@@ -72,11 +85,18 @@ class ChaoDinnerView(StageView):
         arcade.draw_texture_rect(self.background, cover_rect(self.background, viewport))
 
         self.camera.use()
+        self.terry.draw_shadow()
         self.sprites.draw(pixelated=True)
         self.window.default_camera.use()
 
         if not self.walking_in:
             self.hint.draw()
+            # HUD: drawn once the scripted entrance is over, and under the fade
+            # so the opening black covers it too.
+            # self.hud.draw()
+            # if self.panel:
+            #     self.placeholder.set_title(self.panel)
+            #     self.placeholder.draw()
 
         alpha = self.fade_alpha
         if alpha:
@@ -88,7 +108,7 @@ class ChaoDinnerView(StageView):
         self.pause_menu.draw()
 
     def on_update(self, delta_time):
-        if self.pause_menu.visible:
+        if self.pause_menu.visible or self.panel:
             return
 
         # The first frame of a view carries the window's load time, which would
@@ -118,7 +138,13 @@ class ChaoDinnerView(StageView):
 
         if key == arcade.key.ESCAPE:
             self.held.clear()
-            self.pause_menu.open()
+            if self.panel:
+                self.panel = None
+            else:
+                self.pause_menu.open()
+            return
+
+        if self.panel:
             return
 
         if self.walking_in:
@@ -138,11 +164,30 @@ class ChaoDinnerView(StageView):
         self.held.discard(key)
 
     def on_mouse_motion(self, x, y, dx, dy):
-        self.pause_menu.on_mouse_motion(*self.canvas_point(x, y))
+        canvas_x, canvas_y = self.canvas_point(x, y)
+        self.pause_menu.on_mouse_motion(canvas_x, canvas_y)
+        # HUD: only light its buttons up when nothing is over the scene.
+        # if self.pause_menu.visible or self.panel or self.walking_in:
+        #     self.hud.clear_hover()
+        # else:
+        #     self.hud.on_mouse_motion(canvas_x, canvas_y)
 
     def on_mouse_press(self, x, y, button, modifiers):
         canvas_x, canvas_y = self.canvas_point(x, y)
-        self.run_action(self.pause_menu.on_mouse_press(canvas_x, canvas_y, button))
+        if self.pause_menu.visible:
+            self.run_action(self.pause_menu.on_mouse_press(canvas_x, canvas_y, button))
+            return
+        if self.panel:
+            # Any click dismisses an open popup.
+            self.panel = None
+            return
+        if self.walking_in:
+            return
+        # HUD: a click on an icon opens its popup; the badge handles its own.
+        # clicked = self.hud.on_mouse_press(canvas_x, canvas_y, button)
+        # if clicked and clicked != "day":
+        #     self.held.clear()
+        #     self.panel = clicked.capitalize()
 
     def run_action(self, action):
         if action is None:

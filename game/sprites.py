@@ -4,8 +4,9 @@ import arcade
 
 from . import textures
 from .config import (
-    IDLE_PERIOD, JUMP_DURATION, JUMP_HEIGHT, TERRY_HEIGHT, WALK_FRAME_TIME,
-    WALK_SPEED,
+    IDLE_PERIOD, JUMP_DURATION, JUMP_HEIGHT, SHADOW_ALPHA, SHADOW_ASPECT,
+    SHADOW_COLOR, SHADOW_JUMP_SHRINK, SHADOW_RISE, SHADOW_WIDTH, TERRY_HEIGHT,
+    WALK_FRAME_TIME, WALK_SPEED,
 )
 
 
@@ -35,6 +36,22 @@ class Terry(arcade.Sprite):
     def start_jump(self):
         if not self.jumping:
             self.jump_timer = 0.0
+
+    def draw_shadow(self):
+        """Draw the ground shadow; call this before the sprite itself.
+
+        It follows `ground_y` rather than the drawn position, so it stays on
+        the floor while Terry is in the air, fading and shrinking as he rises.
+        """
+        lift = max(0.0, self.center_y - self.ground_y) / JUMP_HEIGHT
+        shrink = 1 - SHADOW_JUMP_SHRINK * min(lift, 1.0)
+        width = abs(self.width) * SHADOW_WIDTH * shrink
+        height = width * SHADOW_ASPECT
+        feet_y = self.ground_y - abs(self.height) / 2
+        arcade.draw_ellipse_filled(
+            self.center_x, feet_y + SHADOW_RISE, width, height,
+            (*SHADOW_COLOR, round(SHADOW_ALPHA * shrink)),
+        )
 
     def update_movement(self, delta_time, dx, dy, bounds):
         if dx or dy:

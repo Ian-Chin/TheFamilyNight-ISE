@@ -12,8 +12,8 @@ import PIL.ImageDraw
 import PIL.ImageFilter
 
 from ..config import (
-    PARCHMENT_DARK, PARCHMENT_LIGHT, PLANK_EDGE, STUD_BASE, STUD_HOVER,
-    WOOD_BASE, WOOD_HOVER,
+    HUD_PLATE_EDGE, HUD_PLATE_FILL, HUD_PLATE_HOVER, PARCHMENT_DARK,
+    PARCHMENT_LIGHT, PLANK_EDGE, STUD_BASE, STUD_HOVER, WOOD_BASE, WOOD_HOVER,
 )
 
 SUPERSAMPLE = 4  # drawn large, then shrunk, for clean edges
@@ -104,6 +104,28 @@ def draw_disc(diameter, pad, hovered):
 
     art = add_drop_shadow(disc, mask, 2.0 * SUPERSAMPLE, 2.0 * SUPERSAMPLE)
     return art.resize((diameter + 2 * pad, diameter + 2 * pad), PIL.Image.LANCZOS)
+
+
+def draw_hud_plate(width, height, pad, hovered):
+    """A dark translucent tile that lifts a HUD icon off the scene behind it."""
+    scaled_pad = pad * SUPERSAMPLE
+    body_w, body_h = width * SUPERSAMPLE, height * SUPERSAMPLE
+    w, h = body_w + 2 * scaled_pad, body_h + 2 * scaled_pad
+    box = (scaled_pad, scaled_pad, scaled_pad + body_w, scaled_pad + body_h)
+    radius = round(min(body_w, body_h) * 0.3)
+
+    mask = PIL.Image.new("L", (w, h), 0)
+    PIL.ImageDraw.Draw(mask).rounded_rectangle(box, radius, fill=255)
+
+    plate = PIL.Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    PIL.ImageDraw.Draw(plate).rounded_rectangle(
+        box, radius,
+        fill=HUD_PLATE_HOVER if hovered else HUD_PLATE_FILL,
+        outline=HUD_PLATE_EDGE, width=2 * SUPERSAMPLE,
+    )
+
+    art = add_drop_shadow(plate, mask, 2.0 * SUPERSAMPLE, 2.0 * SUPERSAMPLE)
+    return art.resize((width + 2 * pad, height + 2 * pad), PIL.Image.LANCZOS)
 
 
 def draw_card(width, height, pad):
