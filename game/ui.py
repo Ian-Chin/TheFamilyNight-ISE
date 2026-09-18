@@ -66,14 +66,17 @@ class Stage:
 class MenuButton:
     """A wooden plank with an icon on the left of its label."""
 
-    def __init__(self, label, action, icon, left, bottom):
+    def __init__(self, label, action, icon, left, bottom,
+                 width=MENU_BUTTON_W, height=MENU_BUTTON_H):
         self.label = label
         self.action = action
         self.icon_name = icon
         self.left = left
         self.bottom = bottom
-        self.right = left + MENU_BUTTON_W
-        self.top = bottom + MENU_BUTTON_H
+        self.width = width
+        self.height = height
+        self.right = left + width
+        self.top = bottom + height
         self.hovered = False
 
     def contains(self, x, y):
@@ -82,12 +85,12 @@ class MenuButton:
     def layout(self, stage):
         self.stage = stage
         pad = stage.px(PLANK_PAD)
-        width, height = stage.px(MENU_BUTTON_W), stage.px(MENU_BUTTON_H)
+        width, height = stage.px(self.width), stage.px(self.height)
         self.plank = textures.plank(width, height, pad, False)
         self.plank_hovered = textures.plank(width, height, pad, True)
         self.icon = textures.icon(self.icon_name, stage.px(MENU_ICON))
 
-        middle_y = self.bottom + MENU_BUTTON_H / 2
+        middle_y = self.bottom + self.height / 2
         self.icon_left = self.left + MENU_ICON_PAD
         self.icon_bottom = middle_y - MENU_ICON / 2
         text_x = self.left + MENU_ICON_PAD + MENU_ICON + MENU_ICON_GAP
@@ -108,8 +111,8 @@ class MenuButton:
             self.stage.rect(
                 self.left - PLANK_PAD - grow,
                 self.bottom - PLANK_PAD - grow / 2,
-                MENU_BUTTON_W + 2 * PLANK_PAD + 2 * grow,
-                MENU_BUTTON_H + 2 * PLANK_PAD + grow,
+                self.width + 2 * PLANK_PAD + 2 * grow,
+                self.height + 2 * PLANK_PAD + grow,
             ),
         )
         arcade.draw_texture_rect(

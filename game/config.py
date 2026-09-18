@@ -68,6 +68,34 @@ CREDITS_W = 560
 CREDITS_H = 320
 PLANK_PAD = 10   # room around a widget for its shadow
 
+# --- Chao dinner scene, in canvas units --------------------------------------
+CHAO_DINNER_BG = "chao-dinner-bg.jpg"
+# The stone path runs down the middle of the art; Terry enters along it from
+# above the canvas and stops level with the dinner table.
+CHAO_PATH_X = 528
+CHAO_ENTRY_Y = HEIGHT + 80
+CHAO_STOP_Y = 470
+CHAO_FADE_IN = 1.6   # seconds of black at the top of the scene
+# The garden is fenced in, so Terry walks the ground inside it.
+CHAO_WALK_BOUNDS = (60, WIDTH - 60, 60, HEIGHT - 60)
+
+# --- Pause overlay, in canvas units ------------------------------------------
+PAUSE_ITEMS = [
+    ("Resume", "resume", "play"),
+    ("Settings", "settings", "gear"),
+    ("Main Menu", "menu", "book"),
+    ("Quit", "quit", "power"),
+]
+PAUSE_TITLE = "Paused"
+PAUSE_BUTTON_W = 280
+PAUSE_BUTTON_H = 56
+PAUSE_BUTTON_GAP = 14
+PAUSE_PANEL_W = 380
+PAUSE_TITLE_SIZE = 27
+PAUSE_TITLE_GAP = 62   # panel top to the middle of the title
+PAUSE_PANEL_PAD = 34   # panel edge to the button stack
+PAUSE_DIM = (0, 0, 0, 150)
+
 CREDITS_NAMES = (
     ("TP076848", "Ee Jin Xing"),
     ("TP076218", "Ian Chin Jun Sheng"),

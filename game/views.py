@@ -8,6 +8,7 @@ from .config import (
     HEIGHT, LOGO_TOP_MARGIN, LOGO_WIDTH, MENU_BUTTON_GAP, MENU_BUTTON_H,
     MENU_BUTTON_W, MENU_ITEMS, MENU_RIGHT, PANEL_H, PANEL_W, WIDTH,
 )
+from .pause import PauseMenu
 from .sprites import Terry
 from .ui import Card, CreditsButton, MenuButton, Stage
 
@@ -115,7 +116,10 @@ class MenuView(StageView):
 
     def activate(self, item):
         if item.action == "play":
-            self.window.show_view(GameView())
+            # Imported here: the scene module imports StageView from this one.
+            from .chao_dinner import ChaoDinnerView
+
+            self.window.show_view(ChaoDinnerView())
         elif item.action == "quit":
             self.window.close()
         else:
@@ -139,6 +143,9 @@ class GameView(StageView):
         self.sprites = arcade.SpriteList()
         self.sprites.append(self.terry)
         self.held = set()
+        self.pause_menu = PauseMenu()
+        self.widgets = [self.pause_menu]
+        self.widgets = [self.pause_menu]
 
         # A Camera2D projection is measured from its position, so the camera
         # sits at the middle of the canvas and projects half of it each way.
@@ -153,7 +160,7 @@ class GameView(StageView):
         super().relayout()
         self.camera.viewport = self.stage.viewport()
         self.hint = self.stage.text(
-            "WASD to move    Space to jump    Esc for menu",
+            "WASD to move    Space to jump    Esc to pause",
             WIDTH / 2, 26, (170, 176, 188), 14, anchor_x="center", anchor_y="center",
         )
 
@@ -163,15 +170,22 @@ class GameView(StageView):
         self.sprites.draw()
         self.window.default_camera.use()
         self.hint.draw()
+        self.pause_menu.draw()
 
     def on_update(self, delta_time):
+        if self.pause_menu.visible:
+            return
         dx = (arcade.key.D in self.held) - (arcade.key.A in self.held)
         dy = (arcade.key.W in self.held) - (arcade.key.S in self.held)
         self.terry.update_movement(delta_time, dx, dy, (0, WIDTH, 0, HEIGHT))
 
     def on_key_press(self, key, modifiers):
+        if self.pause_menu.visible:
+            self.run_action(self.pause_menu.on_key_press(key))
+            return
         if key == arcade.key.ESCAPE:
-            self.window.show_view(MenuView())
+            self.held.clear()
+            self.pause_menu.open()
             return
         if key == arcade.key.SPACE:
             self.terry.start_jump()
@@ -180,3 +194,20 @@ class GameView(StageView):
 
     def on_key_release(self, key, modifiers):
         self.held.discard(key)
+
+    def on_mouse_motion(self, x, y, dx, dy):
+        self.pause_menu.on_mouse_motion(*self.canvas_point(x, y))
+
+    def on_mouse_press(self, x, y, button, modifiers):
+        canvas_x, canvas_y = self.canvas_point(x, y)
+        self.run_action(self.pause_menu.on_mouse_press(canvas_x, canvas_y, button))
+
+    def run_action(self, action):
+        if action is None:
+            return
+        if action == "resume":
+            self.pause_menu.close()
+        elif action == "menu":
+            self.window.show_view(MenuView())
+        elif action == "quit":
+            self.window.close()
