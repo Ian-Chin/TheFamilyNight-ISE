@@ -2,12 +2,13 @@
 
 import arcade
 
-from . import textures
+from . import audio, textures
 from .config import (
     CREDIT_ICON, CREDIT_MARGIN, CREDIT_SIZE, CREDITS_H, CREDITS_NAMES, CREDITS_W,
     HEIGHT, LOGO_TOP_MARGIN, LOGO_WIDTH, MENU_BUTTON_GAP, MENU_BUTTON_H,
     MENU_BUTTON_W, MENU_ITEMS, MENU_RIGHT, PANEL_H, PANEL_W, WIDTH,
 )
+from .options import SettingsPanel
 from .pause import PauseMenu
 from .sprites import Terry
 from .ui import Card, CreditsButton, MenuButton, Stage
@@ -68,9 +69,11 @@ class MenuView(StageView):
         self.credits_card = Card(
             CREDITS_W, CREDITS_H, "Credits", list(CREDITS_NAMES)
         )
+        self.settings_panel = SettingsPanel()
 
         self.widgets = [
-            *self.buttons, self.credits_button, self.placeholder, self.credits_card,
+            *self.buttons, self.credits_button, self.placeholder,
+            self.credits_card, self.settings_panel,
         ]
         self.relayout()
         self.panel = None
@@ -84,17 +87,26 @@ class MenuView(StageView):
         arcade.draw_texture_rect(self.logo, self.stage.rect(
             self.logo_left, self.logo_bottom, LOGO_WIDTH, self.logo_h,
         ))
-        for button in self.buttons:
-            button.draw()
-        self.credits_button.draw()
+        # The settings panel is see-through enough that the button stack
+        # reads straight through it, so the menu steps out of the way.
+        if not self.settings_panel.visible:
+            for button in self.buttons:
+                button.draw()
+            self.credits_button.draw()
         if self.panel == "Credits":
             self.credits_card.draw()
         elif self.panel:
             self.placeholder.set_title(self.panel)
             self.placeholder.draw()
+        self.settings_panel.draw()
 
     def on_mouse_motion(self, x, y, dx, dy):
         x, y = self.canvas_point(x, y)
+        if self.settings_panel.visible:
+            for button in self.buttons:
+                button.hovered = False
+            self.credits_button.hovered = False
+            return
         for button in self.buttons:
             button.hovered = button.contains(x, y)
         self.credits_button.hovered = self.credits_button.contains(x, y)
@@ -102,17 +114,27 @@ class MenuView(StageView):
     def on_mouse_press(self, x, y, button, modifiers):
         if button != arcade.MOUSE_BUTTON_LEFT:
             return
+        canvas_x, canvas_y = self.canvas_point(x, y)
+        if self.settings_panel.on_mouse_press(canvas_x, canvas_y, button):
+            return
         if self.panel:
             self.panel = None
             return
-        x, y = self.canvas_point(x, y)
-        if self.credits_button.contains(x, y):
+        if self.credits_button.contains(canvas_x, canvas_y):
+            audio.play("ui_click")
             self.panel = "Credits"
             return
         for item in self.buttons:
-            if item.contains(x, y):
+            if item.contains(canvas_x, canvas_y):
+                audio.play("ui_click")
                 self.activate(item)
                 return
+
+    def on_mouse_drag(self, x, y, dx, dy, buttons, modifiers):
+        self.settings_panel.on_mouse_drag(*self.canvas_point(x, y))
+
+    def on_mouse_release(self, x, y, button, modifiers):
+        self.settings_panel.on_mouse_release()
 
     def activate(self, item):
         if item.action == "play":
@@ -120,12 +142,18 @@ class MenuView(StageView):
             from .chao_dinner import ChaoDinnerView
 
             self.window.show_view(ChaoDinnerView())
+        elif item.action == "settings":
+            self.settings_panel.open()
         elif item.action == "quit":
             self.window.close()
         else:
             self.panel = item.label
 
     def on_key_press(self, key, modifiers):
+        if self.settings_panel.visible:
+            if self.settings_panel.on_key_press(key) == "close":
+                self.settings_panel.close()
+            return
         if key == arcade.key.ESCAPE:
             if self.panel:
                 self.panel = None

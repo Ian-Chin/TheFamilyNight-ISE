@@ -7,18 +7,42 @@ size, so nothing is drawn small and scaled up.
 
 import arcade
 
-from . import textures
+from . import audio, textures
 from .config import (
-    CARVED, CARVED_HOVER, CREDIT_SIZE, HEIGHT, INK, MENU_BUTTON_H, MENU_BUTTON_W,
-    MENU_FONT, MENU_ICON, MENU_ICON_GAP, MENU_ICON_PAD, MENU_TEXT_SIZE,
-    PLANK_EDGE, PLANK_PAD, WIDTH,
+    CREDIT_SIZE, HEIGHT, MENU_BUTTON_H, MENU_BUTTON_W, MENU_FONT, MENU_ICON,
+    MENU_ICON_GAP, MENU_ICON_PAD, MENU_TEXT_SIZE, PLANK_PAD, SETTINGS_LABEL_SIZE,
+    SETTINGS_NOTE_SIZE, SETTINGS_VALUE_SIZE, SLIDER_FILL, SLIDER_FILL_DIM,
+    SLIDER_KNOB, SLIDER_KNOB_COLOR, SLIDER_KNOB_EDGE, SLIDER_TRACK,
+    SLIDER_TRACK_H, SLIDER_W, TEXT_BRIGHT, TEXT_DIM, TEXT_HOVER, TEXT_SHADOW,
+    WIDTH,
 )
 
 HOVER_GROW = 5  # canvas units a widget grows by under the pointer
 
+
+class Hoverable:
+    """Shared hover state that ticks the pointer sound as it is entered.
+
+    `hovered` is assigned wholesale by the views every time the mouse moves,
+    so the sound hangs off the change rather than off the assignment.
+    """
+
+    _hovered = False
+
+    @property
+    def hovered(self):
+        return self._hovered
+
+    @hovered.setter
+    def hovered(self, value):
+        value = bool(value)
+        if value and not self._hovered:
+            audio.play("ui_hover")
+        self._hovered = value
+
 # The baked icons are white silhouettes, tinted at draw time.
-ICON_TINT = arcade.types.Color(*CARVED)
-ICON_TINT_HOVER = arcade.types.Color(*CARVED_HOVER)
+ICON_TINT = arcade.types.Color(*TEXT_BRIGHT)
+ICON_TINT_HOVER = arcade.types.Color(*TEXT_HOVER)
 
 
 class Stage:
@@ -63,8 +87,8 @@ class Stage:
         )
 
 
-class MenuButton:
-    """A wooden plank with an icon on the left of its label."""
+class MenuButton(Hoverable):
+    """A glass button with an icon on the left of its label."""
 
     def __init__(self, label, action, icon, left, bottom,
                  width=MENU_BUTTON_W, height=MENU_BUTTON_H):
@@ -95,11 +119,11 @@ class MenuButton:
         self.icon_bottom = middle_y - MENU_ICON / 2
         text_x = self.left + MENU_ICON_PAD + MENU_ICON + MENU_ICON_GAP
         self.shadow_text = stage.text(
-            self.label, text_x, middle_y - 2, PLANK_EDGE[:3], MENU_TEXT_SIZE,
+            self.label, text_x, middle_y - 2, TEXT_SHADOW, MENU_TEXT_SIZE,
             anchor_y="center", bold=True,
         )
         self.text = stage.text(
-            self.label, text_x, middle_y, CARVED, MENU_TEXT_SIZE,
+            self.label, text_x, middle_y, TEXT_BRIGHT, MENU_TEXT_SIZE,
             anchor_y="center", bold=True,
         )
 
@@ -125,7 +149,7 @@ class MenuButton:
         self.text.draw()
 
 
-class CreditsButton:
+class CreditsButton(Hoverable):
     """A round medallion button."""
 
     def __init__(self, icon, center_x, center_y):
@@ -167,6 +191,88 @@ class CreditsButton:
         )
 
 
+class Slider:
+    """A labelled 0..1 bar, dragged with the mouse or nudged with the arrows.
+
+    The value lives in the mixer, not in the slider: the widget reads it every
+    frame, so a change made here is heard on the next sound played.
+    """
+
+    GRAB_PAD = 14   # canvas units either side of the track that still count
+
+    def __init__(self, channel, label, note, left, middle_y, mixer):
+        self.channel = channel
+        self.label = label
+        self.note = note
+        self.left = left
+        self.middle_y = middle_y
+        self.mixer = mixer
+        self.selected = False
+        self.dragging = False
+
+    @property
+    def value(self):
+        return self.mixer.get(self.channel)
+
+    def contains(self, x, y):
+        return (
+            self.left - self.GRAB_PAD <= x <= self.left + SLIDER_W + self.GRAB_PAD
+            and abs(y - self.middle_y) <= SLIDER_KNOB
+        )
+
+    def set_from_x(self, x):
+        self.mixer.set(self.channel, (x - self.left) / SLIDER_W)
+
+    def nudge(self, delta):
+        self.mixer.nudge(self.channel, delta)
+
+    def layout(self, stage):
+        self.stage = stage
+        self.label_text = stage.text(
+            self.label, self.left - 30, self.middle_y + 11, TEXT_BRIGHT,
+            SETTINGS_LABEL_SIZE, anchor_x="right", anchor_y="center", bold=True,
+        )
+        self.note_text = stage.text(
+            self.note, self.left - 30, self.middle_y - 16, TEXT_DIM,
+            SETTINGS_NOTE_SIZE, anchor_x="right", anchor_y="center",
+        )
+        self.value_text = stage.text(
+            "", self.left + SLIDER_W + 26, self.middle_y, TEXT_BRIGHT,
+            SETTINGS_VALUE_SIZE, anchor_y="center",
+        )
+
+    def draw(self):
+        self.label_text.color = TEXT_HOVER if self.selected else TEXT_BRIGHT
+        self.label_text.draw()
+        self.note_text.draw()
+
+        half = SLIDER_TRACK_H / 2
+        arcade.draw_rect_filled(
+            self.stage.rect(
+                self.left, self.middle_y - half, SLIDER_W, SLIDER_TRACK_H,
+            ),
+            SLIDER_TRACK,
+        )
+        filled = SLIDER_W * self.value
+        if filled > 0:
+            arcade.draw_rect_filled(
+                self.stage.rect(
+                    self.left, self.middle_y - half, filled, SLIDER_TRACK_H,
+                ),
+                SLIDER_FILL if self.selected else SLIDER_FILL_DIM,
+            )
+
+        knob_x, knob_y = self.stage.to_screen(self.left + filled, self.middle_y)
+        radius = self.stage.px(SLIDER_KNOB) / 2
+        arcade.draw_circle_filled(knob_x, knob_y, radius, SLIDER_KNOB_COLOR)
+        arcade.draw_circle_outline(
+            knob_x, knob_y, radius, SLIDER_KNOB_EDGE, max(1, radius * 0.16),
+        )
+
+        self.value_text.text = f"{round(self.value * 100)}%"
+        self.value_text.draw()
+
+
 class Card:
     """A centred parchment popup with a title and a few rows of text.
 
@@ -199,7 +305,7 @@ class Card:
 
         middle = self.left + self.width / 2
         self.title_text = stage.text(
-            self.title, middle, self.bottom + self.height - 54, PLANK_EDGE[:3],
+            self.title, middle, self.bottom + self.height - 54, TEXT_HOVER,
             self.TITLE_SIZE, anchor_x="center", anchor_y="center", bold=True,
         )
 
@@ -210,22 +316,22 @@ class Card:
             if isinstance(row, tuple):
                 left_column, right_column = row
                 self.row_texts.append(stage.text(
-                    left_column, self.left + 64, y, (120, 96, 64), self.ROW_SIZE,
+                    left_column, self.left + 64, y, TEXT_DIM, self.ROW_SIZE,
                     anchor_y="center",
                 ))
                 self.row_texts.append(stage.text(
-                    right_column, self.left + 196, y, INK, self.ROW_SIZE,
+                    right_column, self.left + 196, y, TEXT_BRIGHT, self.ROW_SIZE,
                     anchor_y="center",
                 ))
             else:
                 self.row_texts.append(stage.text(
-                    row, middle, y, INK, self.ROW_SIZE,
+                    row, middle, y, TEXT_BRIGHT, self.ROW_SIZE,
                     anchor_x="center", anchor_y="center",
                 ))
 
         self.hint_text = stage.text(
             "Press Esc or click to close", middle, self.bottom + 28,
-            (140, 120, 92), 13, anchor_x="center", anchor_y="center",
+            TEXT_DIM, 13, anchor_x="center", anchor_y="center",
         )
 
     def draw(self):

@@ -10,7 +10,7 @@ from ..config import (
     IDLE_FILES, JUMP_ROW, MOVEMENT_SHEET, SHEET_COLS, SHEET_ROWS, SOLID_ALPHA,
     SPRITE_DIR, WALK_ROWS,
 )
-from .keying import key_out_white, trim
+from .keying import add_rim, key_out_white, to_art_height, trim
 
 
 def band_cuts(occupied, count, size):
@@ -81,6 +81,11 @@ def align_frames(groups):
     return tuple([place(cell) for cell in group] for group in groups)
 
 
+def group_sizes():
+    """How many frames `load_terry_frames` returns in each group."""
+    return (len(WALK_ROWS) * SHEET_COLS, SHEET_COLS, len(IDLE_FILES))
+
+
 def load_terry_frames():
     """Return (walk, jump, idle) frame lists as aligned PIL images."""
     sheet = key_out_white(PIL.Image.open(SPRITE_DIR / MOVEMENT_SHEET))
@@ -101,4 +106,13 @@ def load_terry_frames():
             PIL.Image.LANCZOS,
         ))
 
-    return align_frames((walk, jump, idle))
+    # Brought down to drawing size as one set, then rimmed, so the contour is
+    # the same weight on all three groups.
+    groups = (walk, jump, idle)
+    sizes = [len(group) for group in groups]
+    small = to_art_height([cell for group in groups for cell in group])
+    rimmed, start = [], 0
+    for count in sizes:
+        rimmed.append([add_rim(cell) for cell in small[start:start + count]])
+        start += count
+    return align_frames(tuple(rimmed))
