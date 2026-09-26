@@ -8,11 +8,11 @@ events through. The handlers return an action string once a button is chosen.
 
 import arcade
 
-from . import textures
+from . import audio, textures
 from .config import (
     HEIGHT, PAUSE_BUTTON_GAP, PAUSE_BUTTON_H, PAUSE_BUTTON_W, PAUSE_DIM,
     PAUSE_ITEMS, PAUSE_PANEL_PAD, PAUSE_PANEL_W, PAUSE_TITLE, PAUSE_TITLE_GAP,
-    PAUSE_TITLE_SIZE, PLANK_EDGE, PLANK_PAD, WIDTH,
+    PAUSE_TITLE_SIZE, PLANK_PAD, TEXT_HOVER, WIDTH,
 )
 from .ui import MenuButton
 
@@ -57,7 +57,7 @@ class PauseMenu:
         )
         self.title_text = stage.text(
             self.title, self.left + self.width / 2,
-            self.bottom + self.height - PAUSE_TITLE_GAP / 2, PLANK_EDGE[:3],
+            self.bottom + self.height - PAUSE_TITLE_GAP / 2, TEXT_HOVER,
             PAUSE_TITLE_SIZE, anchor_x="center", anchor_y="center", bold=True,
         )
         for button in self.buttons:
@@ -90,6 +90,7 @@ class PauseMenu:
             return None
         for button in self.buttons:
             if button.contains(x, y):
+                audio.play("ui_click")
                 return button.action
         return None
 
