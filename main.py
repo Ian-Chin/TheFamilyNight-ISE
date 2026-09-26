@@ -18,10 +18,15 @@ def warm_up():
     cut-outs are baked to assets/.cache as well, so this only costs real time
     on the first run after the art changes.
     """
-    # Imported here so the window exists before any texture is uploaded.
-    from game.chao_dinner import ChaoDinnerView
+    # Start BBQ Scene (CK)
+    from game.bbq_scene import BbqView
 
-    ChaoDinnerView()
+    BbqView()
+
+    # Imported here so the window exists before any texture is uploaded. (Ian)
+    # from game.chao_dinner import ChaoDinnerView
+
+    # ChaoDinnerView()
 
 
 def main():

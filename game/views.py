@@ -138,10 +138,15 @@ class MenuView(StageView):
 
     def activate(self, item):
         if item.action == "play":
-            # Imported here: the scene module imports StageView from this one.
-            from .chao_dinner import ChaoDinnerView
+            # Start BBQ Scene (CK)
+            from .bbq_scene import BbqView
+            
+            self.window.show_view(BbqView())
 
-            self.window.show_view(ChaoDinnerView())
+            # Imported here: the scene module imports StageView from this one. (Ian)
+            # from .chao_dinner import ChaoDinnerView
+
+            # self.window.show_view(ChaoDinnerView())
         elif item.action == "settings":
             self.settings_panel.open()
         elif item.action == "quit":

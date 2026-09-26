@@ -100,6 +100,13 @@ CREDITS_W = 560
 CREDITS_H = 320
 PLANK_PAD = 10   # room around a widget for its shadow
 
+
+# --- BBQ SCENE (CK) --------------------------------------
+BBQ_SCENE_BG = "bbq-scene-bg.jpeg"
+BBQ_PREP_SCENE_BG = "BBQ-Scene/First person view - Food on top table with Terry.jpg"
+BBQ_SCENE_EMPTY_BG = "chao-dinner-bg.jpg"
+
+
 # --- Chao dinner scene, in canvas units --------------------------------------
 CHAO_DINNER_BG = "chao-dinner-bg.jpg"
 # The stone path runs down the middle of the art; Terry enters along it from
@@ -223,6 +230,7 @@ DIALOG_HINT_SIZE = 14
 DIALOG_ARROW = 17           # side of the blinking "go on" triangle
 DIALOG_BLINK = 0.5
 
+BBQ_OPENING_DIALOG = ("Terry", "The food ingredients is finally purchased, is time to start cooking!")
 # The opening beat of the scene, once Terry has walked in.
 CHAO_OPENING_DIALOG = ("Terry", "test")
 
