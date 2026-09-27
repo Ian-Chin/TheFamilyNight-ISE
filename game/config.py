@@ -144,6 +144,7 @@ BURN_50_BG = "BBQ-Scene/BBQ_50%_burned_food.jpg"
 BURN_100_BG = "BBQ-Scene/BBQ_100%_burned_food.jpg"
 
 GRILL_FINISH_BG = "BBQ-Scene/Finish_bbq_scene.jpg"
+GRILL_FAILED_BG = "BBQ-Scene/Failed_bbq_scene.jpg"
 
 
 # --- Chao dinner scene, in canvas units --------------------------------------

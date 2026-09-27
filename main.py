@@ -19,14 +19,14 @@ def warm_up():
     on the first run after the art changes.
     """
     # Start BBQ Scene (CK)
-    from game.bbq_scene import BbqView
+    # from game.bbq_scene import BbqView
 
-    BbqView()
+    # BbqView()
 
     # Imported here so the window exists before any texture is uploaded. (Ian)
-    # from game.chao_dinner import ChaoDinnerView
+    from game.chao_dinner import ChaoDinnerView
 
-    # ChaoDinnerView()
+    ChaoDinnerView()
 
 
 def main():

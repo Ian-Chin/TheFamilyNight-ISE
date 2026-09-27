@@ -5,7 +5,7 @@ from . import audio, textures
 from .config import (
     GRILL_0_BG, GRILL_20_BG, GRILL_50_BG, GRILL_100_BG,
     BURN_10_BG, BURN_20_BG, BURN_50_BG, BURN_100_BG,
-    GRILL_FINISH_BG
+    GRILL_FINISH_BG, GRILL_FAILED_BG
 )
 from .dialogue import DialogBox
 from .views import StageView
@@ -19,28 +19,27 @@ class GrillingView(StageView):
     def __init__(self):
         super().__init__()
         
-        # We add the Finish screen as Index 5 to both arrays so it triggers regardless of performance
         self.grilled_bgs = [
-            textures.background(GRILL_0_BG),      # 0: Start
-            textures.background(GRILL_20_BG),     # 1: Progress 1
-            textures.background(GRILL_50_BG),     # 2: Progress 2
-            textures.background(GRILL_100_BG),    # 3: Progress 3
-            textures.background(GRILL_100_BG),    # 4: Perfect Finish
-            textures.background(GRILL_FINISH_BG)  # 5: Final Completion Showcase
+            textures.background(GRILL_0_BG),      
+            textures.background(GRILL_20_BG),     
+            textures.background(GRILL_50_BG),     
+            textures.background(GRILL_100_BG),    
+            textures.background(GRILL_100_BG),    
+            textures.background(GRILL_FINISH_BG)  
         ]
         
         self.burned_bgs = [
-            textures.background(GRILL_0_BG),      # 0: Start (Shared)
-            textures.background(BURN_10_BG),      # 1: Burn 1
-            textures.background(BURN_20_BG),      # 2: Burn 2
-            textures.background(BURN_50_BG),      # 3: Burn 3
-            textures.background(BURN_100_BG),     # 4: Ruined Finish
-            textures.background(GRILL_FINISH_BG)  # 5: Final Completion Showcase
+            textures.background(GRILL_0_BG),      
+            textures.background(BURN_10_BG),      
+            textures.background(BURN_20_BG),      
+            textures.background(BURN_50_BG),      
+            textures.background(BURN_100_BG),     
+            textures.background(GRILL_FAILED_BG)  # 5: Failed Completion Screen
         ]
         
         self.stage_idx = 0  
         self.is_burned = False
-        self.timer = 10.0  # 10 second countdown
+        self.timer = 10.0  
         
         self.dialog = DialogBox()
         self.widgets = [self.dialog]
@@ -65,9 +64,8 @@ class GrillingView(StageView):
             self.dialog.update(delta_time)
             if not self.dialog.typing:
                 self.stop_typing_sound()
-            return  # Timer pauses while Terry is speaking!
+            return  
 
-        # Countdown Logic stops once we hit the final grilled/burned state (Index 4)
         if self.stage_idx < 4:
             self.timer -= delta_time
             if self.timer <= 0:
@@ -92,7 +90,6 @@ class GrillingView(StageView):
         
         self.window.default_camera.use()
         
-        # Only draw the timer while actively playing the mini-game (Indices 0-3)
         if not self.dialog.visible and self.stage_idx < 4:
             color = arcade.color.RED if self.timer <= 3 else arcade.color.WHITE
             arcade.draw_text(
@@ -133,15 +130,23 @@ class GrillingView(StageView):
                 self.dialog.advance()
                 
                 if not self.dialog.visible:
-                    # Transition to the final completion screen after clearing the result dialogue
+                    # Branch the dialogue based on success or failure
                     if self.stage_idx == 4:
                         self.stage_idx = 5
-                        self.trigger_dialog("Finally, all the food is fully grilled! Let's dig in and enjoy the BBQ.")
+                        if self.is_burned:
+                            self.trigger_dialog("This is a disaster. I'll have to start over and try grilling it again.")
+                        else:
+                            self.trigger_dialog("Finally, all the food is fully grilled! Let's dig in and enjoy the BBQ.")
                     
-                    # Return to the backyard after clearing the final completion screen dialogue
                     elif self.stage_idx == 5:
-                        self.window.show_view(BbqView(chop_unlocked=True, grill_unlocked=True, grill_completed=True))
+                        if self.is_burned:
+                            # Failed: Leave grill_completed=False so the lock animation replays and they can try again
+                            self.window.show_view(BbqView(chop_unlocked=True, grill_unlocked=True, grill_completed=False))
+                        else:
+                            # Success: Mark as completed to stop the animation permanently
+                            self.window.show_view(BbqView(chop_unlocked=True, grill_unlocked=True, grill_completed=True))
             return
 
         if key == arcade.key.ESCAPE:
-            self.window.show_view(BbqView(chop_unlocked=True, grill_unlocked=True, grill_completed=True))
+            # Treat escaping early as a failure state so they can re-enter it
+            self.window.show_view(BbqView(chop_unlocked=True, grill_unlocked=True, grill_completed=False))
