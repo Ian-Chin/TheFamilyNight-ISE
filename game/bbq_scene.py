@@ -41,17 +41,18 @@ def cover_rect(texture, rect):
 class BbqView(StageView):
     """Scripted entrance: fade up from black as Terry walks down the path."""
 
-    def __init__(self, chop_unlocked=False):
+    def __init__(self, chop_unlocked=False, grill_unlocked=False):
         super().__init__()
-        self.chop_unlocked = chop_unlocked
         
-        # 1. Switch the background if the table is cleared
+        # Track our two game states
+        self.chop_unlocked = chop_unlocked
+        self.grill_unlocked = grill_unlocked
+        
         if self.chop_unlocked:
             self.background = textures.background(BBQ_SCENE_EMPTY_BG)
         else:
             self.background = textures.background(BBQ_SCENE_BG)
 
-        # 2. Start Terry at the table if unlocked, otherwise start him off-screen
         start_y = CHAO_STOP_Y if self.chop_unlocked else CHAO_ENTRY_Y
         self.terry = Terry(CHAO_PATH_X, start_y)
         
@@ -59,10 +60,9 @@ class BbqView(StageView):
         self.sprites.append(self.terry)
         self.sort_by_depth()
 
-        # 3. Skip the fade and walk-in animation if returning from the prep scene
         if self.chop_unlocked:
-            self.fade_clock = CHAO_FADE_IN  # Skips the black fade screen
-            self.walking_in = False         # Skips the walk sequence and dialogue
+            self.fade_clock = CHAO_FADE_IN  
+            self.walking_in = False         
         else:
             self.fade_clock = 0.0
             self.walking_in = True
@@ -81,33 +81,40 @@ class BbqView(StageView):
         if not self.chop_unlocked:
             self.indicators.append(self.table_marker)
 
-        # 2. Lock on the Grilling Machine (Always remains locked for now)
-        lock_tex = textures.ui_image("Lock Symbol.png")
-        self.grill_lock = arcade.Sprite(lock_tex, scale=0.2)
+        # 2. Lock on the Grilling Machine
+        self.grill_lock = arcade.Sprite(textures.ui_image("Lock Symbol.png"), scale=0.2)
         self.grill_lock.center_x = 880  
         self.grill_lock.base_y = 340
         self.grill_lock.center_y = self.grill_lock.base_y
-        self.indicators.append(self.grill_lock)
+        
+        if self.grill_unlocked:
+            self.grill_lock_timer = 5.0  # Animate it popping open!
+            self.indicators.append(self.grill_lock)
+        else:
+            self.indicators.append(self.grill_lock) # Keeps it permanently locked
 
         # 3. Lock on the Chopping Board
-        lock_tex = textures.ui_image("Lock Symbol.png")
-        if self.chop_unlocked:
-            self.board_lock = arcade.Sprite(lock_tex, scale=0.2)
-            # 5.0 total seconds = 1s locked + 2s unlocked + 2s fading
-            self.board_lock_timer = 5.0 
-        else:
-            self.board_lock = arcade.Sprite(lock_tex, scale=0.2)
-
+        self.board_lock = arcade.Sprite(textures.ui_image("Lock Symbol.png"), scale=0.2)
         self.board_lock.center_x = 1000 
         self.board_lock.base_y = 330
         self.board_lock.center_y = self.board_lock.base_y
-        self.indicators.append(self.board_lock)
+        
+        if self.chop_unlocked and not self.grill_unlocked:
+            # Just came from the prep table! Animate the board unlock.
+            self.board_lock_timer = 5.0 
+            self.indicators.append(self.board_lock)
+        elif not self.chop_unlocked:
+            # Still locked completely
+            self.indicators.append(self.board_lock)
+        # (If BOTH are true, we don't append the board_lock at all because it's already gone!)
 
         # --- Base Scene State ---
         self.footsteps = Footsteps(CHAO_STONE_AREAS)
         self.typing_player = None
         self.held = set()
         self.near_table = False
+        self.near_grill = False
+        self.near_board = False
         self.panel = None
 
         self.dialog = DialogBox()
@@ -248,45 +255,89 @@ class BbqView(StageView):
         if self.playing:
             self.time_elapsed += delta_time
             
-            # Animate the table marker ONLY if the table hasn't been prepped yet
             if not self.chop_unlocked:
                 bob_offset = math.sin(self.time_elapsed * 4.0) * 6.0 
                 self.table_marker.center_y = self.table_marker.base_y + bob_offset
                 
-            # --- NEW CODE: Stage the padlock unlocking and fading ---
-            if self.chop_unlocked and hasattr(self, 'board_lock_timer') and self.board_lock_timer > 0:
+            # --- Stage the Chopping Board unlocking ---
+            if hasattr(self, 'board_lock_timer') and self.board_lock_timer > 0:
                 self.board_lock_timer -= delta_time
-                
                 if self.board_lock_timer <= 0:
-                    self.board_lock.alpha = 0  # Fully invisible
+                    self.board_lock.alpha = 0  
                 elif self.board_lock_timer <= 2.0:
-                    # Final 2 seconds (2.0 to 0.0): Smoothly fade out
-                    fade_ratio = self.board_lock_timer / 2.0
-                    self.board_lock.alpha = int(255 * fade_ratio)
+                    self.board_lock.alpha = int(255 * (self.board_lock_timer / 2.0))
+                    self.board_lock.scale = 0.2
+                    self.board_lock.center_y = self.board_lock.base_y
                 elif self.board_lock_timer <= 4.0:
-                    # Middle 2 seconds (4.0 to 2.0): Swap to the open lock image
                     self.board_lock.texture = textures.ui_image("Lock_unlocked.png")
                     self.board_lock.alpha = 255
+                    self.board_lock.scale = 0.2
+                    self.board_lock.center_y = self.board_lock.base_y
                 else:
-                    # First 1 second (5.0 to 4.0): Keep the locked image visible
                     self.board_lock.alpha = 255
-            # --------------------------------------------------------
+                    progress = 5.0 - self.board_lock_timer 
+                    pop_curve = math.sin(progress * math.pi)
+                    self.board_lock.scale = 0.2 + (pop_curve * 0.08)
+                    self.board_lock.center_y = self.board_lock.base_y + (pop_curve * 15.0)
+
+            # --- Stage the Grilling Machine unlocking ---
+            if hasattr(self, 'grill_lock_timer') and self.grill_lock_timer > 0:
+                self.grill_lock_timer -= delta_time
+                if self.grill_lock_timer <= 0:
+                    self.grill_lock.alpha = 0  
+                elif self.grill_lock_timer <= 2.0:
+                    self.grill_lock.alpha = int(255 * (self.grill_lock_timer / 2.0))
+                    self.grill_lock.scale = 0.2
+                    self.grill_lock.center_y = self.grill_lock.base_y
+                elif self.grill_lock_timer <= 4.0:
+                    self.grill_lock.texture = textures.ui_image("Lock_unlocked.png")
+                    self.grill_lock.alpha = 255
+                    self.grill_lock.scale = 0.2
+                    self.grill_lock.center_y = self.grill_lock.base_y
+                else:
+                    self.grill_lock.alpha = 255
+                    progress = 5.0 - self.grill_lock_timer 
+                    pop_curve = math.sin(progress * math.pi)
+                    self.grill_lock.scale = 0.2 + (pop_curve * 0.08)
+                    self.grill_lock.center_y = self.grill_lock.base_y + (pop_curve * 15.0)
+
+            # --- Check rectangular proximity to the zones ---
+            # 1. Big Table
+            in_table_x = 90 <= self.terry.center_x <= 368
+            in_table_y = 208 <= self.terry.ground_y <= 595
+            self.near_table = in_table_x and in_table_y
             
-            # --- Check rectangular proximity to the entire table ---
-            in_x_zone = 90 <= self.terry.center_x <= 368
-            in_y_zone = 208 <= self.terry.ground_y <= 595
+            # 2. Grilling Machine (Left side of the stone counter)
+            in_grill_x = 800 <= self.terry.center_x <= 950
+            in_grill_y = 180 <= self.terry.ground_y <= 450
+            self.near_grill = in_grill_x and in_grill_y
+
+            # 3. Chopping Board (Right side of the stone counter)
+            in_board_x = 950 <= self.terry.center_x <= 1150
+            in_board_y = 180 <= self.terry.ground_y <= 450
+            self.near_board = in_board_x and in_board_y
             
-            self.near_table = in_x_zone and in_y_zone
-            
+            # --- Update UI Hints based on location ---
             if self.near_table:
                 if not self.chop_unlocked:
                     self.hint.text = "Press E to prepare food"
                     self.table_marker.alpha = 0  
                 else:
                     self.hint.text = "The food has been prepped!"
+            elif self.near_grill:
+                if not self.grill_unlocked:
+                    self.hint.text = "This section hasn't unlocked yet..."
+                else:
+                    self.hint.text = "Press Enter to start grilling!"
+            elif self.near_board:
+                if not self.chop_unlocked:
+                    self.hint.text = "This section hasn't unlocked yet..."
+                elif not self.grill_unlocked:
+                    self.hint.text = "Press Enter to start chopping"
+                else:
+                    self.hint.text = "The chopping is completely finished!"
             else:
                 self.hint.text = "WASD to move    Space to jump    Esc to pause"
-                # Only show table marker if it hasn't been unlocked
                 if not self.chop_unlocked:
                     self.table_marker.alpha = 255
 
@@ -313,11 +364,24 @@ class BbqView(StageView):
         if self.panel:
             return
 
-        # --- UPDATE: Transition to the BBQ Prep Scene ---
+        # --- Transition to the BBQ Prep Scene ---
         if key == arcade.key.E and self.near_table and self.playing and not self.chop_unlocked:
             self.held.clear() 
             from .bbq_prep_scene import BBQPrepView
             self.window.show_view(BBQPrepView())
+            return
+            
+        # --- Transition to the Chopping Scene ---
+        if key in (arcade.key.ENTER, arcade.key.NUM_ENTER, arcade.key.RETURN) and self.near_board and self.playing and self.chop_unlocked and not self.grill_unlocked:
+            self.held.clear()
+            
+            # Play a click sound so you immediately know it registered
+            from . import audio
+            audio.play("ui_click")
+            
+            # Transition to the actual chopping scene!
+            from .chopping_scene import ChoppingView
+            self.window.show_view(ChoppingView())
             return
         # ------------------------------------------------
 
