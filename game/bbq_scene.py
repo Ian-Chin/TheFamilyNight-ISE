@@ -41,12 +41,13 @@ def cover_rect(texture, rect):
 class BbqView(StageView):
     """Scripted entrance: fade up from black as Terry walks down the path."""
 
-    def __init__(self, chop_unlocked=False, grill_unlocked=False):
+    def __init__(self, chop_unlocked=False, grill_unlocked=False, grill_completed = False):
         super().__init__()
         
         # Track our two game states
         self.chop_unlocked = chop_unlocked
         self.grill_unlocked = grill_unlocked
+        self.grill_completed = grill_completed
         
         if self.chop_unlocked:
             self.background = textures.background(BBQ_SCENE_EMPTY_BG)
@@ -82,16 +83,16 @@ class BbqView(StageView):
             self.indicators.append(self.table_marker)
 
         # 2. Lock on the Grilling Machine
-        self.grill_lock = arcade.Sprite(textures.ui_image("Lock Symbol.png"), scale=0.2)
-        self.grill_lock.center_x = 880  
-        self.grill_lock.base_y = 340
-        self.grill_lock.center_y = self.grill_lock.base_y
-        
-        if self.grill_unlocked:
-            self.grill_lock_timer = 5.0  # Animate it popping open!
+        if not self.grill_completed:
+            self.grill_lock = arcade.Sprite(textures.ui_image("Lock Symbol.png"), scale=0.2)
+            self.grill_lock.center_x = 880  
+            self.grill_lock.base_y = 340
+            self.grill_lock.center_y = self.grill_lock.base_y
+            
+            if self.grill_unlocked:
+                self.grill_lock_timer = 5.0  # Animate it popping open!
+            
             self.indicators.append(self.grill_lock)
-        else:
-            self.indicators.append(self.grill_lock) # Keeps it permanently locked
 
         # 3. Lock on the Chopping Board
         self.board_lock = arcade.Sprite(textures.ui_image("Lock Symbol.png"), scale=0.2)
@@ -327,8 +328,10 @@ class BbqView(StageView):
             elif self.near_grill:
                 if not self.grill_unlocked:
                     self.hint.text = "This section hasn't unlocked yet..."
-                else:
+                elif not self.grill_completed:
                     self.hint.text = "Press Enter to start grilling!"
+                else:
+                    self.hint.text = "The BBQ is completely finished!"
             elif self.near_board:
                 if not self.chop_unlocked:
                     self.hint.text = "This section hasn't unlocked yet..."
@@ -382,6 +385,15 @@ class BbqView(StageView):
             # Transition to the actual chopping scene!
             from .chopping_scene import ChoppingView
             self.window.show_view(ChoppingView())
+            return
+
+        # --- Transition to the Grilling Scene ---
+        if key in (arcade.key.ENTER, arcade.key.NUM_ENTER, arcade.key.RETURN) and self.near_grill and self.playing and self.grill_unlocked and not self.grill_completed:
+            self.held.clear()
+            from . import audio
+            audio.play("ui_click")
+            from .grilling_scene import GrillingView
+            self.window.show_view(GrillingView())
             return
         # ------------------------------------------------
 
