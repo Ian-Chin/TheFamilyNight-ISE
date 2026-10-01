@@ -106,29 +106,35 @@ BBQ_SCENE_BG = "bbq-scene-bg.jpeg"
 BBQ_PREP_SCENE_BG = "BBQ-Scene/First person view - Food on top table with Terry.jpg"
 BBQ_SCENE_EMPTY_BG = "chao-dinner-bg.jpg"
 # Chopping Scene Stages
-CHOP_MEAT_BG_1 = "BBQ-Scene/Chopping_meat_begin(Big Knife).jpg"
-CHOP_MEAT_BG_2 = "BBQ-Scene/Chopping_meat_deep_into1.jpg"
+CHOP_MEAT_BG_1 = "BBQ-Scene/Chopping_meat_begin.jpg"
+CHOP_MEAT_BG_2 = "BBQ-Scene/Chopping_meat_deep_into.jpg"
 CHOP_MEAT_BG_3 = "BBQ-Scene/Chopping_meat_in_half.jpg"
 CHOP_MEAT_BG_4 = "BBQ-Scene/Chopped_meat_pieces.jpg"
+CHOP_MEAT_RUINED = "BBQ-Scene/Chopped_meat_ruined.jpg"
 
-CHOP_CARROT_BG_1 = "BBQ-Scene/Chopping_carrots_begin.jpg"
+CHOP_CARROT_BG_1 = "BBQ-Scene/Chopping_carrot_begin.jpg"
 CHOP_CARROT_BG_2 = "BBQ-Scene/Chopping_carrot_in_half.jpg"
-CHOP_CARROT_BG_3 = "BBQ-Scene/Chopped_carrots_pieces.jpg"
+CHOP_CARROT_BG_3 = "BBQ-Scene/Chopped_carrot_pieces.jpg"
+CHOP_CARROT_RUINED = "BBQ-Scene/Chopped_carrot_ruined.jpg"
 
 CHOP_ONION_BG_1 = "BBQ-Scene/Chopping_onion_begin.jpg"
 CHOP_ONION_BG_2 = "BBQ-Scene/Chopping_onion_in_half.jpg"
 CHOP_ONION_BG_3 = "BBQ-Scene/Chopped_onion_pieces.jpg"
+CHOP_ONION_RUINED = "BBQ-Scene/Chopped_onion_ruined.jpg"
 
 CHOP_PEPPER_BG_1 = "BBQ-Scene/Chopping_green_pepper_begin.jpg"
 CHOP_PEPPER_BG_2 = "BBQ-Scene/Chopping_green_pepper_in_half.jpg"
 CHOP_PEPPER_BG_3 = "BBQ-Scene/Chopped_green_pepper_pieces.jpg"
+CHOP_PEPPER_RUINED = "BBQ-Scene/Chopped_green_pepper_ruined.jpg"
 
 CHOP_EGGPLANT_BG_1 = "BBQ-Scene/Chopping_eggplant_begin.jpg"
 CHOP_EGGPLANT_BG_2 = "BBQ-Scene/Chopping_eggplant_deep_into.jpg"
 CHOP_EGGPLANT_BG_3 = "BBQ-Scene/Chopping_eggplant_in_half.jpg"
 CHOP_EGGPLANT_BG_4 = "BBQ-Scene/Chopped_eggplant_pieces.jpg"
+CHOP_EGGPLANT_RUINED = "BBQ-Scene/Chopped_eggplant_ruined.jpg"
 
 CHOP_FINISH_BG = "BBQ-Scene/Finish_chopping_scene.jpg"
+CHOP_FAILED_BG = "BBQ-Scene/Failed_chopping_scene.jpg"
 
 # --- Grilling Scene Stages ---
 # Grilled Sequence

@@ -321,7 +321,7 @@ class BbqView(StageView):
             # --- Update UI Hints based on location ---
             if self.near_table:
                 if not self.chop_unlocked:
-                    self.hint.text = "Press E to prepare food"
+                    self.hint.text = "Press Enter to prepare food"
                     self.table_marker.alpha = 0  
                 else:
                     self.hint.text = "The food has been prepped!"
@@ -368,7 +368,7 @@ class BbqView(StageView):
             return
 
         # --- Transition to the BBQ Prep Scene ---
-        if key == arcade.key.E and self.near_table and self.playing and not self.chop_unlocked:
+        if key == arcade.key.ENTER and self.near_table and self.playing and not self.chop_unlocked:
             self.held.clear() 
             from .bbq_prep_scene import BBQPrepView
             self.window.show_view(BBQPrepView())
