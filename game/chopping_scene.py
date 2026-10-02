@@ -100,7 +100,20 @@ class ChoppingView(StageView):
         self.dialog = DialogBox()
         self.widgets = [self.dialog]
         self.typing_player = None
+
+        # --- NEW: Setup the scaling camera for the UI ---
+        self.camera = arcade.camera.Camera2D(
+            position=(WIDTH / 2, HEIGHT / 2),
+            projection=arcade.LRBT(-WIDTH / 2, WIDTH / 2, -HEIGHT / 2, HEIGHT / 2),
+            viewport=self.stage.viewport(),
+        )
+
         self.relayout()
+
+    def relayout(self):
+        super().relayout()
+        if hasattr(self, 'camera'):
+            self.camera.viewport = self.stage.viewport()
 
     def set_emotion(self, emotion_name):
         self.terry_portrait.texture = arcade.load_texture(f"assets/emotions/{emotion_name}.png")
@@ -194,16 +207,18 @@ class ChoppingView(StageView):
     def on_draw(self):
         self.clear()
         
+        # 1. Draw Background (Default Screen Camera)
+        self.window.default_camera.use()
         current_bg = self.backgrounds[self.stage_idx]
         arcade.draw_texture_rect(current_bg, cover_rect(current_bg, self.stage.viewport()))
         
-        self.window.default_camera.use()
-        
-        # --- NEW: Draw Damage Flash over the background ---
+        # Draw Damage Flash over the background (Using actual window dimensions)
         if self.damage_alpha > 0:
-            flash_rect = arcade.XYWH(WIDTH / 2, HEIGHT / 2, WIDTH, HEIGHT)
-            # Tuple requires (Red, Green, Blue, Alpha)
+            flash_rect = arcade.XYWH(self.window.width / 2, self.window.height / 2, self.window.width, self.window.height)
             arcade.draw_rect_filled(flash_rect, (255, 0, 0, int(self.damage_alpha)))
+        
+        # 2. Draw Scaled UI (Canvas Camera)
+        self.camera.use()
         
         if self.stage_idx != 22:
             self.portrait_list.draw(pixelated=True)
@@ -236,6 +251,8 @@ class ChoppingView(StageView):
                 timer_color, font_size=20, anchor_x="center", bold=True
             )
             
+        # 3. Draw Dialogue (Default Screen Camera)
+        self.window.default_camera.use()
         self.dialog.draw()
         
     def on_mouse_press(self, x, y, button, modifiers):

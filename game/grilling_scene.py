@@ -92,7 +92,20 @@ class GrillingView(StageView):
         self.dialog = DialogBox()
         self.widgets = [self.dialog]
         self.typing_player = None
+
+        # --- NEW: Setup the scaling camera for the UI ---
+        self.camera = arcade.camera.Camera2D(
+            position=(WIDTH / 2, HEIGHT / 2),
+            projection=arcade.LRBT(-WIDTH / 2, WIDTH / 2, -HEIGHT / 2, HEIGHT / 2),
+            viewport=self.stage.viewport(),
+        )
+
         self.relayout()
+
+    def relayout(self):
+        super().relayout()
+        if hasattr(self, 'camera'):
+            self.camera.viewport = self.stage.viewport()
 
     def set_emotion(self, emotion_name):
         """Helper to quickly change Terry's portrait texture."""
@@ -133,6 +146,9 @@ class GrillingView(StageView):
     def on_draw(self):
         self.clear()
         
+        # 1. Draw Background (Default Screen Camera)
+        self.window.default_camera.use()
+        
         if self.is_burned:
             current_bg = self.burned_bgs[self.stage_idx]
         else:
@@ -140,16 +156,14 @@ class GrillingView(StageView):
             
         arcade.draw_texture_rect(current_bg, cover_rect(current_bg, self.stage.viewport()))
         
-        self.window.default_camera.use()
+        # 2. Draw Scaled UI (Canvas Camera)
+        self.camera.use()
         
-        # Draw the portrait unconditionally so it shows up on the Finish/Fail screens
         self.portrait_list.draw(pixelated=True)
         
-        # Draw the rest of the UI only if we are not on the final Finish/Fail screens (Index 5)
         if self.stage_idx < 5:
             self.ui_list.draw(pixelated=True)
             
-            # --- Dynamic Temperature Labels ---
             arcade.draw_text(
                 "TEMP", 
                 self.temp_bar.center_x, 
@@ -172,10 +186,11 @@ class GrillingView(StageView):
                 font_name="Kenney Pixel Square"
             )
             
-            # Draw interactive elements when dialogue is not blocking
             if not self.dialog.visible and self.stage_idx < 4:
                 self.button_list.draw(pixelated=True)
             
+        # 3. Draw Dialogue (Default Screen Camera)
+        self.window.default_camera.use()
         self.dialog.draw()
         
     def on_mouse_press(self, x, y, button, modifiers):
