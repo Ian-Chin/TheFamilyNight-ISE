@@ -139,13 +139,13 @@ CHOP_FAILED_BG = "BBQ-Scene/Failed_chopping_scene.jpg"
 # --- Grilling Scene Stages ---
 # Grilled Sequence
 GRILL_0_BG = "BBQ-Scene/BBQ_0%_grilled.jpg"
-GRILL_20_BG = "BBQ-Scene/BBQ_20%_grilled.jpg"
+GRILL_20_BG = "BBQ-Scene/BBQ_20%_grilled.jpeg"
 GRILL_50_BG = "BBQ-Scene/BBQ_50%_grilled.jpg"
 GRILL_100_BG = "BBQ-Scene/BBQ_100%_grilled.jpg"
 
 # Burned Sequence
 BURN_10_BG = "BBQ-Scene/BBQ_10%_burned_food.jpg"
-BURN_20_BG = "BBQ-Scene/BBQ_20%_burned_food.jpg"
+BURN_20_BG = "BBQ-Scene/BBQ_20%_burned_food.jpeg"
 BURN_50_BG = "BBQ-Scene/BBQ_50%_burned_food.jpg"
 BURN_100_BG = "BBQ-Scene/BBQ_100%_burned_food.jpg"
 
