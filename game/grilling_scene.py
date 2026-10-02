@@ -41,10 +41,11 @@ class GrillingView(StageView):
         
         self.stage_idx = 0  
         self.is_burned = False
+        self.streak = 0  # NEW: Tracks consecutive successful clicks
         
         # --- NEW: Heat Mechanics ---
         self.current_heat = "normal"
-        self.heat_timer = 0.5  # Switches every 0.5 second
+        self.heat_timer = 0.5  
         
         # Dictionary to store the textures and dynamic text for each state
         self.heat_data = {
@@ -63,7 +64,7 @@ class GrillingView(StageView):
         }
 
         # --- UI Sprites ---
-        # 1. Terry Portrait (Updated position/size)
+        # 1. Terry Portrait
         self.terry_portrait = arcade.Sprite("assets/emotions/Terry_original.png", scale=0.7)
         self.terry_portrait.center_x = 1170
         self.terry_portrait.center_y = 600
@@ -71,7 +72,7 @@ class GrillingView(StageView):
         self.portrait_list = arcade.SpriteList()
         self.portrait_list.append(self.terry_portrait)
 
-        # 2. SPIN Button (Updated position/size)
+        # 2. SPIN Button
         self.spin_button = arcade.Sprite(textures.ui_image("SPIN_button.png"), scale=0.7)
         self.spin_button.center_x = 1170
         self.spin_button.center_y = 120
@@ -79,7 +80,7 @@ class GrillingView(StageView):
         self.button_list = arcade.SpriteList()
         self.button_list.append(self.spin_button)
 
-        # 3. Temperature Bar (Updated position/size)
+        # 3. Temperature Bar 
         self.temp_bar = arcade.Sprite(self.heat_data[self.current_heat]["texture"], scale=1.2)
         self.temp_bar.center_x = 80
         self.temp_bar.center_y = HEIGHT / 2
@@ -92,6 +93,10 @@ class GrillingView(StageView):
         self.widgets = [self.dialog]
         self.typing_player = None
         self.relayout()
+
+    def set_emotion(self, emotion_name):
+        """Helper to quickly change Terry's portrait texture."""
+        self.terry_portrait.texture = arcade.load_texture(f"assets/emotions/{emotion_name}.png")
 
     def on_show_view(self):
         self.trigger_dialog("Time to BBQ! Wait for the temperature to be normal (200°C) before you hit SPIN!")
@@ -113,24 +118,21 @@ class GrillingView(StageView):
                 self.stop_typing_sound()
             return  
 
-        # --- NEW: Dynamic Heat Switching ---
+        # --- Dynamic Heat Switching ---
         if self.stage_idx < 4:
             self.heat_timer -= delta_time
             if self.heat_timer <= 0:
-                self.heat_timer = 0.5  # Reset timer to 0.5 second
+                self.heat_timer = 0.5  
                 
-                # Pick a random new heat state that is DIFFERENT from the current one
                 options = ["low", "normal", "maxed"]
                 options.remove(self.current_heat)
                 self.current_heat = random.choice(options)
                 
-                # Update the texture immediately
                 self.temp_bar.texture = self.heat_data[self.current_heat]["texture"]
 
     def on_draw(self):
         self.clear()
         
-        # Draw dynamic background based on burn state
         if self.is_burned:
             current_bg = self.burned_bgs[self.stage_idx]
         else:
@@ -140,9 +142,11 @@ class GrillingView(StageView):
         
         self.window.default_camera.use()
         
-        # Draw UI only if we are not on the final Finish/Fail screens (Index 5)
+        # Draw the portrait unconditionally so it shows up on the Finish/Fail screens
+        self.portrait_list.draw(pixelated=True)
+        
+        # Draw the rest of the UI only if we are not on the final Finish/Fail screens (Index 5)
         if self.stage_idx < 5:
-            self.portrait_list.draw(pixelated=True)
             self.ui_list.draw(pixelated=True)
             
             # --- Dynamic Temperature Labels ---
@@ -184,11 +188,17 @@ class GrillingView(StageView):
             if self.stage_idx < 4 and self.spin_button.collides_with_point((canvas_x, canvas_y)):
                 audio.play("ui_click")
                 
-                # --- NEW: Branching Logic based on Heat State ---
+                # --- Branching Logic based on Heat State ---
                 if self.current_heat == "normal":
                     # Success
                     self.is_burned = False
                     self.stage_idx += 1
+                    self.streak += 1
+                    
+                    if self.streak >= 2:
+                        self.set_emotion("Terry_excited") # Fixed to use the correct file
+                    else:
+                        self.set_emotion("Terry_smile_excited")
                     
                     if self.stage_idx < 4:
                         self.trigger_dialog("Nice spin! The temperature was perfect.")
@@ -199,6 +209,8 @@ class GrillingView(StageView):
                     # Failed/Burned
                     self.is_burned = True
                     self.stage_idx += 1
+                    self.streak = 0
+                    self.set_emotion("Terry_nervous")
                     
                     if self.stage_idx < 4:
                         self.trigger_dialog("Ouch! The fire was way too hot and it burned a bit!")
@@ -206,7 +218,9 @@ class GrillingView(StageView):
                         self.trigger_dialog("Oh no... it's completely charred! Well, extra crunchy I guess?")
                         
                 elif self.current_heat == "low":
-                    # Neutral/Retry (Do not advance the stage_idx)
+                    # Neutral/Retry 
+                    self.streak = 0
+                    self.set_emotion("Terry_shocked")
                     self.trigger_dialog("The fire is too low right now... nothing happened. Wait for it to heat up!")
 
     def on_key_press(self, key, modifiers):
@@ -220,8 +234,10 @@ class GrillingView(StageView):
                     if self.stage_idx == 4:
                         self.stage_idx = 5
                         if self.is_burned:
+                            self.set_emotion("Terry_sad")
                             self.trigger_dialog("This is a disaster. I'll have to start over and try grilling it again.")
                         else:
+                            self.set_emotion("Terry_excited")
                             self.trigger_dialog("Finally, all the food is fully grilled! Let's dig in and enjoy the BBQ.")
                     
                     elif self.stage_idx == 5:
