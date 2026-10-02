@@ -58,8 +58,8 @@ class ChoppingView(StageView):
             textures.background(CHOP_EGGPLANT_RUINED),# 21
             
             # Final Scenes (22 - 23)
-            textures.background(CHOP_FINISH_BG),      # 22 (Total Success)
-            textures.background(CHOP_FAILED_BG),      # 23 (Total Failure)
+            textures.background(CHOP_FINISH_BG),      # 22 
+            textures.background(CHOP_FAILED_BG),      # 23 
         ]
         self.stage_idx = 0  
         
@@ -67,10 +67,10 @@ class ChoppingView(StageView):
         self.progress = 0       
         self.max_lives = 3
         self.lives = self.max_lives
-        self.streak = 0  # Tracks consecutive successful hits
+        self.streak = 0  
+        self.damage_alpha = 0  # NEW: Tracks the opacity of the red screen flash
         
         # --- UI Sprites ---
-        # 1. Start with Terry Original
         self.terry_portrait = arcade.Sprite("assets/emotions/Terry_original.png", scale=0.8)
         self.terry_portrait.center_x = 1150
         self.terry_portrait.center_y = 600
@@ -103,7 +103,6 @@ class ChoppingView(StageView):
         self.relayout()
 
     def set_emotion(self, emotion_name):
-        """Helper to quickly change Terry's portrait texture."""
         self.terry_portrait.texture = arcade.load_texture(f"assets/emotions/{emotion_name}.png")
 
     def on_show_view(self):
@@ -128,7 +127,10 @@ class ChoppingView(StageView):
     def fail_slice(self):
         self.button_active = False
         self.lives -= 1
-        self.streak = 0  # Reset streak on failure
+        self.streak = 0  
+        
+        # Trigger the red screen flash
+        self.damage_alpha = 150  
         
         self.breaking_idx = self.max_lives - self.lives - 1
         if 0 <= self.breaking_idx < self.max_lives:
@@ -149,6 +151,11 @@ class ChoppingView(StageView):
                 self.stage_idx = 21  
 
     def on_update(self, delta_time):
+        # ALWAYS process visual animations, even if dialog is visible
+        if self.damage_alpha > 0:
+            # Smoothly fade the red flash away over ~0.5 seconds
+            self.damage_alpha = max(0, self.damage_alpha - (300 * delta_time))
+
         if self.heart_anim_timer > 0:
             self.heart_anim_timer -= delta_time
             if self.heart_anim_timer <= 0 and self.breaking_idx != -1:
@@ -166,12 +173,10 @@ class ChoppingView(StageView):
                         self.pending_fail_dialog = False
                         
                         if self.lives <= 0:
-                            # 6. Failed and lost 3 HP -> Terry Sad
                             self.stage_idx = 23
                             self.set_emotion("Terry_sad")
                             self.trigger_dialog("I ruined too much food! I have to restart the whole prep...")
                         else:
-                            # 4. Lost an HP -> Terry Shocked
                             self.set_emotion("Terry_shocked")
                             self.trigger_dialog("Oh no! I missed the cut and ruined this piece. Moving to the next food...")
 
@@ -194,11 +199,15 @@ class ChoppingView(StageView):
         
         self.window.default_camera.use()
         
-        # Hide the dynamic portrait ONLY on the Finish screen (22)
+        # --- NEW: Draw Damage Flash over the background ---
+        if self.damage_alpha > 0:
+            flash_rect = arcade.XYWH(WIDTH / 2, HEIGHT / 2, WIDTH, HEIGHT)
+            # Tuple requires (Red, Green, Blue, Alpha)
+            arcade.draw_rect_filled(flash_rect, (255, 0, 0, int(self.damage_alpha)))
+        
         if self.stage_idx != 22:
             self.portrait_list.draw(pixelated=True)
             
-        # Hide the rest of the HUD completely on both Finish (22) and Fail (23) screens
         if self.stage_idx < 22:
             self.hearts.draw(pixelated=True)
             
@@ -241,13 +250,10 @@ class ChoppingView(StageView):
                 self.button_active = False
                 self.stage_idx += 1
                 
-                # Successful Click Emotion Handling
                 self.streak += 1
                 if self.streak > 1:
-                    # 3. Continuous streak -> Terry Excited
                     self.set_emotion("Terry_excited")
                 else:
-                    # 2. Single successful click -> Terry Smile Excited
                     self.set_emotion("Terry_smile_excited")
                 
                 if self.stage_idx == 3:
@@ -275,46 +281,38 @@ class ChoppingView(StageView):
                 self.dialog.advance()
                 
                 if not self.dialog.visible:
-                    # Restart Game if they just closed the Total Failure dialogue
                     if self.lives <= 0:
                         self.window.show_view(ChoppingView())
                         return
                         
-                    # Meat finished (3) or ruined (4) -> Move to Carrots
                     if self.stage_idx in (3, 4):
-                        # 5. Determine emotion based on previous success/fail
                         self.set_emotion("Terry_nervous" if self.stage_idx == 4 else "Terry_original")
                         self.streak = 0
                         self.stage_idx = 5
                         self.trigger_dialog("Let's slice up these fresh carrots next!")
                     
-                    # Carrots finished (7) or ruined (8) -> Move to Onions
                     elif self.stage_idx in (7, 8):
                         self.set_emotion("Terry_nervous" if self.stage_idx == 8 else "Terry_original")
                         self.streak = 0
                         self.stage_idx = 9
                         self.trigger_dialog("Alright, onions are next. Let's chop fast before I cry!")
                         
-                    # Onions finished (11) or ruined (12) -> Move to Green Peppers
                     elif self.stage_idx in (11, 12):
                         self.set_emotion("Terry_nervous" if self.stage_idx == 12 else "Terry_original")
                         self.streak = 0
                         self.stage_idx = 13
                         self.trigger_dialog("Time for the green peppers!")
                         
-                    # Peppers finished (15) or ruined (16) -> Move to Eggplant
                     elif self.stage_idx in (15, 16):
                         self.set_emotion("Terry_nervous" if self.stage_idx == 16 else "Terry_original")
                         self.streak = 0
                         self.stage_idx = 17
                         self.trigger_dialog("Last but not least, the eggplant!")
                         
-                    # Eggplant finished (20) or ruined (21) -> Show FINISH SCENE
                     elif self.stage_idx in (20, 21):
                         self.stage_idx = 22
                         self.trigger_dialog("All ingredients are prepped! Time to fire up the BBQ.")
                         
-                    # Finish screen closed (22) -> Exit to Garden
                     elif self.stage_idx == 22:
                         self.window.show_view(BbqView(chop_unlocked=True, grill_unlocked=True, grill_completed=False))
 
