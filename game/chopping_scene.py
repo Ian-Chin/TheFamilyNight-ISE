@@ -107,7 +107,7 @@ class ChoppingView(StageView):
         self.terry_portrait.texture = arcade.load_texture(f"assets/emotions/{emotion_name}.png")
 
     def on_show_view(self):
-        self.trigger_dialog("Let's prep! The CHOP button will appear randomly. Click it within 3 seconds, or you lose a heart!")
+        self.trigger_dialog("Let's prep! The CHOP button will appear randomly. Click it within 2 seconds, or you lose a heart!")
 
     def trigger_dialog(self, text):
         audio.play("dialog_open")
@@ -123,7 +123,7 @@ class ChoppingView(StageView):
         self.chop_button.center_x = random.randint(200, WIDTH - 300)
         self.chop_button.center_y = random.randint(200, HEIGHT - 200)
         self.button_active = True
-        self.slice_timer = 3.0
+        self.slice_timer = 2.0
 
     def fail_slice(self):
         self.button_active = False
