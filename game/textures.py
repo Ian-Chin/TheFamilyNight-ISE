@@ -9,14 +9,17 @@ import functools
 import arcade
 import PIL.Image
 
-from .art.keying import add_rim, key_out_white, to_art_height, trim
-from .art.spritesheet import group_sizes, load_terry_frames
+from .art.keying import add_rim, key_out_white, solid_bbox, to_art_height, trim
+from .art.spritesheet import (
+    carry_group_sizes, group_sizes, load_carry_frames, load_terry_frames,
+)
 from .art.widgets import (
     draw_card, draw_dialog_box, draw_disc, draw_hud_plate, draw_plank,
 )
 from .artcache import baked
 from .config import (
-    BACKGROUND_DIR, CHARACTER_DIR, DAY_BADGE_BOXES, DAYCYCLE_SHEET, ICON_DIR,
+    BACKGROUND_DIR, CARRY_DIR, CARRY_IDLE_FILES, CARRY_JUMP_FILES,
+    CARRY_WALK_FILES, CHARACTER_DIR, DAY_BADGE_BOXES, DAYCYCLE_SHEET, ICON_DIR,
     IDLE_FILES, MOVEMENT_SHEET, SPRITE_DIR, UI_DIR,
 )
 
@@ -37,12 +40,36 @@ def terry_frames():
         # Baked as one strip: the frames already share a canvas size.
         return [frame for group in load_terry_frames() for frame in group]
 
-    frames = baked("terry-frames", sources, build)
+    return _grouped(baked("terry-frames", sources, build), groups)
+
+
+@functools.lru_cache(maxsize=None)
+def terry_carry_frames():
+    """(walk, jump, idle) texture lists of Terry holding the food tray."""
+    names = (*CARRY_WALK_FILES, *CARRY_JUMP_FILES, *CARRY_IDLE_FILES)
+    sources = [SPRITE_DIR / CARRY_DIR / name for name in names]
+
+    def build():
+        return [frame for group in load_carry_frames() for frame in group]
+
+    # The frame lists are in the name, so regrouping the files rebakes.
+    counts = carry_group_sizes()
+    name = "terry-carry-" + "-".join(map(str, counts))
+    return _grouped(baked(name, sources, build), counts)
+
+
+def _grouped(frames, counts):
     textures, start = [], 0
-    for count in groups:
+    for count in counts:
         textures.append([_texture(f) for f in frames[start:start + count]])
         start += count
     return tuple(textures)
+
+
+def body_share(texture):
+    """Fraction of the frame's height the drawn character fills."""
+    bounds = solid_bbox(texture.image)
+    return (bounds[3] - bounds[1]) / texture.height if bounds else 1.0
 
 
 @functools.lru_cache(maxsize=64)

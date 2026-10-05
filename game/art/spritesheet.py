@@ -7,7 +7,7 @@ import numpy
 import PIL.Image
 
 from ..config import (
-    IDLE_FILES, JUMP_ROW, MOVEMENT_SHEET, SHEET_COLS, SHEET_ROWS, SOLID_ALPHA,
+    CARRY_DIR, CARRY_IDLE_FILES, CARRY_JUMP_FILES, CARRY_WALK_FILES, IDLE_FILES, JUMP_ROW, MOVEMENT_SHEET, SHEET_COLS, SHEET_ROWS, SOLID_ALPHA,
     SPRITE_DIR, WALK_ROWS,
 )
 from .keying import add_rim, key_out_white, to_art_height, trim
@@ -115,4 +115,29 @@ def load_terry_frames():
     for count in sizes:
         rimmed.append([add_rim(cell) for cell in small[start:start + count]])
         start += count
+    return align_frames(tuple(rimmed))
+
+
+def carry_group_sizes():
+    """How many frames `load_carry_frames` returns in each group."""
+    return (len(CARRY_WALK_FILES), len(CARRY_JUMP_FILES), len(CARRY_IDLE_FILES))
+
+
+def load_carry_frames():
+    """Return (walk, jump, idle) frames of Terry holding the food tray.
+
+    Each frame is its own drawing on a shared square canvas, so they are
+    trimmed and scaled as one set to keep Terry the same size throughout.
+    """
+    groups = (CARRY_WALK_FILES, CARRY_JUMP_FILES, CARRY_IDLE_FILES)
+    names = [name for group in groups for name in group]
+    cells = [
+        trim(key_out_white(PIL.Image.open(SPRITE_DIR / CARRY_DIR / name)))
+        for name in names
+    ]
+    small = to_art_height(cells)
+    rimmed, start = [], 0
+    for group in groups:
+        rimmed.append([add_rim(cell) for cell in small[start:start + len(group)]])
+        start += len(group)
     return align_frames(tuple(rimmed))

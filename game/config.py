@@ -25,6 +25,13 @@ SHEET_ROWS = 3
 JUMP_ROW = 1
 WALK_ROWS = (0, 2)
 
+# Terry carrying the food tray from the prep table to the chopping board. One
+# drawing per file; he walks with the tray held low and idles with it overhead.
+CARRY_DIR = "terry-carry"
+CARRY_WALK_FILES = tuple(f"terry-carry-walk-{n}.png" for n in range(1, 7))
+CARRY_JUMP_FILES = tuple(f"terry-carry-jump-{n}.png" for n in range(1, 5))
+CARRY_IDLE_FILES = ("terry-carry-idle-1.png", "terry-carry-idle-2.png")
+
 # The art sits on white paper, so the background is keyed out on a ramp:
 # brighter than CLEAR_ABOVE fades away, darker than OPAQUE_BELOW stays solid.
 # The ramp stops the anti-aliased outline leaving a white fringe.

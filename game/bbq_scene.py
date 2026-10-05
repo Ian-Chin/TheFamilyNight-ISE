@@ -56,7 +56,9 @@ class BbqView(StageView):
             self.backdrop = Backdrop(BBQ_SCENE_BG)
 
         start_y = CHAO_STOP_Y if self.chop_unlocked else CHAO_ENTRY_Y
-        self.terry = Terry(CHAO_PATH_X, start_y)
+        # Fresh from the prep table: he carries the food over to the board.
+        carrying = self.chop_unlocked and not self.grill_unlocked
+        self.terry = Terry(CHAO_PATH_X, start_y, carrying=carrying)
         
         self.sprites = arcade.SpriteList()
         self.sprites.append(self.terry)

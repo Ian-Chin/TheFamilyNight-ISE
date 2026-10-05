@@ -51,13 +51,23 @@ class NPC(Character):
 
 
 class Terry(Character):
-    """Terry walks in eight directions and hops on demand."""
+    """Terry walks in eight directions and hops on demand.
 
-    def __init__(self, center_x, center_y):
-        self.walk_frames, self.jump_frames, self.idle_frames = textures.terry_frames()
-        super().__init__(
-            self.idle_frames[0], TERRY_HEIGHT, center_x, center_y
-        )
+    With `carrying`, he holds the food tray from the prep table instead.
+    """
+
+    def __init__(self, center_x, center_y, carrying=False):
+        walk, jump, idle = textures.terry_frames()
+        height = TERRY_HEIGHT
+        if carrying:
+            # The tray rides above his head in some frames, so the carry art
+            # is sized to match his body on the shortest walk frame, where
+            # the tray is held low, not on the frame box.
+            body = TERRY_HEIGHT * textures.body_share(walk[0])
+            walk, jump, idle = textures.terry_carry_frames()
+            height = body / min(map(textures.body_share, walk))
+        self.walk_frames, self.jump_frames, self.idle_frames = walk, jump, idle
+        super().__init__(self.idle_frames[0], height, center_x, center_y)
         self.frame_index = 0
         self.frame_timer = 0.0
         self.idle_index = 0
