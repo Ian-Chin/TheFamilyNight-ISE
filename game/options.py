@@ -1,4 +1,4 @@
-"""The audio settings screen.
+"""The settings screen: audio levels and the graphics mode.
 
 Like PauseMenu, a SettingsPanel is owned by a view rather than being one: lay
 it out with the other widgets, draw it over whatever is behind, and pass the
@@ -10,24 +10,24 @@ import arcade
 
 from . import audio, textures
 from .config import (
-    HEIGHT, PAUSE_DIM, PLANK_PAD, SETTINGS_HINT_SIZE, SETTINGS_PANEL_PAD,
+    GRAPHICS_CHOICES, HEIGHT, PAUSE_DIM, PLANK_PAD, SETTINGS_HINT_SIZE, SETTINGS_PANEL_PAD,
     SETTINGS_PANEL_W, SETTINGS_ROW_GAP, SETTINGS_ROWS, SETTINGS_STEP,
     SETTINGS_TITLE, SETTINGS_TITLE_GAP, SLIDER_W, TEXT_DIM, TEXT_HOVER, WIDTH,
 )
-from .settings import mixer
-from .ui import Slider
+from .settings import graphics, mixer
+from .ui import Choice, Slider
 
 TITLE_SIZE = 32
 
 
 class SettingsPanel:
-    """A panel of volume sliders, centred on the canvas."""
+    """Volume sliders over a graphics mode switch, centred on the canvas."""
 
     def __init__(self):
         self.visible = False
         self.selected = 0
 
-        rows = len(SETTINGS_ROWS)
+        rows = len(SETTINGS_ROWS) + 1
         self.width = SETTINGS_PANEL_W
         self.height = (
             SETTINGS_TITLE_GAP + SETTINGS_PANEL_PAD
@@ -49,6 +49,11 @@ class SettingsPanel:
                 Slider(channel, label, note, slider_left, middle_y, mixer)
             )
             middle_y -= SETTINGS_ROW_GAP
+        # The switch shares the sliders' events, so it rides in the same list.
+        self.sliders.append(Choice(
+            "Graphics", "animated or still backgrounds", GRAPHICS_CHOICES,
+            slider_left, middle_y, graphics,
+        ))
         self.apply_selection()
 
     def open(self):

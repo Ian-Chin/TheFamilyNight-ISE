@@ -10,6 +10,7 @@ import arcade
 from . import textures
 from . import audio
 from .audio import Footsteps
+from .backdrop import Backdrop
 from .config import (
     CHAO_DINNER_BG, CHAO_ENTRY_Y, CHAO_FADE_IN, CHAO_NPCS, CHAO_OBSTACLES,
     CHAO_OPENING_DIALOG, CHAO_PATH_X, CHAO_STONE_AREAS, CHAO_STOP_Y,
@@ -43,7 +44,7 @@ class ChaoDinnerView(StageView):
 
     def __init__(self):
         super().__init__()
-        self.background = textures.background(CHAO_DINNER_BG)
+        self.backdrop = Backdrop(CHAO_DINNER_BG)
 
         self.terry = Terry(CHAO_PATH_X, CHAO_ENTRY_Y)
         self.npcs = [NPC(*entry) for entry in CHAO_NPCS]
@@ -82,6 +83,7 @@ class ChaoDinnerView(StageView):
         audio.ambience().start()
 
     def on_hide_view(self):
+        self.backdrop.stop()
         # The garden is the only place with birds, so they leave with it.
         audio.ambience().stop()
         self.stop_typing_sound()
@@ -108,7 +110,8 @@ class ChaoDinnerView(StageView):
     def on_draw(self):
         self.clear()
         viewport = self.stage.viewport()
-        arcade.draw_texture_rect(self.background, cover_rect(self.background, viewport))
+        background = self.backdrop.texture
+        arcade.draw_texture_rect(background, cover_rect(background, viewport))
 
         self.camera.use()
         for character in self.sprites:
@@ -154,6 +157,7 @@ class ChaoDinnerView(StageView):
         self.typing_player = None
 
     def on_update(self, delta_time):
+        self.backdrop.update(delta_time)
         # Ahead of the pause check: the birds keep coming up under an overlay
         # opened during the opening seconds, rather than freezing part-faded.
         audio.ambience().update(delta_time)

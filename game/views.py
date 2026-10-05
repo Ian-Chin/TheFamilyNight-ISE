@@ -3,6 +3,7 @@
 import arcade
 
 from . import audio, textures
+from .backdrop import Backdrop
 from .config import (
     CREDIT_ICON, CREDIT_MARGIN, CREDIT_SIZE, CREDITS_H, CREDITS_NAMES, CREDITS_W,
     HEIGHT, LOGO_TOP_MARGIN, LOGO_WIDTH, MENU_BUTTON_GAP, MENU_BUTTON_H,
@@ -46,7 +47,7 @@ class StageView(arcade.View):
 class MenuView(StageView):
     def __init__(self):
         super().__init__()
-        self.background = textures.background("menu-bg.jpg")
+        self.backdrop = Backdrop("menu-bg.jpg")
         self.logo = textures.ui_image("logo.png")
 
         self.logo_h = LOGO_WIDTH * self.logo.height / self.logo.width
@@ -78,11 +79,18 @@ class MenuView(StageView):
         self.relayout()
         self.panel = None
 
+    def on_update(self, delta_time):
+        self.backdrop.update(delta_time)
+
+    def on_hide_view(self):
+        self.backdrop.stop()
+
     def on_draw(self):
         self.clear()
+        background = self.backdrop.texture
         arcade.draw_texture_rect(
-            self.background,
-            cover_rect(self.background, self.stage.window_w, self.stage.window_h),
+            background,
+            cover_rect(background, self.stage.window_w, self.stage.window_h),
         )
         arcade.draw_texture_rect(self.logo, self.stage.rect(
             self.logo_left, self.logo_bottom, LOGO_WIDTH, self.logo_h,

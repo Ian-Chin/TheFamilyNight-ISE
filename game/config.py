@@ -214,14 +214,28 @@ HUD_HOVER_GROW = 1.06
 HUD_PLATE_INSET = 12   # canvas units of plate around an icon
 HUD_PLATE_PAD = 8      # room around the plate for its shadow
 
+# --- Animated backgrounds ----------------------------------------------------
+VIDEO_DIR = BACKGROUND_DIR / "video"
+# Still art -> the looping video drawn in its place in quality mode. The still
+# stays the fallback: performance mode, or a video that fails to open.
+BACKGROUND_VIDEOS = {
+    "menu-bg.jpg": "menu.mp4",
+    "bbq-scene-bg.jpeg": "garden-food.mp4",
+    "chao-dinner-bg.jpg": "garden-empty.mp4",
+}
+GRAPHICS_MODES = ("quality", "performance")
+VIDEO_QUEUE = 4   # decoded frames held ahead of the one on screen
+
 # --- Settings screen, in canvas units ----------------------------------------
-SETTINGS_TITLE = "Audio"
+SETTINGS_TITLE = "Settings"
 # (mixer channel, label, note under the label)
 SETTINGS_ROWS = (
     ("master", "Master", "everything at once"),
     ("sound", "Sound", "footsteps and the interface"),
     ("music", "Music", "the garden ambience"),
 )
+# (value, caption) for the graphics row under the sliders.
+GRAPHICS_CHOICES = (("quality", "Quality"), ("performance", "Performance"))
 SETTINGS_PANEL_W = 780
 SETTINGS_TITLE_GAP = 84     # panel top to the middle of the title
 SETTINGS_ROW_GAP = 108      # between one slider row and the next
@@ -230,6 +244,8 @@ SETTINGS_LABEL_SIZE = 23
 SETTINGS_NOTE_SIZE = 15
 SETTINGS_VALUE_SIZE = 20
 SETTINGS_HINT_SIZE = 15
+SETTINGS_CHOICE_H = 38      # height of the graphics mode switch
+SETTINGS_CHOICE_SIZE = 16
 SETTINGS_STEP = 0.05        # how much an arrow key moves a slider
 
 SLIDER_W = 340

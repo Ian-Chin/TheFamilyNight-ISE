@@ -10,6 +10,7 @@ import arcade
 from . import textures
 from . import audio
 from .audio import Footsteps
+from .backdrop import Backdrop
 from .config import (
     BBQ_SCENE_BG, BBQ_SCENE_EMPTY_BG, CHAO_ENTRY_Y, CHAO_FADE_IN, CHAO_OBSTACLES,
     BBQ_OPENING_DIALOG, CHAO_PATH_X, CHAO_STONE_AREAS, CHAO_STOP_Y,
@@ -50,9 +51,9 @@ class BbqView(StageView):
         self.grill_completed = grill_completed
         
         if self.chop_unlocked:
-            self.background = textures.background(BBQ_SCENE_EMPTY_BG)
+            self.backdrop = Backdrop(BBQ_SCENE_EMPTY_BG)
         else:
-            self.background = textures.background(BBQ_SCENE_BG)
+            self.backdrop = Backdrop(BBQ_SCENE_BG)
 
         start_y = CHAO_STOP_Y if self.chop_unlocked else CHAO_ENTRY_Y
         self.terry = Terry(CHAO_PATH_X, start_y)
@@ -134,6 +135,7 @@ class BbqView(StageView):
         audio.ambience().start()
 
     def on_hide_view(self):
+        self.backdrop.stop()
         # The garden is the only place with birds, so they leave with it.
         audio.ambience().stop()
         self.stop_typing_sound()
@@ -160,7 +162,8 @@ class BbqView(StageView):
     def on_draw(self):
         self.clear()
         viewport = self.stage.viewport()
-        arcade.draw_texture_rect(self.background, cover_rect(self.background, viewport))
+        background = self.backdrop.texture
+        arcade.draw_texture_rect(background, cover_rect(background, viewport))
 
         self.camera.use()
         for character in self.sprites:
@@ -212,6 +215,7 @@ class BbqView(StageView):
         self.typing_player = None
 
     def on_update(self, delta_time):
+        self.backdrop.update(delta_time)
         audio.ambience().update(delta_time)
 
         if self.pause_menu.visible or self.settings_panel.visible or self.panel:

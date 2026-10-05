@@ -12,6 +12,10 @@ python main.py              # fullscreen
 python main.py --windowed   # windowed
 ```
 
+The animated backgrounds are decoded with PyAV (`pip install av`). Without it
+the game falls back to the still art. Settings > Graphics switches between
+Quality (animated) and Performance (still, nothing decoded).
+
 ## Layout
 
 ```
@@ -23,6 +27,7 @@ game/
     spritesheet.py      band_cuts, slice_sheet, align_frames, load_terry_frames
     widgets.py          wood_fill, add_drop_shadow, draw_plank, draw_disc, draw_card
   textures.py           the only place PIL images become arcade textures; caches by pixel size
+  backdrop.py           scene backgrounds: looping video in quality mode, the still otherwise
   sprites.py            Terry: walk, jump and idle states
   ui.py                 Stage, MenuButton, CreditsButton, Card
   views.py              StageView, MenuView, GameView

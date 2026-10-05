@@ -11,7 +11,8 @@ from . import audio, textures
 from .config import (
     CREDIT_SIZE, HEIGHT, MENU_BUTTON_H, MENU_BUTTON_W, MENU_FONT, MENU_ICON,
     MENU_ICON_GAP, MENU_ICON_PAD, MENU_TEXT_SIZE, PLANK_PAD, SETTINGS_LABEL_SIZE,
-    SETTINGS_NOTE_SIZE, SETTINGS_VALUE_SIZE, SLIDER_FILL, SLIDER_FILL_DIM,
+    SETTINGS_CHOICE_H, SETTINGS_CHOICE_SIZE, SETTINGS_NOTE_SIZE,
+    SETTINGS_VALUE_SIZE, SLIDER_FILL, SLIDER_FILL_DIM,
     SLIDER_KNOB, SLIDER_KNOB_COLOR, SLIDER_KNOB_EDGE, SLIDER_TRACK,
     SLIDER_TRACK_H, SLIDER_W, TEXT_BRIGHT, TEXT_DIM, TEXT_HOVER, TEXT_SHADOW,
     WIDTH,
@@ -271,6 +272,90 @@ class Slider:
 
         self.value_text.text = f"{round(self.value * 100)}%"
         self.value_text.draw()
+
+
+class Choice:
+    """A labelled pick of one option out of a few, laid out like a Slider.
+
+    Click a segment or step along with the arrows. The value lives in
+    `setting` (anything with a `mode` and a `set(mode)`), read every frame.
+    """
+
+    def __init__(self, label, note, options, left, middle_y, setting):
+        self.label = label
+        self.note = note
+        self.options = options   # (value, caption) pairs, left to right
+        self.left = left
+        self.middle_y = middle_y
+        self.setting = setting
+        self.selected = False
+        self.dragging = False
+        self.segment_w = SLIDER_W / len(options)
+
+    @property
+    def index(self):
+        values = [value for value, _ in self.options]
+        return values.index(self.setting.mode)
+
+    def contains(self, x, y):
+        return (
+            self.left <= x <= self.left + SLIDER_W
+            and abs(y - self.middle_y) <= SETTINGS_CHOICE_H / 2
+        )
+
+    def pick(self, index):
+        index = min(len(self.options) - 1, max(0, index))
+        self.setting.set(self.options[index][0])
+
+    def set_from_x(self, x):
+        self.pick(int((x - self.left) // self.segment_w))
+
+    def nudge(self, delta):
+        self.pick(self.index + (1 if delta > 0 else -1))
+
+    def layout(self, stage):
+        self.stage = stage
+        self.label_text = stage.text(
+            self.label, self.left - 30, self.middle_y + 11, TEXT_BRIGHT,
+            SETTINGS_LABEL_SIZE, anchor_x="right", anchor_y="center", bold=True,
+        )
+        self.note_text = stage.text(
+            self.note, self.left - 30, self.middle_y - 16, TEXT_DIM,
+            SETTINGS_NOTE_SIZE, anchor_x="right", anchor_y="center",
+        )
+        self.option_texts = [
+            stage.text(
+                caption, self.left + (i + 0.5) * self.segment_w, self.middle_y,
+                TEXT_DIM, SETTINGS_CHOICE_SIZE,
+                anchor_x="center", anchor_y="center", bold=True,
+            )
+            for i, (_, caption) in enumerate(self.options)
+        ]
+
+    def draw(self):
+        self.label_text.color = TEXT_HOVER if self.selected else TEXT_BRIGHT
+        self.label_text.draw()
+        self.note_text.draw()
+
+        bottom = self.middle_y - SETTINGS_CHOICE_H / 2
+        arcade.draw_rect_filled(
+            self.stage.rect(self.left, bottom, SLIDER_W, SETTINGS_CHOICE_H),
+            SLIDER_TRACK,
+        )
+        current = self.index
+        for i, text in enumerate(self.option_texts):
+            if i == current:
+                arcade.draw_rect_filled(
+                    self.stage.rect(
+                        self.left + i * self.segment_w, bottom,
+                        self.segment_w, SETTINGS_CHOICE_H,
+                    ),
+                    SLIDER_FILL if self.selected else SLIDER_FILL_DIM,
+                )
+                text.color = TEXT_SHADOW
+            else:
+                text.color = TEXT_DIM
+            text.draw()
 
 
 class Card:
