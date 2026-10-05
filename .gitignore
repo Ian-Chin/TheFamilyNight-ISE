@@ -2,3 +2,8 @@ __pycache__/
 *.py[cod]
 .venv/
 venv/
+
+# Written by the game at runtime, per player
+settings.json
+# Baked art, rebuilt locally from assets/sprites
+assets/.cache/
