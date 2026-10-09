@@ -1,0 +1,23 @@
+{
+  "stationComposed": true,
+  "heroStartX": 1100,
+  "heroFeetY": 435,
+  "heroMinX": 60,
+  "boardZone": [
+    600,
+    760
+  ],
+  "arrowX": 680,
+  "arrowY": 380,
+  "busBounds": [
+    58,
+    438,
+    798,
+    254
+  ],
+  "canvas": [
+    1280,
+    720
+  ],
+  "grid": 32
+}
