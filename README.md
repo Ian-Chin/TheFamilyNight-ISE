@@ -8,7 +8,7 @@ An Arcade (Python) story game with a bus shopping trip and cooking scenes.
 
 ## Run the Game
 
-Use Python 3.12 with Arcade, Pillow, NumPy and pygame-ce installed.
+Use Python 3.12 with Arcade, Pillow and NumPy installed.
 PyAV enables animated backgrounds; without it the game uses still art.
 
 Run the game from this folder:
@@ -20,7 +20,7 @@ To start directly at the bus stop:
     py -3.12 main.py --bus --windowed
 
 Bus controls: A/D to move, Space to jump, Enter beside the bus to board.
-Event responses: J for the mask, K for the cane, L for food theft and I for the fart.
+Bus events appear in random order at random intervals. The response letter changes each time. The central ALERT shows the event name, random letter, required presses and countdown. Warning icons have no fixed key labels.
 Every five continuous seconds outside the circle costs one health segment.
 Space or P pauses the ride. Arrival automatically continues to the BBQ scene.
 
@@ -92,3 +92,5 @@ both the resting and hovered colour. To change an icon, edit the `ICONS` table i
 
 Names shown in the in-game credits card live in `CREDITS_NAMES` in
 `game/config.py`.
+
+Bus UI ingredients: eggs, meat, cabbage and eggplant. The bread health bar has three segments.

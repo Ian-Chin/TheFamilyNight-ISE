@@ -3,12 +3,6 @@
   "original": true,
   "voice": false,
   "assets": {
-    "step-left": {
-      "file": "step-left.wav",
-      "gain": 0.43,
-      "seconds": 0.14,
-      "description": "Soft shoe tap on the bus-stop pavement"
-    },
     "step-right": {
       "file": "step-right.wav",
       "gain": 0.43,
@@ -93,12 +87,6 @@
       "seconds": 0.58,
       "description": "Original short game feedback chime"
     },
-    "win": {
-      "file": "win.wav",
-      "gain": 0.55,
-      "seconds": 0.7,
-      "description": "Original short game feedback chime"
-    },
     "fail": {
       "file": "fail.wav",
       "gain": 0.53,
@@ -110,6 +98,12 @@
       "gain": 0.72,
       "seconds": 0.78,
       "description": "Two warm bus horn toots announcing arrival"
+    },
+    "step-left": {
+      "file": "step-left.wav",
+      "gain": 0.43,
+      "seconds": 0.14,
+      "description": "Soft shoe tap on the bus-stop pavement"
     }
   },
   "timelines": {

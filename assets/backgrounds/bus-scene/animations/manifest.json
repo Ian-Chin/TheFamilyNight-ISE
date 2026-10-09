@@ -14,8 +14,6 @@
   },
   "innerSafeMarginPx": 16,
   "seamlessEndpoints": true,
-  "layout": "layout.json",
-  "placements": "placements.json",
   "grid": {
     "cellWidth": 1056,
     "cellHeight": 442,
