@@ -9,22 +9,14 @@ from statistics import median
 ROOT = Path(os.environ.get('IMAGING_GAME_ASSET_ROOT', Path(__file__).resolve().parents[2] / 'assets'))
 PREVIEW_ROOT = Path(os.environ.get('IMAGING_GAME_PREVIEW_DIR', ROOT))
 PACKAGES = Path(__file__).resolve().parent / '.packages'
-HAS_VENDORED_PYGAME = any((PACKAGES / 'pygame').glob('base*.pyd')) or any((PACKAGES / 'pygame').glob('base*.so'))
-if HAS_VENDORED_PYGAME:
+# Vendored pygame-ce is only usable with its compiled modules; otherwise use whatever pygame is installed.
+# The game uses no pygame-ce-only APIs, so plain pygame works too.
+if any((PACKAGES / 'pygame').glob('base*.pyd')) or any((PACKAGES / 'pygame').glob('base*.so')):
     sys.path.insert(0, str(PACKAGES))
 try:
     import pygame as pg
-    if not getattr(pg, 'IS_CE', False):
-        raise ImportError('pygame-ce is required')
 except ImportError:
-    if sys.platform != 'win32' or sys.version_info[:2] != (3, 12):
-        raise ImportError('Install pygame-ce for Python 3.12 to run this game.')
-    if not HAS_VENDORED_PYGAME:
-        raise ImportError('Install pygame-ce for Python 3.12 to run this game.')
-    for module_name in list(sys.modules):
-        if module_name == 'pygame' or module_name.startswith('pygame.'):
-            del sys.modules[module_name]
-    sys.path.insert(0, str(PACKAGES))
+    raise ImportError('Install pygame (or pygame-ce) to run this game: pip install pygame-ce')
 if '--smoke-test' in sys.argv:
     os.environ['SDL_VIDEODRIVER'] = 'dummy'
     os.environ['SDL_AUDIODRIVER'] = 'dummy'
