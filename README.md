@@ -4,17 +4,25 @@
 
 # The Family Night
 
-An arcade (Python) story game. Run it with:
+An Arcade (Python) story game with a bus shopping trip and cooking scenes.
 
-```bash
-pip install -r requirements.txt
-python main.py              # fullscreen
-python main.py --windowed   # windowed
-```
+## Run the Game
 
-The animated backgrounds are decoded with PyAV (`pip install av`). Without it
-the game falls back to the still art. Settings > Graphics switches between
-Quality (animated) and Performance (still, nothing decoded).
+Use Python 3.12 with Arcade, Pillow, NumPy and pygame-ce installed.
+PyAV enables animated backgrounds; without it the game uses still art.
+
+Run the game from this folder:
+
+    py -3.12 main.py --windowed
+
+To start directly at the bus stop:
+
+    py -3.12 main.py --bus --windowed
+
+Bus controls: A/D to move, Space to jump, Enter beside the bus to board.
+Event responses: J for the mask, K for the cane, L for food theft and I for the fart.
+Every five continuous seconds outside the circle costs one health segment.
+Space or P pauses the ride. Arrival automatically continues to the BBQ scene.
 
 ## Layout
 
@@ -71,7 +79,7 @@ Pillow at 4x and downsampled. `textures` caches each result by pixel size.
 discarded by the tool:
 
 ```bash
-pip install -r requirements-dev.txt
+python -m pip install cairosvg
 python tools/fetch_icons.py
 ```
 
