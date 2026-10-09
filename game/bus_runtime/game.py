@@ -8,7 +8,10 @@ from statistics import median
 
 ROOT = Path(os.environ.get('IMAGING_GAME_ASSET_ROOT', Path(__file__).resolve().parents[2] / 'assets'))
 PREVIEW_ROOT = Path(os.environ.get('IMAGING_GAME_PREVIEW_DIR', ROOT))
-sys.path.insert(0, str(Path(__file__).resolve().parent / '.packages'))
+PACKAGES = Path(__file__).resolve().parent / '.packages'
+# Vendored pygame is only usable with its compiled modules; otherwise use the installed one.
+if any((PACKAGES / 'pygame').glob('base*.pyd')) or any((PACKAGES / 'pygame').glob('base*.so')):
+    sys.path.insert(0, str(PACKAGES))
 if '--smoke-test' in sys.argv:
     os.environ['SDL_VIDEODRIVER'] = 'dummy'
     os.environ['SDL_AUDIODRIVER'] = 'dummy'
