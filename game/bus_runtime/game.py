@@ -560,7 +560,14 @@ class Game:
                 if self.arrival_time+1e-9>=4:
                     self.mode='home';self.arrival_done=True
             return
-        if self.mode in ('failed', 'success'):
+        if self.mode == 'failed':
+            if not self.paused:
+                self.end_time += dt
+                if self.end_time + 1e-9 >= 2.5:
+                    self.reset()
+                    self.mode = 'stop'
+            return
+        if self.mode == 'success' and not self.paused:
             self.end_time += dt
         if self.mode != 'ride' or self.paused:
             return
