@@ -82,7 +82,7 @@
     },
     {
       "id": "cane-hit",
-      "label": "拐杖脱手",
+      "label": "Flying Cane",
       "sheet": "cane-hit-48frames-layout.png",
       "loop": false,
       "durationsMs": [
@@ -138,7 +138,7 @@
     },
     {
       "id": "worker-steals",
-      "label": "上班族偷吃",
+      "label": "FOOD THIEF",
       "sheet": "worker-steals-48frames-layout.png",
       "loop": false,
       "durationsMs": [
@@ -194,7 +194,7 @@
     },
     {
       "id": "fart-poison",
-      "label": "放屁熏食材",
+      "label": "Fart Attack",
       "sheet": "fart-poison-48frames-layout.png",
       "loop": false,
       "durationsMs": [
@@ -252,7 +252,7 @@
     },
     {
       "id": "boy-scares",
-      "label": "面具惊吓",
+      "label": "Mask Scare",
       "sheet": "boy-scares-48frames-layout.png",
       "loop": false,
       "durationsMs": [

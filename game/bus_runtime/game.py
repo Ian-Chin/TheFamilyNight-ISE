@@ -8,7 +8,17 @@ from statistics import median
 
 ROOT = Path(os.environ.get('IMAGING_GAME_ASSET_ROOT', Path(__file__).resolve().parents[2] / 'assets'))
 PREVIEW_ROOT = Path(os.environ.get('IMAGING_GAME_PREVIEW_DIR', ROOT))
-sys.path.insert(0, str(Path(__file__).resolve().parent / '.packages'))
+try:
+    import pygame as pg
+    if not getattr(pg, 'IS_CE', False):
+        raise ImportError('pygame-ce is required')
+except ImportError:
+    if sys.platform != 'win32' or sys.version_info[:2] != (3, 12):
+        raise ImportError('Install pygame-ce for Python 3.12 to run this game.')
+    for module_name in list(sys.modules):
+        if module_name == 'pygame' or module_name.startswith('pygame.'):
+            del sys.modules[module_name]
+    sys.path.insert(0, str(Path(__file__).resolve().parent / '.packages'))
 if '--smoke-test' in sys.argv:
     os.environ['SDL_VIDEODRIVER'] = 'dummy'
     os.environ['SDL_AUDIODRIVER'] = 'dummy'
@@ -29,10 +39,10 @@ GOLD = (255, 208, 86)
 MINT = (107, 230, 177)
 RED = (255, 113, 113)
 EVENTS = [
-    ('面具小孩', '', 'J', 'scare'),
-    ('奶奶的拐杖', '', 'K', 'spill'),
-    ('上班族偷吃', '', 'L', 'eat'),
-    ('臭气来袭', '', 'I', 'gas'),
+    ('MASK KID', '', 'J', 'scare'),
+    ('GRANNY\'S CANE', '', 'K', 'spill'),
+    ('FOOD THIEF', '', 'L', 'eat'),
+    ('FART ATTACK', '', 'I', 'gas'),
 ]
 
 
@@ -119,7 +129,7 @@ class Game:
         destination=ROOT/'backgrounds/bus-scene/destination/bbq-background.png'
         self.destination_background=None
         self.screen = pg.display.set_mode((W, H), pg.RESIZABLE)
-        pg.display.set_caption('巴士上的食材保卫战 | Bus Balance')
+        pg.display.set_caption('Bus Balance | Protect Your Groceries')
         self.canvas = pg.Surface((W, H))
         if destination.exists():self.destination_background=pg.image.load(str(destination)).convert()
         self.clock = pg.time.Clock()
@@ -506,7 +516,7 @@ class Game:
                 if self.presses >= self.required:
                     self.audio.play('protect')
                     self.solved += 1
-                    self.notice = '✓ PROBLEM SOLVED · 危机解除！'
+                    self.notice = 'PROBLEM SOLVED!'
                     self.notice_left = 2.3
                     self.event = None
 
@@ -574,7 +584,7 @@ class Game:
                 self.balance=max(0,self.balance-10);self.outside_elapsed=max(0,self.outside_elapsed-5)
                 self.audio.play('warning',.65)
         if self.balance <= 0:
-            self.finish(False, '生命值耗尽，食材掉落了。')
+            self.finish(False, 'You ran out of health and dropped your groceries.')
             return
         if self.event is None and self.event_index < 4 and self.elapsed >= self.next_event:
             self.audio.play('warning')
@@ -599,11 +609,11 @@ class Game:
                     self.reaction_left = sum(self.scene_meta[self.scene_reaction]['durationsMs'])/1000
                 self.damaged_food.add((3,2,4,0)[self.event])
                 self.food = max(0, self.food-15)
-                self.notice = '食材受损 -15 · 继续稳住！'
+                self.notice = 'FOOD DAMAGED -15 | KEEP STEADY!'
                 self.notice_left = 3
                 self.event = None
                 if self.food == 0:
-                    self.finish(False, '食材损失过多，没能送达。')
+                    self.finish(False, 'Too much food was lost to complete the delivery.')
         if self.mode == 'ride' and self.elapsed >= 60:
             self.finish(True)
 
@@ -703,8 +713,8 @@ class Game:
             self.canvas.blit(fade,(0,0))
         if self.paused and self.mode == 'ride':
             self.panel((390,265,500,165))
-            self.text('已暂停', (640,310),48,GOLD,True)
-            self.text('按空格继续旅程', (640,386),24,WHITE,True)
+            self.text('PAUSED', (640,310),48,GOLD,True)
+            self.text('PRESS SPACE TO RESUME', (640,386),24,WHITE,True)
         elif self.paused and self.mode in ('boarding','departure'):
             self.panel((570,290,140,140), alpha=170)
             pg.draw.rect(self.canvas, GOLD, (607,326,20,68), border_radius=4)
