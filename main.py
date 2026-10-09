@@ -35,7 +35,16 @@ def main():
         WIDTH, HEIGHT, TITLE, fullscreen=not windowed, resizable=True,
     )
     warm_up()
-    window.show_view(MenuView())
+    if "--bus" in sys.argv:
+        from game.bumpy_bus import BumpyBusView
+        window.show_view(BumpyBusView())
+    elif "--after-bus" in sys.argv:
+        from game.bbq_scene import BbqView
+        from game.config import CHAO_FADE_IN
+        view=BbqView();view.fade_clock=CHAO_FADE_IN
+        window.show_view(view)
+    else:
+        window.show_view(MenuView())
 
     if "--screenshot" in sys.argv:
         out = sys.argv[sys.argv.index("--screenshot") + 1]

@@ -1,0 +1,173 @@
+{
+  "canvas": {
+    "width": 1056,
+    "height": 442
+  },
+  "grid": {
+    "step": 32,
+    "sheetColumns": 4,
+    "sheetRows": 12,
+    "cellWidth": 1056,
+    "cellHeight": 442
+  },
+  "viewport": {
+    "x": 0,
+    "y": 122,
+    "width": 1280,
+    "height": 536
+  },
+  "static": {
+    "busBounds": [
+      20,
+      32,
+      1016,
+      378
+    ],
+    "driver": [
+      20,
+      62,
+      231,
+      298
+    ],
+    "ads": [
+      242,
+      43,
+      774,
+      54
+    ],
+    "windows": [
+      254,
+      99,
+      759,
+      143
+    ],
+    "platform": [
+      146,
+      351,
+      875,
+      36
+    ],
+    "poles": [
+      233,
+      432,
+      737,
+      909
+    ]
+  },
+  "actors": {
+    "boy": {
+      "anchor": [
+        361,
+        344
+      ],
+      "bounds": [
+        332,
+        209,
+        89,
+        138
+      ]
+    },
+    "granny": {
+      "anchor": [
+        524,
+        347
+      ],
+      "bounds": [
+        490,
+        193,
+        77,
+        157
+      ]
+    },
+    "worker": {
+      "anchor": [
+        644,
+        250
+      ],
+      "bounds": [
+        613,
+        153,
+        73,
+        119
+      ]
+    },
+    "fat": {
+      "anchor": [
+        728,
+        348
+      ],
+      "bounds": [
+        693,
+        195,
+        69,
+        157
+      ]
+    },
+    "hero": {
+      "anchor": [
+        628,
+        345
+      ],
+      "bounds": [
+        565,
+        244,
+        110,
+        109
+      ]
+    }
+  },
+  "rules": [
+    "All event frames are baked to the same canvas and drawn to one fixed viewport.",
+    "Static architecture and unrelated passengers are copied from the canonical idle only.",
+    "Participating actors use anchored transparent contours, never rectangular background crops.",
+    "Keep heads/hands/props inside declared action envelopes; feet or waist remain the reference anchor.",
+    "No crossfade between different poses."
+  ],
+  "sheet": {
+    "width": 4224,
+    "height": 5304,
+    "columns": 4,
+    "rows": 12,
+    "cellWidth": 1056,
+    "cellHeight": 442,
+    "cellOrigin": "x = (frameIndex % 4) * 1056; y = floor(frameIndex / 4) * 442",
+    "automaticCrop": false,
+    "perFrameScale": false
+  },
+  "canonicalMotion": {
+    "reference": "idle-world.png",
+    "canvas": [
+      1056,
+      442
+    ],
+    "gridStep": 32,
+    "fatFeet": [
+      728,
+      348
+    ],
+    "boyFeet": [
+      361,
+      344
+    ],
+    "heroFeet": [
+      628,
+      345
+    ],
+    "maskRestCenter": [
+      392,
+      284
+    ],
+    "maskLiftPixels": 42,
+    "fatMaximumLeanPixels": 5,
+    "firstIdleFrame": 0,
+    "lastMotionFrame": 42,
+    "lastIdleFrames": [
+      43,
+      44,
+      45,
+      46,
+      47
+    ],
+    "sourcePolicy": "All body, clothing, held mask and bag pixels come from idle first frame."
+  }
+}

@@ -1,0 +1,7 @@
+Built-in imagegen, reference: user city street image.
+
+Scene: wide 16:9 chunky pixel-art city street matching the reference; replace MR. CLEAN with exact PASAR; remove all people; preserve storefronts and tiled sidewalk; entire bus visible at lower left, horizontal, nose right, slightly overhead side view. No UI or arrows.
+
+Final color edit: change ONLY parked bus color to golden yellow roof and body with cream highlights, dark ochre shadows and navy outlines; preserve bus shape, position, wheels, doors, windows, vents and all PASAR / BEST RECORDS scenery exactly.
+
+Bus sprite: extract only the entire golden-yellow parked bus on true transparency; preserve slightly overhead side view, right-facing orientation, roof vents, navy windows, double doors and two wheels; small transparent margins; remove buildings, road, shadows and all text.

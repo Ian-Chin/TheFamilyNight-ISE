@@ -1,0 +1,154 @@
+{
+  "cards": [
+    "carrot",
+    "broccoli",
+    "tomato",
+    "cheese",
+    "egg",
+    "lettuce"
+  ],
+  "assets": {
+    "stage-stop": {
+      "file": "stage-stop.png",
+      "width": 305,
+      "height": 266
+    },
+    "stage-bus": {
+      "file": "stage-bus.png",
+      "width": 311,
+      "height": 189
+    },
+    "stage-arrival": {
+      "file": "stage-arrival.png",
+      "width": 330,
+      "height": 221
+    },
+    "text-plaque": {
+      "file": "text-plaque.png",
+      "width": 329,
+      "height": 151
+    },
+    "track-gold": {
+      "file": "track-gold.png",
+      "width": 312,
+      "height": 74
+    },
+    "fill-gold": {
+      "file": "fill-gold.png",
+      "width": 314,
+      "height": 74
+    },
+    "track-mint": {
+      "file": "track-mint.png",
+      "width": 310,
+      "height": 74
+    },
+    "fill-mint": {
+      "file": "fill-mint.png",
+      "width": 319,
+      "height": 74
+    },
+    "warning-kid": {
+      "file": "warning-kid.png",
+      "width": 307,
+      "height": 240
+    },
+    "warning-worker": {
+      "file": "warning-worker.png",
+      "width": 314,
+      "height": 240
+    },
+    "warning-fart": {
+      "file": "warning-fart.png",
+      "width": 299,
+      "height": 240
+    },
+    "warning-cane": {
+      "file": "warning-cane.png",
+      "width": 311,
+      "height": 240
+    },
+    "icon-bag": {
+      "file": "icon-bag.png",
+      "width": 220,
+      "height": 240
+    },
+    "icon-map": {
+      "file": "icon-map.png",
+      "width": 259,
+      "height": 201
+    },
+    "icon-music": {
+      "file": "icon-music.png",
+      "width": 169,
+      "height": 169
+    },
+    "icon-menu": {
+      "file": "icon-menu.png",
+      "width": 180,
+      "height": 159
+    },
+    "failed": {
+      "file": "failed.png",
+      "width": 1747,
+      "height": 853
+    },
+    "card-carrot": {
+      "file": "card-carrot.png",
+      "width": 356,
+      "height": 445
+    },
+    "card-broccoli": {
+      "file": "card-broccoli.png",
+      "width": 362,
+      "height": 445
+    },
+    "card-tomato": {
+      "file": "card-tomato.png",
+      "width": 351,
+      "height": 445
+    },
+    "card-cheese": {
+      "file": "card-cheese.png",
+      "width": 353,
+      "height": 449
+    },
+    "card-egg": {
+      "file": "card-egg.png",
+      "width": 362,
+      "height": 449
+    },
+    "card-lettuce": {
+      "file": "card-lettuce.png",
+      "width": 354,
+      "height": 449
+    },
+    "bread-base-full": {
+      "file": "bread-base-full.png",
+      "width": 2146,
+      "height": 347
+    }
+  },
+  "breadSegmentEdges": [
+    0,
+    44,
+    75,
+    106,
+    138,
+    170,
+    201,
+    232,
+    263,
+    295,
+    340
+  ],
+  "breadSize": [
+    340,
+    45
+  ],
+  "stages": [
+    "WAITING BUS",
+    "ON THE BUS",
+    "ARRIVED"
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "reference": "idle-world.png",
+  "canvas": [
+    1056,
+    442
+  ],
+  "gridStep": 32,
+  "fatFeet": [
+    728,
+    348
+  ],
+  "boyFeet": [
+    361,
+    344
+  ],
+  "heroFeet": [
+    628,
+    345
+  ],
+  "maskRestCenter": [
+    392,
+    284
+  ],
+  "maskLiftPixels": 42,
+  "fatMaximumLeanPixels": 5,
+  "firstIdleFrame": 0,
+  "lastMotionFrame": 42,
+  "lastIdleFrames": [
+    43,
+    44,
+    45,
+    46,
+    47
+  ],
+  "sourcePolicy": "All body, clothing, held mask and bag pixels come from idle first frame."
+}
