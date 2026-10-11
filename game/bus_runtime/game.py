@@ -3,12 +3,26 @@ import json
 import math
 import random
 from pathlib import Path
+import sys
+from statistics import median
 
-import arcade
-from PIL import Image, ImageDraw
-from .game_audio import GameAudio
-from .pixel_text import GLYPHS
-from ..sprites import Terry
+ROOT = Path(os.environ.get('IMAGING_GAME_ASSET_ROOT', Path(__file__).resolve().parents[2] / 'assets'))
+PREVIEW_ROOT = Path(os.environ.get('IMAGING_GAME_PREVIEW_DIR', ROOT))
+PACKAGES = Path(__file__).resolve().parent / '.packages'
+# Vendored pygame-ce is only usable with its compiled modules; otherwise use whatever pygame is installed.
+# The game uses no pygame-ce-only APIs, so plain pygame works too.
+if any((PACKAGES / 'pygame').glob('base*.pyd')) or any((PACKAGES / 'pygame').glob('base*.so')):
+    sys.path.insert(0, str(PACKAGES))
+try:
+    import pygame as pg
+except ImportError:
+    raise ImportError('Install pygame (or pygame-ce) to run this game: pip install pygame-ce')
+if '--smoke-test' in sys.argv:
+    os.environ['SDL_VIDEODRIVER'] = 'dummy'
+    os.environ['SDL_AUDIODRIVER'] = 'dummy'
+import pygame as pg
+from game_audio import GameAudio
+from comic_ui import bitmap, draw_menu, menu_click, journey_bar, honey_frame, centered
 
 W, H = 1280, 720
 INK = (18, 28, 43)
