@@ -11,6 +11,10 @@ ICON_DIR = ASSETS / "icons"
 CHARACTER_DIR = ASSETS / "characters"
 AUDIO_DIR = ASSETS / "audio"
 SETTINGS_FILE = ROOT / "settings.json"
+MARKET_SPRITES_DIR = ROOT/ "sprites"
+MARKET_PLAYER_DIR = MARKET_SPRITES_DIR / "terry market game"
+MARKET_INGREDIENTS_DIR = ASSETS / "market ingredients"
+MARKET_SNATCHERS_DIR = ASSETS / "market snatchers"
 
 # The game is laid out on this fixed canvas and scaled to the real window.
 WIDTH = 1280
@@ -318,6 +322,11 @@ SOUND_FILES = {
     "ui_hover": ("ui-hover", "sound", 0.5),
     "ui_click": ("ui-click", "sound", 0.6),
     "ambience_day": ("ambience-day", "music", 0.6),
+
+    #market dash scene
+    "phone_ring": ("phone-ring", "sound", 0.75),
+    "phone_pickup": ("phone-pickup", "sound", 0.8),
+    "door_slam": ("door-slam", "sound", 0.85),
 }
 STEP_INTERVAL = 0.32   # seconds between footsteps while walking
 # surface -> (clip, how many of Terry's steps one play of that clip covers).

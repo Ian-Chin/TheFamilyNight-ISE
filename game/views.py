@@ -146,8 +146,8 @@ class MenuView(StageView):
 
     def activate(self, item):
         if item.action == "play":
-            from .bumpy_bus import BumpyBusView
-            self.window.show_view(BumpyBusView())
+            from .market_dash import MarketDashView
+            self.window.show_view(MarketDashView())
         elif item.action == "settings":
             self.settings_panel.open()
         elif item.action == "quit":
