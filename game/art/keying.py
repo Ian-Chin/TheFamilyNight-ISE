@@ -63,7 +63,7 @@ def to_art_height(images):
     return [scaled(image, ratio) for image in images]
 
 
-def add_rim(image):
+def add_rim(image, glow=True):
     """Ring a cut-out in dark ink inside a soft pale halo.
 
     The garden art is busy and mid-green, and the characters are drawn in
@@ -74,6 +74,9 @@ def add_rim(image):
     Call this on art already brought down to `CHARACTER_ART_HEIGHT`: the rim
     is in pixels, and dilating a full-size source image is far slower for no
     visible gain.
+
+    With `glow` off only the dark contour is drawn; the canvas keeps the same
+    margin either way, so frames line up whichever is used.
     """
     margin = RIM_DARK + RIM_GLOW
     padded = PIL.Image.new(
@@ -85,10 +88,11 @@ def add_rim(image):
     alpha = padded.split()[3]
 
     halo = PIL.Image.new("RGBA", padded.size, (0, 0, 0, 0))
-    halo.paste(
-        RIM_GLOW_COLOR, (0, 0),
-        grown(alpha, margin).filter(PIL.ImageFilter.GaussianBlur(RIM_GLOW)),
-    )
+    if glow:
+        halo.paste(
+            RIM_GLOW_COLOR, (0, 0),
+            grown(alpha, margin).filter(PIL.ImageFilter.GaussianBlur(RIM_GLOW)),
+        )
     ink = PIL.Image.new("RGBA", padded.size, (0, 0, 0, 0))
     ink.paste(RIM_DARK_COLOR, (0, 0), grown(alpha, RIM_DARK))
 

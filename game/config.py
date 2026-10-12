@@ -165,7 +165,24 @@ GRILL_FAILED_BG = "BBQ-Scene/Failed_bbq_scene.jpg"
 
 
 # --- Chao dinner scene, in canvas units --------------------------------------
-CHAO_DINNER_BG = "chao-dinner-bg.jpg"
+# Same garden as the BBQ scene, after dark; the layout below still lines up.
+CHAO_DINNER_BG = "chao-dinner-night.png"
+# The title card comes up while Terry walks in: the garden behind it softens
+# into a blur and the words drift up as they fade in, then up and away again.
+CHAO_TITLE_KICKER = "S C E N E   4"
+CHAO_TITLE = "Chao Dinner"
+CHAO_TITLE_TAGLINE = "A family table under the garden lights"
+CHAO_KICKER_SIZE = 17
+CHAO_TITLE_SIZE = 64
+CHAO_TAGLINE_SIZE = 18
+CHAO_TITLE_Y = HEIGHT / 2 - 10    # middle of the title line
+CHAO_TITLE_DELAY = 0.3   # seconds into the scene before the card starts
+CHAO_TITLE_FADE = 0.8    # seconds to fade the card in, and again to fade it out
+CHAO_TITLE_HOLD = 1.8    # seconds the card stays fully up
+CHAO_TITLE_RISE = 22     # canvas units the words drift up while fading in
+CHAO_TITLE_BLUR = 8      # blur radius on the background, in source pixels
+CHAO_TITLE_BAND_H = 300  # height of the dark band behind the words
+CHAO_TITLE_RULE = 120    # length of the hairline either side of the kicker
 # The stone path runs down the middle of the art; Terry enters along it from
 # above the canvas and stops level with the dinner table.
 CHAO_PATH_X = 528
@@ -191,13 +208,69 @@ CHAO_STONE_AREAS = (
 
 # Family standing around the garden, as (name, art file, x, y, height).
 CHAO_NPCS = (
-    # Kept clear of the bottom of the canvas, so the dialogue box does not
-    # cover anyone while the opening line is on screen.
     ("Marcus", "Marcus(dad).png", 790, 318, 126),
-    ("Christine", "Christine(mom).png", 392, 432, 122),
+    # Down in the bottom left corner, on the grass between the pond and path.
+    ("Christine", "Christine(mom).png", 360, 205, 122),
     ("Jess", "jess.png", 640, 356, 100),
-    ("Tom", "tom.png", 968, 566, 108),
+    # Out from under the quest panel in the top right.
+    ("Tom", "tom.png", 720, 560, 108),
 )
+
+# The "!" over the dinner table, where the dinner is started from.
+CHAO_TABLE_MARK = "Exclamation Mark Symbol.png"
+CHAO_TABLE_MARK_POS = (229, 478)   # middle of the mark, resting
+CHAO_TABLE_MARK_H = 72
+CHAO_MARK_BOB = 6        # canvas units the mark bobs up and down
+CHAO_MARK_BOB_TIME = 1.2 # seconds for one bob
+# How far Terry's feet may stand from the table's edge to start the dinner.
+CHAO_TABLE_RANGE = 70
+
+# How close Terry's feet must be to someone's for the interact prompt to show.
+CHAO_TALK_RANGE = 120
+CHAO_PROMPT_LABEL = "Interact"
+CHAO_PROMPT_KEY = "Enter"
+CHAO_PROMPT_H = 42
+CHAO_PROMPT_SIZE = 16
+CHAO_PROMPT_KEY_SIZE = 13
+CHAO_PROMPT_PAD = 14     # plank edge to the label, and label to the key
+CHAO_KEYCAP_W = 58
+CHAO_KEYCAP_H = 26
+CHAO_PROMPT_GAP = 16     # top of a character's head to the pointer's tip
+CHAO_PROMPT_POINTER = 9  # height of the little arrow under the prompt
+CHAO_PROMPT_BOB = 3
+
+# Quest tracker in the top right corner, dropped a little below the edge.
+# Bare text on the scene, right aligned, with a drop shadow to keep it legible.
+CHAO_QUEST_RIGHT = WIDTH - 30
+CHAO_QUEST_TOP = HEIGHT - 92
+CHAO_QUEST_HEADER = "QUESTS"
+CHAO_QUEST_HEADER_SIZE = 11
+CHAO_QUEST_TITLE_SIZE = 14
+CHAO_QUEST_NOTE_SIZE = 11
+CHAO_QUEST_ROW_GAP = 44  # top of one quest to the top of the next
+CHAO_QUEST_MARKER = 5    # radius of the circle beside each quest
+# (key, title, note under the title, optional)
+CHAO_QUESTS = (
+    ("dinner", "Start the Chao dinner", "Head to the dinner table", False),
+    ("family", "Talk to the family", "Say hi to everyone", True),
+)
+QUEST_DONE = (126, 214, 150)
+
+# Dust kicked up behind Terry's feet while he walks.
+DUST_INTERVAL = 0.07     # seconds between puffs
+DUST_LIFE = 0.55         # seconds a puff lasts
+DUST_GRAVITY = 520.0     # pulls the stone chips back down
+DUST_GRASS_COLOR = (214, 204, 164, 210)
+DUST_STONE_COLOR = (196, 198, 210, 210)
+DUST_STONE_CHIP = (138, 140, 156, 255)
+
+# Standing portraits over the dialogue box: Terry on the left, whoever he is
+# talking to on the right. The one not speaking is dimmed.
+PORTRAIT_H = 230
+PORTRAIT_INSET = 70      # canvas edge to the near side of a portrait
+PORTRAIT_SINK = 40       # how far a portrait tucks down behind the box
+PORTRAIT_DIM = (95, 98, 112)
+PORTRAIT_SPEAKING_GROW = 1.04
 
 # Collision uses a box around Terry's feet rather than the whole sprite, so
 # his head can overlap scenery drawn behind him.
@@ -233,6 +306,7 @@ BACKGROUND_VIDEOS = {
     "menu-bg.jpg": "menu.mp4",
     "bbq-scene-bg.jpeg": "garden-food.mp4",
     "chao-dinner-bg.jpg": "garden-empty.mp4",
+    "chao-dinner-night.png": "garden-night.mp4",
 }
 GRAPHICS_MODES = ("quality", "performance")
 VIDEO_QUEUE = 4   # decoded frames held ahead of the one on screen
@@ -305,7 +379,33 @@ DIALOG_BLINK = 0.5
 
 BBQ_OPENING_DIALOG = ("Terry", "The food ingredients is finally purchased, is time to start cooking!")
 # The opening beat of the scene, once Terry has walked in.
-CHAO_OPENING_DIALOG = ("Terry", "test")
+CHAO_OPENING_DIALOG = (
+    "Terry", "Everyone made it, and the lights are up. Time to get dinner started at the table.",
+)
+# Terry's line when he starts the dinner at the table.
+CHAO_DINNER_START_DIALOG = (
+    "Terry", "Dinner is served, everyone! Grab a seat before the food gets cold.",
+)
+# Sample lines, one per family member, said when Terry talks to them.
+# A short exchange with each family member: their line, then Terry's reply.
+CHAO_NPC_DIALOG = {
+    "Marcus": (
+        ("Marcus", "Smells good, son. Your steak has a reputation to live up to tonight, you know."),
+        ("Terry", "No pressure then, Dad. I got the best cuts the market had left."),
+    ),
+    "Christine": (
+        ("Christine", "Look at all these lights! Come, sit down. You must be starving after all that running around."),
+        ("Terry", "Starving and a little sunburnt, Mom. Worth it though."),
+    ),
+    "Jess": (
+        ("Jess", "Did you really survive the market this morning? I heard it was a total war zone."),
+        ("Terry", "Barely. I had to wrestle a stranger for the last fish."),
+    ),
+    "Tom": (
+        ("Tom", "Is the food ready yet? I have been smelling that grill for an hour!"),
+        ("Terry", "Almost, Tom. Hold on just a little longer."),
+    ),
+}
 
 # --- Sound -------------------------------------------------------------------
 # Clips are looked up by base name: a .mp3 or .ogg dropped into assets/audio
@@ -372,3 +472,10 @@ TEXT_BRIGHT = (240, 242, 248)
 TEXT_HOVER = (255, 220, 148)
 TEXT_DIM = (168, 175, 190)
 TEXT_SHADOW = (0, 0, 0)
+
+KEYCAP_FACE = (244, 238, 226, 255)
+KEYCAP_LIP = (176, 164, 146, 255)
+KEYCAP_EDGE = (40, 34, 30, 160)
+KEYCAP_TEXT = (36, 30, 26)
+TITLE_BAND_COLOR = (6, 8, 14)
+TITLE_BAND_ALPHA = 170

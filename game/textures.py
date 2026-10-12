@@ -8,13 +8,15 @@ import functools
 
 import arcade
 import PIL.Image
+import PIL.ImageFilter
 
 from .art.keying import add_rim, key_out_white, solid_bbox, to_art_height, trim
 from .art.spritesheet import (
     carry_group_sizes, group_sizes, load_carry_frames, load_terry_frames,
 )
 from .art.widgets import (
-    draw_card, draw_dialog_box, draw_disc, draw_hud_plate, draw_plank,
+    draw_card, draw_dialog_box, draw_disc, draw_hud_plate, draw_keycap,
+    draw_plank, draw_title_band,
 )
 from .artcache import baked
 from .config import (
@@ -31,16 +33,17 @@ def _texture(image):
 
 
 @functools.lru_cache(maxsize=None)
-def terry_frames():
+def terry_frames(glow=True):
     """(walk, jump, idle) texture lists, built once per run."""
     sources = [SPRITE_DIR / MOVEMENT_SHEET, *(SPRITE_DIR / n for n in IDLE_FILES)]
     groups = group_sizes()
 
     def build():
         # Baked as one strip: the frames already share a canvas size.
-        return [frame for group in load_terry_frames() for frame in group]
+        return [frame for group in load_terry_frames(glow) for frame in group]
 
-    return _grouped(baked("terry-frames", sources, build), groups)
+    name = "terry-frames" if glow else "terry-frames-noglow"
+    return _grouped(baked(name, sources, build), groups)
 
 
 @functools.lru_cache(maxsize=None)
@@ -98,7 +101,7 @@ def dialog_box(width, height, pad):
 
 
 @functools.lru_cache(maxsize=16)
-def character(filename):
+def character(filename, glow=True):
     """A family member's art, cut out of its background and trimmed."""
     source = CHARACTER_DIR / filename
 
@@ -113,9 +116,10 @@ def character(filename):
             # sprite sheet does.
             image = key_out_white(image)
         small, = to_art_height([trim(image.convert("RGBA"))])
-        return add_rim(small)
+        return add_rim(small, glow)
 
-    return _texture(baked(f"character-{source.stem}", [source], build))
+    name = f"character-{source.stem}" + ("" if glow else "-noglow")
+    return _texture(baked(name, [source], build))
 
 
 @functools.lru_cache(maxsize=16)
@@ -133,6 +137,30 @@ def icon(name, size):
 @functools.lru_cache(maxsize=16)
 def background(name):
     return arcade.load_texture(BACKGROUND_DIR / name)
+
+
+@functools.lru_cache(maxsize=16)
+def keycap(width, height, pad):
+    return _texture(draw_keycap(width, height, pad))
+
+
+@functools.lru_cache(maxsize=8)
+def title_band(width, height):
+    return _texture(draw_title_band(width, height))
+
+
+@functools.lru_cache(maxsize=4)
+def blurred_background(name, radius):
+    """A background still, softened, to sit behind a title card."""
+    image = PIL.Image.open(BACKGROUND_DIR / name).convert("RGBA")
+    return _texture(image.filter(PIL.ImageFilter.GaussianBlur(radius)))
+
+
+@functools.lru_cache(maxsize=16)
+def ui_cutout(name):
+    """A UI image with its transparent margin trimmed off."""
+    image = PIL.Image.open(UI_DIR / name).convert("RGBA")
+    return _texture(image.crop(image.getbbox()))
 
 
 @functools.lru_cache(maxsize=16)

@@ -43,9 +43,9 @@ class Character(arcade.Sprite):
 class NPC(Character):
     """A family member standing still in the garden."""
 
-    def __init__(self, name, art_file, center_x, center_y, height):
+    def __init__(self, name, art_file, center_x, center_y, height, glow=True):
         super().__init__(
-            textures.character(art_file), height, center_x, center_y
+            textures.character(art_file, glow), height, center_x, center_y
         )
         self.name = name
 
@@ -54,10 +54,11 @@ class Terry(Character):
     """Terry walks in eight directions and hops on demand.
 
     With `carrying`, he holds the food tray from the prep table instead.
+    With `glow` off, his art has the dark contour but no pale halo.
     """
 
-    def __init__(self, center_x, center_y, carrying=False):
-        walk, jump, idle = textures.terry_frames()
+    def __init__(self, center_x, center_y, carrying=False, glow=True):
+        walk, jump, idle = textures.terry_frames(glow)
         height = TERRY_HEIGHT
         if carrying:
             # The tray rides above his head in some frames, so the carry art
