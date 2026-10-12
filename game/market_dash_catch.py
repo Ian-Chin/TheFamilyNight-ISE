@@ -13,75 +13,121 @@ from .views import MenuView, StageView
 from .market_dash_common import (
     ASSETS_DIR, TERRY_GAME_DIR, SNATCHERS_BASE_DIR,
     INGREDIENTS_BASE_DIR, cover_rect,
-    PLAY_LEFT, PLAY_RIGHT, PLAY_BOTTOM, PLAY_TOP
+    PLAY_LEFT, PLAY_RIGHT, PLAY_BOTTOM, PLAY_TOP,
+    DialogueController, RetryModal
 )
 from .market_dash_sprites import (
     SnatcherSprite, IngredientDrop, get_separated_x
 )
 
 
-# ============================================================================
-# PART 3: Catcher Mini-Game (3 Waves with Snatcher & Ingredient Checklist)
-# ============================================================================
 class MarketCatchView(StageView):
-    """3-Wave mini-game catching items, defending with spin, and dialog cutscenes."""
+    """Stand-alone stage for either Veg, Meat, or Defend mode."""
 
-    def __init__(self):
+    def __init__(self, mode="veg", veg_done=False, meat_done=False):
         super().__init__()
         run_prep()
+
+        self.mode = mode  # 'veg', 'meat', or 'defend'
+        self.veg_done = veg_done
+        self.meat_done = meat_done
 
         self.bg_texture = textures.background("market-dash/Scene 2.5 - game background.jpg")
 
         self.dialog = DialogBox()
         self.pause_menu = PauseMenu()
         self.settings_panel = SettingsPanel()
+        self.retry_modal = RetryModal()
         self.widgets = [self.dialog, self.pause_menu, self.settings_panel]
 
-        # Wave Durations: Wave 1 = 30s, Wave 2 = 30s, Wave 3 = 60s
-        self.wave = 1
-        self.wave_durations = {1: 30.0, 2: 30.0, 3: 5.0} # wave durations
-        self.time_left = self.wave_durations[1]
-        self.lives = 3
+        # Duration: 30s for gathering, 45s for defend
+        self.duration = 45.0 if self.mode == "defend" else 30.0
+        self.time_left = self.duration
+        # HP, Heart animation, and Damage Flash variables
+        self.max_lives = 3
+        self.lives = self.max_lives
+        self.damage_alpha = 0.0      
+        self.heart_anim_timer = 0.0
+        self.heart_anim_state = 0
+        self.breaking_idx = -1
 
-        # Spawning timers to control rates
+        # Setup Heart sprites using teammate's Character_HP asset
+        self.hearts = arcade.SpriteList()
+        hp_start_x = PLAY_LEFT + 28
+        hp_y = HEIGHT - 32
+        for i in range(self.max_lives):
+            heart = arcade.Sprite(textures.ui_image("Character_HP.png"), scale=0.14)
+            heart.center_x = hp_start_x + (i * 38)
+            heart.center_y = hp_y
+            self.hearts.append(heart)
+
         self.ingredient_spawn_timer = 0.0
         self.snatcher_spawn_timer = 0.0
 
-        # Terry Spinning Defense state
+        # Terry Spin Mechanics
         self.spinning = False
         self.spin_timer = 0.0
         self.spin_angle = 180.0
 
         # Load Terry Sprites
-        terry_files = sorted(list(TERRY_GAME_DIR.glob("*.png")))
-        if len(terry_files) >= 2:
-            self.terry_tex_normal = arcade.load_texture(str(terry_files[1]))
-            self.terry_tex_defend = arcade.load_texture(str(terry_files[0]))
-        elif len(terry_files) == 1:
-            self.terry_tex_normal = arcade.load_texture(str(terry_files[0]))
-            self.terry_tex_defend = self.terry_tex_normal
-        else:
-            self.terry_tex_normal = arcade.make_circle_texture(32, (230, 60, 60))
-            self.terry_tex_defend = self.terry_tex_normal
+        # Terry Block & Sprint Mechanics (for gathering and defense)
+        self.blocking = False
+        self.block_timer = 0.0
 
-        self.player = arcade.Sprite(self.terry_tex_normal, scale=0.15)
+        self.sprint_cooldown = 0.0
+        self.sprint_distance = 140.0
+
+        # Load Terry Sprites
+        tex_without_fish = arcade.load_texture(str(TERRY_GAME_DIR / "sprite without fish.png"))
+        tex_holding_fish = arcade.load_texture(str(TERRY_GAME_DIR / "sprite holding fish.png"))
+        tex_defending    = arcade.load_texture(str(TERRY_GAME_DIR / "sprite defending.png"))
+
+        self.terry_tex_normal = tex_without_fish
+        self.terry_tex_defend = tex_holding_fish
+        self.terry_tex_action = tex_defending      # Used when blocking/defending
+
+        active_tex = self.terry_tex_defend if self.mode == "defend" else self.terry_tex_normal
+        self.player = arcade.Sprite(active_tex, scale=0.15)
         self.player.angle = 180
         self.player.center_x = (PLAY_LEFT + PLAY_RIGHT) / 2
         self.player.center_y = 80
         self.player_move_dir = 0
+        self.last_move_dir = 1  # Track facing direction for sprint
         self.player_list = arcade.SpriteList()
         self.player_list.append(self.player)
 
+        # Load Ingredients
         # Load Ingredients
         self.all_ingredients = {}
         for f in sorted(list(INGREDIENTS_BASE_DIR.glob("*.png"))):
             name = f.stem.replace("_", " ").title()
             self.all_ingredients[name] = arcade.load_texture(str(f))
 
-        all_keys = list(self.all_ingredients.keys())
-        self.meat_keys = all_keys[:5] if len(all_keys) >= 5 else all_keys
-        self.veg_keys = all_keys[5:10] if len(all_keys) >= 10 else all_keys[len(self.meat_keys):]
-        self.collected_status = {k: False for k in all_keys}
+        # Explicitly categorize meat vs vegetable items by key name
+        veg_names = ["Cabbage", "Carrot", "Eggplant", "Green Pepperbell", "Onion"]
+        meat_names = ["Beef Steak", "Angus Beef Steak", "Mackerel", "Raw Lamb Steak", "Egg"]
+
+        # Filter against available files in the directory
+        self.veg_keys = [k for k in veg_names if k in self.all_ingredients][:5]
+        self.meat_keys = [k for k in meat_names if k in self.all_ingredients][:5]
+
+        # Fallback if names differ slightly
+        if not self.veg_keys or not self.meat_keys:
+            all_keys = list(self.all_ingredients.keys())
+            half = len(all_keys) // 2
+            self.veg_keys = all_keys[:half]
+            self.meat_keys = all_keys[half:]
+
+        # Assign active keys according to mode
+        if self.mode == "meat":
+            self.active_keys = self.meat_keys
+        elif self.mode == "veg":
+            self.active_keys = self.veg_keys
+        else:
+            self.active_keys = []
+
+        self.collected_status = {k: False for k in self.active_keys}
+
 
         # Load Snatchers
         self.snatcher_types = []
@@ -101,52 +147,55 @@ class MarketCatchView(StageView):
         self.snatchers_list = arcade.SpriteList()
         self.held = set()
 
-        # Inter-Wave Dialogue Queue
+        # Inter-session dialogue support
+        def catch_advance():
+            if self.dialog.typing:
+                self.dialog.advance()
+            else:
+                self.advance_wave_dialogue()
+
+        def catch_skip():
+            self.dialog.close()
+            self.in_wave_dialogue = False
+            self.dialogue_bg = None
+            if hasattr(self, "dialogue_on_finish") and self.dialogue_on_finish:
+                cb = self.dialogue_on_finish
+                self.dialogue_on_finish = None
+                cb()
+
+        self.dialog_ctrl = DialogueController(catch_advance, catch_skip)
         self.in_wave_dialogue = False
         self.dialogue_queue = []
         self.dialogue_bg = None
 
-        # Setup 1280x720 letterboxed camera
         self.camera = arcade.camera.Camera2D(
             position=(WIDTH / 2, HEIGHT / 2),
             projection=arcade.LRBT(-WIDTH / 2, WIDTH / 2, -HEIGHT / 2, HEIGHT / 2),
             viewport=self.stage.viewport()
         )
-        self.spawn_wave()
+        self.spawn_initial_entities()
         self.relayout()
 
-    def spawn_wave(self):
+    def relayout(self):
+        super().relayout()
+        if hasattr(self, "camera"):
+            self.camera.viewport = self.stage.viewport()
+
+    def spawn_initial_entities(self):
         self.items_list.clear()
         self.snatchers_list.clear()
-        self.time_left = self.wave_durations[self.wave]
-        self.ingredient_spawn_timer = 0.0
-        self.snatcher_spawn_timer = 0.0
+        self.time_left = self.duration
 
-        if self.wave == 3:
-            self.player.texture = self.terry_tex_defend
-        else:
-            self.player.texture = self.terry_tex_normal
-
-        # Initial seed
-        if self.wave == 1:
-            for name in self.meat_keys[:2]:
+        if self.mode in ("veg", "meat"):
+            for name in self.active_keys[:2]:
                 spawn_x = get_separated_x(self.items_list)
                 self.items_list.append(IngredientDrop(name, self.all_ingredients[name], initial_x=spawn_x))
             for _ in range(3):
                 falls, grabs = random.choice(self.snatcher_types)
                 spawn_x = get_separated_x(list(self.items_list) + list(self.snatchers_list))
                 self.snatchers_list.append(SnatcherSprite(falls, grabs, initial_x=spawn_x))
-
-        elif self.wave == 2:
-            for name in self.veg_keys[:2]:
-                spawn_x = get_separated_x(self.items_list)
-                self.items_list.append(IngredientDrop(name, self.all_ingredients[name], initial_x=spawn_x))
-            for _ in range(4):
-                falls, grabs = random.choice(self.snatcher_types)
-                spawn_x = get_separated_x(list(self.items_list) + list(self.snatchers_list))
-                self.snatchers_list.append(SnatcherSprite(falls, grabs, initial_x=spawn_x))
-
-        elif self.wave == 3:
+        else:
+            # Defend mode (mackerel spin)
             for _ in range(6):
                 falls, grabs = random.choice(self.snatcher_types)
                 spawn_x = get_separated_x(self.snatchers_list)
@@ -157,17 +206,17 @@ class MarketCatchView(StageView):
         self.dialogue_queue = list(lines)
         self.dialogue_on_finish = on_finish_callback
 
-        # Pop the first entry
         item = self.dialogue_queue.pop(0)
         speaker, text = item[0], item[1]
         img = item[2] if len(item) > 2 else None
 
-        if img:
-            self.dialogue_bg = arcade.load_texture(str(img)) if isinstance(img, (str, Path)) else img
+        if img and Path(img).exists():
+            self.dialogue_bg = arcade.load_texture(str(img))
         else:
             self.dialogue_bg = None
 
         self.dialog.open(speaker, text)
+        self.dialog_ctrl.record(speaker, text)
 
     def advance_wave_dialogue(self):
         if self.dialogue_queue:
@@ -175,11 +224,13 @@ class MarketCatchView(StageView):
             speaker, text = item[0], item[1]
             img = item[2] if len(item) > 2 else None
 
-            if img:
-                self.dialogue_bg = arcade.load_texture(str(img)) if isinstance(img, (str, Path)) else img
-            # If img is None, keep the existing dialogue_bg or reset as desired
+            if img and Path(img).exists():
+                self.dialogue_bg = arcade.load_texture(str(img))
+            else:
+                self.dialogue_bg = None
 
             self.dialog.open(speaker, text)
+            self.dialog_ctrl.record(speaker, text)
         else:
             self.dialog.close()
             self.in_wave_dialogue = False
@@ -189,71 +240,106 @@ class MarketCatchView(StageView):
                 self.dialogue_on_finish = None
                 cb()
 
+    def show_retry_prompt(self):
+        """Shows the Try Again / Give Up modal on defeat or timeout."""
+        def do_retry():
+            self.window.show_view(MarketCatchView(self.mode, self.veg_done, self.meat_done))
+
+        def do_give_up():
+            from .market_dash_stage import MarketStageView
+            self.window.show_view(MarketStageView(veg_done=self.veg_done, meat_done=self.meat_done))
+
+        mode_name = "Fresh Vegetables" if self.mode == "veg" else "Prime Meats" if self.mode == "meat" else "Basket Defense"
+        self.retry_modal.open(do_retry, do_give_up, title=f"{mode_name.upper()} FAILED!", message="Would you like to try again or return to market?")
+
     def on_update(self, delta_time):
-        if self.pause_menu.visible or self.settings_panel.visible:
+        # Decay red damage flash
+        if self.damage_alpha > 0:
+            self.damage_alpha = max(0.0, self.damage_alpha - (280.0 * delta_time))
+
+        # Heart breaking sequence
+        if self.heart_anim_timer > 0:
+            self.heart_anim_timer -= delta_time
+            if self.heart_anim_timer <= 0 and self.breaking_idx != -1:
+                if self.heart_anim_state == 1:
+                    self.hearts[self.breaking_idx].texture = textures.ui_image("Character_HP_Fragmented.png")
+                    self.heart_anim_timer = 0.18
+                    self.heart_anim_state = 2
+                elif self.heart_anim_state == 2:
+                    self.hearts[self.breaking_idx].alpha = 0
+                    self.heart_anim_state = 0
+
+        if self.pause_menu.visible or self.settings_panel.visible or self.retry_modal.visible:
             return
 
         if self.in_wave_dialogue:
-            self.dialog.update(delta_time)
+            if self.dialog.visible:
+                self.dialog.update(delta_time)
+            self.dialog_ctrl.update(delta_time, is_dialog_visible=self.dialog.visible, is_typing=self.dialog.typing)
             return
 
-        # 1. Timer countdown & Timeout Handling
+        # 1. Timer countdown
         self.time_left -= delta_time
         if self.time_left <= 0:
-            active_pool = self.meat_keys if self.wave == 1 else self.veg_keys if self.wave == 2 else []
-            # In Wave 1 or 2, verify if all required items were collected
-            if self.wave < 3 and not all(self.collected_status[k] for k in active_pool):
-                timeout_lines = [
-                    ("Terry", "Time's up! The shelves were cleared before I could get everything!", None),
-                    ("Terry", "I need to take a breath and try again!", None),
-                ]
-                def return_to_market_timeout():
-                    from .market_dash_stage import MarketStageView
-                    self.window.show_view(MarketStageView(unlocked=True))
-                self.trigger_wave_dialogue(timeout_lines, return_to_market_timeout)
-                return
-
-            self.complete_or_advance_wave()
+            if self.mode in ("veg", "meat") and not all(self.collected_status.values()):
+                self.show_retry_prompt()
+            else:
+                self.complete_game_mode()
             return
 
         # 2. Player Movement & Spinning
         if self.spinning:
             self.spin_timer -= delta_time
-            self.spin_angle += 1440.0 * delta_time  # Rapid spin
+            self.spin_angle += 1440.0 * delta_time
             self.player.angle = self.spin_angle
             if self.spin_timer <= 0:
                 self.spinning = False
-                self.player.angle = 180  # Reset facing UP
+                self.player.angle = 180
         else:
             self.player.angle = 180
 
+        # Block state tick
+        if self.blocking:
+            self.block_timer -= delta_time
+            self.player.texture = self.terry_tex_action
+            if self.block_timer <= 0:
+                self.blocking = False
+                self.player.texture = self.terry_tex_defend if self.mode == "defend" else self.terry_tex_normal
+        else:
+            if not self.spinning:
+                self.player.texture = self.terry_tex_defend if self.mode == "defend" else self.terry_tex_normal
+
+        # Sprint cooldown tick
+        if self.sprint_cooldown > 0:
+            self.sprint_cooldown = max(0.0, self.sprint_cooldown - delta_time)
+
+        # Standard movement
         self.player.center_x += self.player_move_dir * 10.0
         self.player.center_x = max(PLAY_LEFT + 40, min(PLAY_RIGHT - 40, self.player.center_x))
 
-        # 3. Dynamic Spawning: Snatchers spawn more frequently than vegetables
+        # 3. Dynamic Hazard & Ingredient Spawning
         self.snatcher_spawn_timer += delta_time
         if self.snatcher_spawn_timer >= 2.2:
             self.snatcher_spawn_timer = 0.0
-            max_snatchers = 4 if self.wave == 1 else 6 if self.wave == 2 else 9
+            max_snatchers = 5 if self.mode in ("veg", "meat") else 8
             if len(self.snatchers_list) < max_snatchers:
                 falls, grabs = random.choice(self.snatcher_types)
                 all_obstacles = list(self.items_list) + list(self.snatchers_list)
                 spawn_x = get_separated_x(all_obstacles)
                 self.snatchers_list.append(SnatcherSprite(falls, grabs, initial_x=spawn_x))
 
-        if self.wave < 3:
+        if self.mode in ("veg", "meat"):
             self.ingredient_spawn_timer += delta_time
-            if self.ingredient_spawn_timer >= 4.0:  # Reduced vegetable/meat spawn rate
+            if self.ingredient_spawn_timer >= 3.8:
                 self.ingredient_spawn_timer = 0.0
-                active_pool = self.meat_keys if self.wave == 1 else self.veg_keys
-                uncollected = [k for k in active_pool if not self.collected_status[k]]
+                uncollected = [k for k in self.active_keys if not self.collected_status[k]]
                 if uncollected and len(self.items_list) < 4:
                     pick_name = random.choice(uncollected)
                     if not any(item.item_name == pick_name for item in self.items_list):
                         spawn_x = get_separated_x(self.items_list)
                         self.items_list.append(IngredientDrop(pick_name, self.all_ingredients[pick_name], initial_x=spawn_x))
 
-        # 4. Ingredients Movement & Collision
+        # 4. Ingredients Movement & Collection
         for item in list(self.items_list):
             item.center_y += item.change_y
             if item.top < PLAY_BOTTOM:
@@ -267,19 +353,13 @@ class MarketCatchView(StageView):
                 self.collected_status[item.item_name] = True
                 item.remove_from_sprite_lists()
 
-                for duplicate in list(self.items_list):
-                    if duplicate.item_name == item.item_name:
-                        duplicate.remove_from_sprite_lists()
-
-                # Check if all items in active pool have been collected
-                active_pool = self.meat_keys if self.wave == 1 else self.veg_keys
-                if all(self.collected_status[k] for k in active_pool):
-                    self.complete_or_advance_wave()
+                if all(self.collected_status[k] for k in self.active_keys):
+                    self.complete_game_mode()
                     return
 
-        # 5. Snatchers Hazard Update
+        # 5. Snatcher Collisions & Defeat Check (with Blocking)
         for snatcher in list(self.snatchers_list):
-            snatcher.update_behavior(delta_time, self.player.center_y, self.player.center_x, is_wave_3=(self.wave == 3))
+            snatcher.update_behavior(delta_time, self.player.center_y, self.player.center_x, is_wave_3=(self.mode == "defend"))
 
             if snatcher.top < PLAY_BOTTOM or snatcher.bottom > HEIGHT + 200 or snatcher.right < 0 or snatcher.left > WIDTH:
                 if snatcher.knocked_out:
@@ -289,219 +369,170 @@ class MarketCatchView(StageView):
                     snatcher.reset_pos(existing_list=all_entities)
 
             if not snatcher.knocked_out and arcade.check_for_collision(self.player, snatcher):
-                if self.spinning:
+                if self.spinning or self.blocking:
                     audio.play("ui_click")
                     snatcher.trigger_knockout(self.player.center_x)
                 else:
-                    audio.play("ui_click")
-                    self.lives -= 1
+                    self.take_damage()
                     all_entities = list(self.items_list) + [s for s in self.snatchers_list if s != snatcher]
                     snatcher.reset_pos(existing_list=all_entities)
 
                     if self.lives <= 0:
-                        defeat_lines = [
-                            ("Terry", "Oof! That frantic mob completely trampled me!", None),
-                            ("Terry", "I need to take a breath and try again!", None),
-                        ]
-                        def return_to_market():
-                            from .market_dash_stage import MarketStageView
-                            self.window.show_view(MarketStageView(unlocked=True))
-
-                        self.trigger_wave_dialogue(defeat_lines, return_to_market)
+                        self.show_retry_prompt()
                         return
 
-    def complete_or_advance_wave(self):
-        if self.wave == 1:
+    def complete_game_mode(self):
+        if self.mode == "veg":
             dialogue = [
-                ("Terry", "Phew! Got all the prime meat before that mob snatched them!", None),
-                ("Terry", "Now I need to sprint to the produce racks for fresh vegetables!", None),
+                ("Terry", "Phew! All fresh vegetables secured!"),
+                ("Terry", "These look crisp and fresh. Mum will be pleased."),
+                ("Terry", "Let's head back to the aisle to get the rest of our items."),
             ]
-            def next_wave():
-                self.wave = 2
-                self.spawn_wave()
-            self.trigger_wave_dialogue(dialogue, next_wave)
+            def to_stage():
+                from .market_dash_stage import MarketStageView
+                self.window.show_view(MarketStageView(veg_done=True, meat_done=self.meat_done))
+            self.trigger_wave_dialogue(dialogue, to_stage)
 
-        elif self.wave == 2:
-            fish_img = ASSETS_DIR / "backgrounds" / "market-dash" / "fish obtained.jpg"
-            if not fish_img.exists():
-                fish_img = ASSETS_DIR / "market-dash" / "fish obtained.jpg"
-
+        elif self.mode == "meat":
             dialogue = [
-                ("Terry", "Fresh vegetables secured! But wait... the crowd noticed my full basket!", None),
-                ("Terry", "They're rushing at me! I have to defend myself and dodge through!", None),
-                ("Terry", "I need something to help knock them away!", None),
-                ("Terry", "Hmmmmmmmm...", None),
-                ("Terry", "It's not a good idea... but this is all I've got...", None),
-                ("Terry", "The one and only frozen mackerel... It was quite expensive though!", fish_img if fish_img.exists() else None),
-                ("Terry", "Here they come! Left-click to swing the fish and knock them away!", None),
+                ("Terry", "Got the prime meats! Those shoppers were aggressive!"),
+                ("Terry", "The steaks and ribs are safely in our basket."),
+                ("Terry", "Alright, let's head back out to the main market aisle."),
             ]
-            def next_wave():
-                self.wave = 3
-                self.spawn_wave()
-            self.trigger_wave_dialogue(dialogue, next_wave)
+            def to_stage():
+                from .market_dash_stage import MarketStageView
+                self.window.show_view(MarketStageView(veg_done=self.veg_done, meat_done=True))
+            self.trigger_wave_dialogue(dialogue, to_stage)
 
-        elif self.wave == 3:
+        elif self.mode == "defend":
             dialogue = [
-                ("Terry", "I dodged them all! The last of the mob gave up chasing!", None),
+                ("Terry", "I dodged them all! The last of the mob finally gave up chasing!"),
+                ("Terry", "The basket is safe. Let's get out of here before more show up!"),
             ]
-            def finish():
+            def to_ending():
                 from .market_dash_ending import MarketEndingView
                 self.window.show_view(MarketEndingView())
-            self.trigger_wave_dialogue(dialogue, finish)
-
+            self.trigger_wave_dialogue(dialogue, to_ending)
     def on_draw(self):
         self.clear()
 
-        # --- 1. GAMEPLAY & HUD IN CAMERA SPACE (1280 x 720) ---
+        # 1. Gameplay & HUD in Camera Space
         self.camera.use()
 
-        # Background selection: Dialogue image > Game background
         if self.in_wave_dialogue and getattr(self, "dialogue_bg", None):
-            arcade.draw_texture_rect(
-                self.dialogue_bg,
-                arcade.XYWH(WIDTH / 2, HEIGHT / 2, WIDTH, HEIGHT)
-            )
+            arcade.draw_texture_rect(self.dialogue_bg, arcade.XYWH(WIDTH / 2, HEIGHT / 2, WIDTH, HEIGHT))
         elif self.bg_texture:
-            arcade.draw_texture_rect(
-                self.bg_texture,
-                arcade.XYWH(WIDTH / 2, HEIGHT / 2, WIDTH, HEIGHT)
-            )
+            arcade.draw_texture_rect(self.bg_texture, arcade.XYWH(WIDTH / 2, HEIGHT / 2, WIDTH, HEIGHT))
 
-        # Only draw game sprites & HUD when not displaying a full-screen story image
         if not (self.in_wave_dialogue and getattr(self, "dialogue_bg", None)):
             self.items_list.draw()
             self.snatchers_list.draw()
             self.player_list.draw()
 
-            # =================================================================
-            # REDESIGNED WOODEN/METALLIC HUD PROGRESS BAR
-            # =================================================================
-            total_time = self.wave_durations[self.wave]
-            progress = max(0.0, min(1.0, self.time_left / total_time))
-
+            # Progress Bar Plaque
+            progress = max(0.0, min(1.0, self.time_left / self.duration))
             panel_w = 460
             panel_h = 58
             panel_x = (WIDTH / 2) - 30
             panel_y = HEIGHT - 38
 
-            # 1. Outer Heavy Wooden Plaque (Shadow & Border)
             arcade.draw_rect_filled(arcade.XYWH(panel_x, panel_y - 2, panel_w, panel_h), (25, 14, 8, 230))
             arcade.draw_rect_filled(arcade.XYWH(panel_x, panel_y, panel_w, panel_h), (85, 48, 24, 255))
             arcade.draw_rect_filled(arcade.XYWH(panel_x, panel_y, panel_w - 6, panel_h - 6), (138, 88, 48, 255))
             arcade.draw_rect_outline(arcade.XYWH(panel_x, panel_y, panel_w, panel_h), (42, 22, 10), 2)
 
-            # 2. Wave Label Banner Header
-            wave_name = "WAVE 1: VEGETABLE HARVEST" if self.wave == 1 else "WAVE 2: PRIME STEAKS" if self.wave == 2 else "WAVE 3: DEFEND BASKET!"
-            arcade.draw_text(
-                wave_name,
-                panel_x,
-                panel_y + 13,
-                (255, 238, 185),
-                12,
-                bold=True,
-                anchor_x="center",
-                anchor_y="center"
-            )
+            banner_title = "PRIME STEAKS" if self.mode == "meat" else "VEGETABLE HARVEST" if self.mode == "veg" else "DEFEND BASKET!"
+            arcade.draw_text(banner_title, panel_x, panel_y + 13, (255, 238, 185), 12, bold=True, anchor_x="center", anchor_y="center")
 
-            # 3. Recessed Slot Gauge Background
             bar_w = 420
             bar_h = 16
             bar_y = panel_y - 12
             arcade.draw_rect_filled(arcade.XYWH(panel_x, bar_y, bar_w, bar_h), (24, 20, 18, 250))
             arcade.draw_rect_outline(arcade.XYWH(panel_x, bar_y, bar_w, bar_h), (50, 42, 36), 2)
 
-            # 4. Two-Tone Gradient Fill with Warning State
             fill_w = max(4.0, bar_w * progress)
             fill_center_x = (panel_x - bar_w / 2) + fill_w / 2
-
-            if self.wave == 3:
-                c_main = (235, 75, 75)
-                c_hi = (255, 130, 130)
-            elif progress < 0.25:
-                c_main = (235, 100, 50)
-                c_hi = (255, 160, 90)
-            else:
-                c_main = (225, 175, 55)
-                c_hi = (255, 225, 120)
-
-            # Gauge Body
+            c_main = (235, 75, 75) if self.mode == "defend" else (225, 175, 55)
+            c_hi = (255, 130, 130) if self.mode == "defend" else (255, 225, 120)
             arcade.draw_rect_filled(arcade.XYWH(fill_center_x, bar_y, fill_w, bar_h - 2), c_main)
-            # Specular top highlight line
             arcade.draw_rect_filled(arcade.XYWH(fill_center_x, bar_y + 4, fill_w, 3), c_hi)
 
-            # 5. Timer Badge on Right Side
             seconds_left = max(0, int(self.time_left))
-            arcade.draw_text(
-                f"{seconds_left:02d}s",
-                panel_x + (bar_w / 2) - 24,
-                panel_y + 13,
-                (255, 215, 110),
-                11,
-                bold=True,
-                anchor_x="center",
-                anchor_y="center"
-            )
+            arcade.draw_text(f"{seconds_left:02d}s", panel_x + (bar_w / 2) - 24, panel_y + 13, (255, 215, 110), 11, bold=True, anchor_x="center", anchor_y="center")
 
-            # 6. Polished HP Display with Backdrop
-            hp_w = 115
-            hp_h = 36
-            hp_x = PLAY_LEFT + 60
+            # --- Wooden HP Plaque & Heart Sprites ---
+            hp_w = 146
+            hp_h = 42
+            hp_x = PLAY_LEFT + 66
             hp_y = HEIGHT - 32
             arcade.draw_rect_filled(arcade.XYWH(hp_x, hp_y, hp_w, hp_h), (85, 48, 24, 220))
             arcade.draw_rect_filled(arcade.XYWH(hp_x, hp_y, hp_w - 4, hp_h - 4), (138, 88, 48, 240))
             arcade.draw_rect_outline(arcade.XYWH(hp_x, hp_y, hp_w, hp_h), (42, 22, 10), 2)
-            hearts = "♥ " * self.lives + "♡ " * (3 - self.lives)
-            arcade.draw_text(f"HP: {hearts}", hp_x, hp_y, (255, 85, 85), 14, bold=True, anchor_x="center", anchor_y="center")
+            self.hearts.draw()
 
-            # =================================================================
-            # RESTORED WOODEN SHOPPING LIST CHECKLIST
-            # =================================================================
-            active_keys = self.meat_keys if self.wave == 1 else self.veg_keys if self.wave == 2 else list(self.all_ingredients.keys())
-            board_w = 255
-            board_h = 44 + (len(active_keys) * 30)
-            board_x = PLAY_RIGHT - (board_w / 2) - 8
-            board_y = HEIGHT - (board_h / 2) - 15
+            # --- Shopping Checklist Board on the Right ---
+            if self.mode in ("veg", "meat"):
+                board_w = 255
+                board_h = 44 + (len(self.active_keys) * 30)
+                board_x = PLAY_RIGHT - (board_w / 2) - 8
+                board_y = HEIGHT - (board_h / 2) - 15
 
-            arcade.draw_rect_filled(arcade.XYWH(board_x, board_y, board_w, board_h), (85, 48, 24, 240))
-            arcade.draw_rect_filled(arcade.XYWH(board_x, board_y, board_w - 8, board_h - 8), (138, 88, 48, 245))
-            arcade.draw_rect_outline(arcade.XYWH(board_x, board_y, board_w, board_h), (50, 28, 14), 3)
+                arcade.draw_rect_filled(arcade.XYWH(board_x, board_y, board_w, board_h), (85, 48, 24, 240))
+                arcade.draw_rect_filled(arcade.XYWH(board_x, board_y, board_w - 8, board_h - 8), (138, 88, 48, 245))
+                arcade.draw_rect_outline(arcade.XYWH(board_x, board_y, board_w, board_h), (50, 28, 14), 3)
+                arcade.draw_text("SHOPPING LIST:", board_x - (board_w / 2) + 14, board_y + (board_h / 2) - 22, (255, 240, 195), 13, bold=True)
 
-            header_text = "SHOPPING LIST:" if self.wave < 3 else "ALL ITEMS SECURED:"
-            arcade.draw_text(header_text, board_x - (board_w / 2) + 14, board_y + (board_h / 2) - 22, (255, 240, 195), 13, bold=True)
+                draw_y = board_y + (board_h / 2) - 50
+                for name in self.active_keys:
+                    collected = self.collected_status.get(name, False)
+                    tex = self.all_ingredients.get(name)
+                    if tex:
+                        icon_col = (255, 255, 255, 255) if collected else (95, 90, 85, 140)
+                        arcade.draw_texture_rect(tex, arcade.XYWH(board_x - (board_w / 2) + 26, draw_y, 24, 24), color=arcade.types.Color(*icon_col))
+                    txt_col = (130, 255, 150) if collected else (210, 190, 170)
+                    sym = "✔" if collected else "○"
+                    arcade.draw_text(f"{sym} {name}", board_x - (board_w / 2) + 48, draw_y - 7, txt_col, 13, bold=True)
+                    draw_y -= 30
 
-            draw_y = board_y + (board_h / 2) - 50
-            for name in active_keys:
-                collected = self.collected_status.get(name, False)
-                tex = self.all_ingredients.get(name)
+            # --- Bottom Key Hints ---
+            if self.mode in ("veg", "meat"):
+                arcade.draw_text(
+                    "Left Click: Block   |   Right Click: Sprint Dash",
+                    WIDTH / 2 - 40, 25, (255, 235, 175), 13, anchor_x="center", bold=True
+                )
+            elif self.mode == "defend":
+                arcade.draw_text(
+                    "Left Click: Spin & Defend   |   Right Click: Sprint Dash",
+                    WIDTH / 2 - 40, 25, (255, 230, 140), 13, anchor_x="center", bold=True
+                )
 
-                if tex:
-                    icon_color = arcade.types.Color(255, 255, 255, 255) if collected else arcade.types.Color(95, 90, 85, 140)
-                    arcade.draw_texture_rect(
-                        tex,
-                        arcade.XYWH(board_x - (board_w / 2) + 26, draw_y, 24, 24),
-                        color=icon_color
-                    )
-
-                txt_color = (130, 255, 150) if collected else (210, 190, 170)
-                status_symbol = "✔" if collected else "○"
-                arcade.draw_text(f"{status_symbol} {name}", board_x - (board_w / 2) + 48, draw_y - 7, txt_color, 13, bold=True)
-                draw_y -= 30
-
-            # Wave 3 Hint
-            if self.wave == 3:
-                arcade.draw_text("Left Click to Spin & Defend!", WIDTH / 2 - 40, 30, (255, 230, 140), 14, anchor_x="center")
-
-        # --- 2. UI WIDGETS IN SCREEN SPACE ---
+        # 2. Screen-Space Red Damage Flash
         self.window.default_camera.use()
+        if self.damage_alpha > 0:
+            flash_rect = arcade.XYWH(self.window.width / 2, self.window.height / 2, self.window.width, self.window.height)
+            arcade.draw_rect_filled(flash_rect, (255, 30, 30, int(self.damage_alpha)))
 
-        if self.in_wave_dialogue and self.dialog.visible:
+        # 3. Dialogue & Dialogue Controls
+        if self.in_wave_dialogue and self.dialog.visible and getattr(self.dialog, "texture", None):
             self.dialog.draw()
 
+        self.camera.use()
+        if self.in_wave_dialogue and self.dialog.visible:
+            self.dialog_ctrl.draw()
+
+        # 4. Modals (Retry & Pause)
+        self.retry_modal.draw()
+
+        self.window.default_camera.use()
         if not self.settings_panel.visible:
             self.pause_menu.draw()
         self.settings_panel.draw()
 
+
     def on_key_press(self, key, modifiers):
+        if self.retry_modal.visible:
+            return
+
         if self.in_wave_dialogue:
             if key in (arcade.key.ENTER, arcade.key.SPACE, arcade.key.NUM_ENTER):
                 if self.dialog.typing:
@@ -534,10 +565,18 @@ class MarketCatchView(StageView):
         dx = (arcade.key.D in self.held or arcade.key.RIGHT in self.held) - \
              (arcade.key.A in self.held or arcade.key.LEFT in self.held)
         self.player_move_dir = dx
+        if dx != 0:
+            self.last_move_dir = dx
 
     def on_mouse_press(self, x, y, button, modifiers):
         canvas_x, canvas_y = self.canvas_point(x, y)
+        if self.retry_modal.visible:
+            self.retry_modal.handle_mouse_press(canvas_x, canvas_y)
+            return
+
         if self.in_wave_dialogue:
+            if self.dialog_ctrl.handle_mouse_press(canvas_x, canvas_y):
+                return
             if button == arcade.MOUSE_BUTTON_LEFT:
                 if self.dialog.typing:
                     self.dialog.advance()
@@ -547,15 +586,31 @@ class MarketCatchView(StageView):
 
         if self.settings_panel.on_mouse_press(canvas_x, canvas_y, button):
             return
+        
         if self.pause_menu.visible:
             self.run_action(self.pause_menu.on_mouse_press(canvas_x, canvas_y, button))
             return
 
-        # Terry can ONLY spin-defend in Wave 3 after obtaining the mackerel
-        if button == arcade.MOUSE_BUTTON_LEFT and not self.spinning and self.wave == 3:
+        # --- LEFT CLICK: BLOCK (or Spin in defend mode) ---
+        if button == arcade.MOUSE_BUTTON_LEFT:
+            if self.mode == "defend" and not self.spinning:
+                audio.play("ui_click")
+                self.spinning = True
+                self.spin_timer = 0.35
+            elif not self.blocking:
+                audio.play("ui_click")
+                self.blocking = True
+                self.block_timer = 0.35
+
+        # --- RIGHT CLICK: SPRINT DASH ---
+        if button == arcade.MOUSE_BUTTON_RIGHT and self.sprint_cooldown <= 0:
             audio.play("ui_click")
-            self.spinning = True
-            self.spin_timer = 0.35
+            self.sprint_cooldown = 0.60
+            
+            # Dash direction based on currently held key, or last moved direction
+            dash_dir = self.player_move_dir if self.player_move_dir != 0 else self.last_move_dir
+            self.player.center_x += dash_dir * self.sprint_distance
+            self.player.center_x = max(PLAY_LEFT + 40, min(PLAY_RIGHT - 40, self.player.center_x))
 
     def on_mouse_motion(self, x, y, dx, dy):
         self.pause_menu.on_mouse_motion(*self.canvas_point(x, y))
@@ -570,3 +625,17 @@ class MarketCatchView(StageView):
             self.window.show_view(MenuView())
         elif action == "quit":
             self.window.close()
+
+    def take_damage(self):
+        if self.lives <= 0:
+            return
+        audio.play("ui_click")
+        self.lives -= 1
+        self.damage_alpha = 140.0  # Triggers the red screen flash
+
+        # Target the lost heart
+        self.breaking_idx = self.lives
+        if 0 <= self.breaking_idx < self.max_lives:
+            self.hearts[self.breaking_idx].texture = textures.ui_image("Character_HP_broke_into_half.png")
+            self.heart_anim_timer = 0.18
+            self.heart_anim_state = 1

@@ -1,91 +1,119 @@
 from pathlib import Path
 import arcade
 
+from . import textures
 from . import audio
 from .config import HEIGHT, WIDTH
 from .dialogue import DialogBox
 from .options import SettingsPanel
 from .pause import PauseMenu
 from .views import MenuView, StageView
-from .market_dash_common import BG_DIR, cover_rect
+from .market_dash_common import DialogueController, cover_rect
 
 
-# ============================================================================
-# PART 4: Transition to Bumpy Bus Scene
-# ============================================================================
 class MarketEndingView(StageView):
-    """Part 4: Walking back home with ingredients, then transitioning directly to Bumpy Bus."""
+    """Ending cutscene view when Terry successfully defends his basket and escapes."""
 
     def __init__(self):
         super().__init__()
+        self.bg_texture = textures.background("market-dash/Scene 2.4 - market interior.jpg")
+
         self.dialog = DialogBox()
         self.pause_menu = PauseMenu()
         self.settings_panel = SettingsPanel()
         self.widgets = [self.dialog, self.pause_menu, self.settings_panel]
 
-        walk_home_img = BG_DIR / "Scene 3 - returning home.jpg"
-
-        self.ending_slides = [
-            ("Terry", "Phew... that was an absolute war zone, but I made it out alive!", walk_home_img),
-            ("Terry", "Prime meat, fresh produce, and even this frozen mackerel??? Forget about it..", walk_home_img),
-            ("Terry", "The BBQ is officially saved.", walk_home_img),
-            ("Terry", "It's 4:30 PM. I need to catch the bus now before Dave and the relatives arrive!", walk_home_img),
+        # Dialogue state flags
+        self.in_wave_dialogue = False
+        self.dialogue_queue = [
+            ("Terry", "Pant... pant... I actually made it through the checkout doors!"),
+            ("Terry", "Every single ingredient for tonight's dinner survived unscratched!"),
+            ("Terry", "The family is going to love this BBQ feast."),
+            ("Terry", "Let's hurry home before it gets dark!"),
         ]
-        self.current_slide = 0
-        self.bg_texture = None
 
+        def end_advance():
+            if self.dialog.typing:
+                self.dialog.advance()
+            else:
+                self.advance_dialogue()
+
+        def end_skip():
+            self.dialog.close()
+            self.finish_scene()
+
+        self.dialog_ctrl = DialogueController(end_advance, end_skip)
+
+        self.camera = arcade.camera.Camera2D(
+            position=(WIDTH / 2, HEIGHT / 2),
+            projection=arcade.LRBT(-WIDTH / 2, WIDTH / 2, -HEIGHT / 2, HEIGHT / 2),
+            viewport=self.stage.viewport()
+        )
         self.relayout()
 
     def on_show_view(self):
-        audio.play("dialog_open")
-        self.trigger_slide(0)
+        self.in_wave_dialogue = True
+        if self.dialogue_queue:
+            speaker, text = self.dialogue_queue.pop(0)
+            self.dialog.open(speaker, text)
+            self.dialog_ctrl.record(speaker, text)
 
-    def trigger_slide(self, index):
-        if index >= len(self.ending_slides):
-            self.dialog.close()
-            # Seamless transition to Scene 2 (Bumpy Bus)
-            from game.bumpy_bus import BumpyBusView
-            self.window.show_view(BumpyBusView())
-            return
+    def relayout(self):
+        super().relayout()
+        if hasattr(self, "camera"):
+            self.camera.viewport = self.stage.viewport()
 
-        self.current_slide = index
-        speaker, text, img_target = self.ending_slides[index]
-
-        if img_target and Path(img_target).exists():
-            self.bg_texture = arcade.load_texture(str(img_target))
-
-        self.dialog.open(speaker, text)
-
-    def advance_slide(self):
-        if self.dialog.typing:
-            self.dialog.advance()
+    def advance_dialogue(self):
+        if self.dialogue_queue:
+            speaker, text = self.dialogue_queue.pop(0)
+            self.dialog.open(speaker, text)
+            self.dialog_ctrl.record(speaker, text)
         else:
-            self.trigger_slide(self.current_slide + 1)
+            self.dialog.close()
+            self.in_wave_dialogue = False
+            self.finish_scene()
+
+    def finish_scene(self):
+        # Route back to menu or forward to the next scene (e.g. BBQ prep)
+        from .views import MenuView
+        self.window.show_view(MenuView())
 
     def on_update(self, delta_time):
         if self.pause_menu.visible or self.settings_panel.visible:
             return
 
-        if self.dialog.visible:
-            self.dialog.update(delta_time)
+        if self.in_wave_dialogue:
+            if self.dialog.visible:
+                self.dialog.update(delta_time)
+            self.dialog_ctrl.update(
+                delta_time,
+                is_dialog_visible=self.dialog.visible,
+                is_typing=self.dialog.typing
+            )
 
     def on_draw(self):
         self.clear()
 
+        # 1. Background illustration in camera space
+        self.camera.use()
         if self.bg_texture:
             arcade.draw_texture_rect(
                 self.bg_texture,
-                cover_rect(self.bg_texture, self.stage.viewport())
-            )
-        else:
-            arcade.draw_rect_filled(
-                arcade.XYWH(WIDTH / 2, HEIGHT / 2, WIDTH, HEIGHT),
-                (24, 28, 36)
+                arcade.XYWH(WIDTH / 2, HEIGHT / 2, WIDTH, HEIGHT)
             )
 
-        if self.dialog.visible:
+        # 2. Dialogue in screen space
+        self.window.default_camera.use()
+        if self.dialog.visible and getattr(self.dialog, "texture", None):
             self.dialog.draw()
 
+        # 3. Canvas buttons (Log, Auto, Skip)
+        self.camera.use()
+        if self.dialog.visible:
+            self.dialog_ctrl.draw()
+
+        # 4. Modals
+        self.window.default_camera.use()
         if not self.settings_panel.visible:
             self.pause_menu.draw()
         self.settings_panel.draw()
@@ -102,28 +130,27 @@ class MarketEndingView(StageView):
             self.pause_menu.open()
             return
 
-        if key in (arcade.key.ENTER, arcade.key.SPACE, arcade.key.NUM_ENTER):
-            self.advance_slide()
+        if self.in_wave_dialogue and key in (arcade.key.ENTER, arcade.key.SPACE, arcade.key.NUM_ENTER):
+            if self.dialog.typing:
+                self.dialog.advance()
+            else:
+                self.advance_dialogue()
 
     def on_mouse_press(self, x, y, button, modifiers):
         canvas_x, canvas_y = self.canvas_point(x, y)
+        if self.dialog_ctrl.handle_mouse_press(canvas_x, canvas_y):
+            return
         if self.settings_panel.on_mouse_press(canvas_x, canvas_y, button):
             return
         if self.pause_menu.visible:
             self.run_action(self.pause_menu.on_mouse_press(canvas_x, canvas_y, button))
             return
 
-        if button == arcade.MOUSE_BUTTON_LEFT:
-            self.advance_slide()
-
-    def on_mouse_motion(self, x, y, dx, dy):
-        self.pause_menu.on_mouse_motion(*self.canvas_point(x, y))
-
-    def on_mouse_drag(self, x, y, dx, dy, buttons, modifiers):
-        self.settings_panel.on_mouse_drag(*self.canvas_point(x, y))
-
-    def on_mouse_release(self, x, y, button, modifiers):
-        self.settings_panel.on_mouse_release()
+        if self.in_wave_dialogue and button == arcade.MOUSE_BUTTON_LEFT:
+            if self.dialog.typing:
+                self.dialog.advance()
+            else:
+                self.advance_dialogue()
 
     def run_action(self, action):
         if action == "resume":

@@ -1,5 +1,6 @@
 from pathlib import Path
 import arcade
+from .config import HEIGHT, WIDTH
 
 # Base asset paths
 ASSETS_DIR = Path(__file__).resolve().parent.parent / "assets"
@@ -17,7 +18,7 @@ MARKET_WALK_BOUNDS = (72, 1280 - 40, 0, 720 - 40)
 # Scenery obstacle boxes (left, right, bottom, top) blocking Terry's feet
 MARKET_OBSTACLES = (
     # 1. Leftmost wall rack (Grains & Pasta / Canned Goods)
-    (0, 20, 0, 720), #right: 78
+    (0, 10, 0, 720), #right: 78
 
     # 2. Canned Goods trellis hanging wall corner (top left corner)
     (0, 155, 540, 720),
@@ -65,3 +66,221 @@ def cover_rect(texture, rect):
     return arcade.XYWH(
         rect.x, rect.y, texture.width * scale, texture.height * scale
     )
+
+
+class DialogueHistoryPanel:
+    """Scrollable board displaying dialogue history read so far."""
+    def __init__(self):
+        self.visible = False
+        self.history = []  # list of (speaker, text)
+        self.scroll_offset = 0
+
+    def add_entry(self, speaker, text):
+        if speaker or text:
+            clean_text = text.strip() if text else ""
+            if not self.history or self.history[-1] != (speaker, clean_text):
+                self.history.append((speaker, clean_text))
+
+    def toggle(self):
+        self.visible = not self.visible
+        if self.visible:
+            # Show up to 8 entries at once; scroll to the latest
+            self.scroll_offset = max(0, len(self.history) - 8)
+
+    def on_mouse_scroll(self, dy):
+        if not self.visible:
+            return
+        max_offset = max(0, len(self.history) - 8)
+        self.scroll_offset = max(0, min(max_offset, self.scroll_offset - int(dy)))
+
+    def draw(self, stage=None):
+        if not self.visible:
+            return
+
+        panel_w = 980
+        panel_h = 520
+        cx = WIDTH / 2
+        cy = HEIGHT / 2
+
+        # 1. Dark Backdrop & Border
+        arcade.draw_rect_filled(arcade.XYWH(cx, cy, panel_w, panel_h), (18, 14, 12, 245))
+        arcade.draw_rect_outline(arcade.XYWH(cx, cy, panel_w, panel_h), (180, 130, 70), 2)
+
+        # 2. Header & Footer
+        arcade.draw_text("DIALOGUE LOG / HISTORY", cx, cy + (panel_h / 2) - 30, (255, 220, 150), 16, bold=True, anchor_x="center")
+        arcade.draw_text("Scroll: Wheel | Click anywhere or Esc to close", cx, cy - (panel_h / 2) + 20, (170, 160, 150), 12, anchor_x="center")
+
+        # 3. Compact Entries (reduced gap: 44px step instead of 80px)
+        visible_entries = self.history[self.scroll_offset:self.scroll_offset + 8]
+        start_y = cy + (panel_h / 2) - 75
+
+        for speaker, line in visible_entries:
+            speaker_tag = f"{speaker}: " if speaker else ""
+            if speaker:
+                arcade.draw_text(speaker_tag, cx - (panel_w / 2) + 40, start_y, (255, 205, 90), 13, bold=True)
+            body_x = cx - (panel_w / 2) + 40 + (100 if speaker else 0)
+            arcade.draw_text(line, body_x, start_y, (240, 240, 240), 13, width=int(panel_w - 180))
+            start_y -= 44
+
+
+class DialogueController:
+    """Manages Auto, Skip, and History UI buttons."""
+
+    def __init__(self, on_advance_cb, on_skip_cb):
+        self.on_advance = on_advance_cb
+        self.on_skip = on_skip_cb
+
+        self.auto_mode = False
+        self.auto_timer = 0.0
+        self.auto_delay_text = 2.0   # Delay after typing completes
+        self.auto_delay_silent = 1.4 # Delay for picture-only slides
+
+        self.history_panel = DialogueHistoryPanel()
+
+        # Upper-right corner with balanced margin from the right edge
+        btn_y = HEIGHT - 36
+        btn_w = 88
+        btn_h = 26
+        self.buttons = [
+            {"id": "log", "label": "📜 LOG", "x": WIDTH - 330, "y": btn_y, "w": btn_w, "h": btn_h},
+            {"id": "auto", "label": "▶ AUTO", "x": WIDTH - 230, "y": btn_y, "w": btn_w, "h": btn_h},
+            {"id": "skip", "label": "⏩ SKIP", "x": WIDTH - 130, "y": btn_y, "w": btn_w, "h": btn_h},
+        ]
+
+    def record(self, speaker, text):
+        self.history_panel.add_entry(speaker, text)
+
+    def update(self, delta_time, is_dialog_visible, is_typing):
+        """Ticks auto-advance for both spoken dialogue and picture-only slides."""
+        if not self.auto_mode or self.history_panel.visible:
+            self.auto_timer = 0.0
+            return
+
+        if is_dialog_visible:
+            if not is_typing:
+                self.auto_timer += delta_time
+                if self.auto_timer >= self.auto_delay_text:
+                    self.auto_timer = 0.0
+                    self.on_advance()
+            else:
+                self.auto_timer = 0.0
+        else:
+            # Picture-only slide (no dialog box): proceed automatically after short delay
+            self.auto_timer += delta_time
+            if self.auto_timer >= self.auto_delay_silent:
+                self.auto_timer = 0.0
+                self.on_advance()
+
+    def draw(self, show_controls=True):
+        if show_controls:
+            for btn in self.buttons:
+                is_active = (btn["id"] == "auto" and self.auto_mode)
+                bg_col = (180, 100, 40, 240) if is_active else (25, 20, 18, 230)
+                border_col = (255, 210, 120) if is_active else (100, 85, 75)
+                text_col = (255, 255, 255) if is_active else (220, 215, 205)
+
+                arcade.draw_rect_filled(arcade.XYWH(btn["x"], btn["y"], btn["w"], btn["h"]), bg_col)
+                arcade.draw_rect_outline(arcade.XYWH(btn["x"], btn["y"], btn["w"], btn["h"]), border_col, 2)
+                arcade.draw_text(
+                    btn["label"],
+                    btn["x"],
+                    btn["y"],
+                    text_col,
+                    11,
+                    bold=True,
+                    anchor_x="center",
+                    anchor_y="center"
+                )
+
+        self.history_panel.draw()
+
+    def handle_mouse_press(self, canvas_x, canvas_y):
+        if self.history_panel.visible:
+            self.history_panel.toggle()
+            return True
+
+        for btn in self.buttons:
+            bx, by, bw, bh = btn["x"], btn["y"], btn["w"], btn["h"]
+            if (bx - bw / 2 - 8 <= canvas_x <= bx + bw / 2 + 8) and \
+               (by - bh / 2 - 8 <= canvas_y <= by + bh / 2 + 8):
+                if btn["id"] == "skip":
+                    self.on_skip()
+                elif btn["id"] == "auto":
+                    self.auto_mode = not self.auto_mode
+                elif btn["id"] == "log":
+                    self.history_panel.toggle()
+                return True
+        return False
+
+class RetryModal:
+    """Confirmation modal shown when Terry fails an ingredient or defense mini-game."""
+    def __init__(self):
+        self.visible = False
+        self.title = "WAVE FAILED!"
+        self.message = "You lost all lives! Try again?"
+        self.on_retry = None
+        self.on_give_up = None
+
+        # Modal Dimensions
+        self.w = 420
+        self.h = 220
+        self.cx = WIDTH / 2
+        self.cy = HEIGHT / 2
+
+        # Buttons (Canvas Space)
+        btn_y = self.cy - 45
+        self.btn_retry = {"id": "retry", "label": "TRY AGAIN", "x": self.cx - 95, "y": btn_y, "w": 140, "h": 40}
+        self.btn_give_up = {"id": "give_up", "label": "GIVE UP", "x": self.cx + 95, "y": btn_y, "w": 140, "h": 40}
+        self.buttons = [self.btn_retry, self.btn_give_up]
+
+    def open(self, on_retry_cb, on_give_up_cb, title="CHALLENGE FAILED!", message="Would you like to try again?"):
+        self.visible = True
+        self.on_retry = on_retry_cb
+        self.on_give_up = on_give_up_cb
+        self.title = title
+        self.message = message
+
+    def close(self):
+        self.visible = False
+
+    def draw(self):
+        if not self.visible:
+            return
+
+        # Dimmed backdrop
+        arcade.draw_rect_filled(arcade.XYWH(self.cx, self.cy, WIDTH, HEIGHT), (0, 0, 0, 160))
+
+        # Main frame
+        arcade.draw_rect_filled(arcade.XYWH(self.cx, self.cy, self.w, self.h), (35, 24, 18, 250))
+        arcade.draw_rect_filled(arcade.XYWH(self.cx, self.cy, self.w - 8, self.h - 8), (70, 46, 32, 255))
+        arcade.draw_rect_outline(arcade.XYWH(self.cx, self.cy, self.w, self.h), (195, 140, 80), 3)
+
+        # Texts
+        arcade.draw_text(self.title, self.cx, self.cy + 60, (255, 95, 95), 16, bold=True, anchor_x="center", anchor_y="center")
+        arcade.draw_text(self.message, self.cx, self.cy + 18, (240, 235, 225), 12, anchor_x="center", anchor_y="center")
+
+        # Buttons
+        for btn in self.buttons:
+            is_retry = (btn["id"] == "retry")
+            bg_col = (48, 120, 52) if is_retry else (135, 42, 38)
+            border_col = (115, 230, 125) if is_retry else (240, 110, 105)
+
+            arcade.draw_rect_filled(arcade.XYWH(btn["x"], btn["y"], btn["w"], btn["h"]), bg_col)
+            arcade.draw_rect_outline(arcade.XYWH(btn["x"], btn["y"], btn["w"], btn["h"]), border_col, 2)
+            arcade.draw_text(btn["label"], btn["x"], btn["y"], (255, 255, 255), 12, bold=True, anchor_x="center", anchor_y="center")
+
+    def handle_mouse_press(self, canvas_x, canvas_y):
+        if not self.visible:
+            return False
+
+        for btn in self.buttons:
+            bx, by, bw, bh = btn["x"], btn["y"], btn["w"], btn["h"]
+            if (bx - bw / 2 <= canvas_x <= bx + bw / 2) and (by - bh / 2 <= canvas_y <= by + bh / 2):
+                if btn["id"] == "retry" and self.on_retry:
+                    self.close()
+                    self.on_retry()
+                elif btn["id"] == "give_up" and self.on_give_up:
+                    self.close()
+                    self.on_give_up()
+                return True
+        return True  # Absorb click while modal is visible

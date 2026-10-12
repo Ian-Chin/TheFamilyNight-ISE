@@ -17,47 +17,93 @@ from .market_dash_common import (
 
 
 class MarketStageView(StageView):
-    """Explorable market scene with free WASD movement, obstacles, and unlockable minigame trigger."""
+    """Explorable market with 2 Red Exclamation zones and 1 Central Padlock defense zone."""
 
-    def __init__(self, unlocked=False):
+    def __init__(self, veg_done=False, meat_done=False):
         super().__init__()
-        self.game_unlocked = unlocked
-        self.near_circle = False
+        self.veg_done = veg_done
+        self.meat_done = meat_done
+        self.defend_unlocked = self.veg_done and self.meat_done
+
+        self.near_veg = False
+        self.near_meat = False
+        self.near_defend = False
+
         self.held = set()
-        self.fade_clock = 0.0
-        self.walking_in = False   # Set False so WASD works immediately
         self.time_elapsed = 0.0
 
-        # Background image
         self.bg_texture = textures.background("market-dash/Scene 2.4 - market interior.jpg")
 
-        # If already unlocked (retry state), spawn Terry closer to the stall patio
-        spawn_x = 240 if self.game_unlocked else 495
-        spawn_y = 300 if self.game_unlocked else 180
+        # Defense pre-battle dialogue state
+        self.stage_dialogue_queue = []
+        self.stage_dialogue_callback = None
+
+        def trigger_stage_dialogue(self, lines, on_finish):
+            self.stage_dialogue_queue = list(lines)
+            self.stage_dialogue_callback = on_finish
+            self.advance_stage_dialogue()
+
+        def advance_stage_dialogue(self):
+            if self.stage_dialogue_queue:
+                speaker, text = self.stage_dialogue_queue.pop(0)
+                self.dialog.open(speaker, text)
+            else:
+                self.dialog.close()
+                if self.stage_dialogue_callback:
+                    cb = self.stage_dialogue_callback
+                    self.stage_dialogue_callback = None
+                    cb()
+
+        # Spawn coordinates strictly outside all shelf collision blocks
+        if self.defend_unlocked:
+            spawn_x, spawn_y = 525, 175
+        elif self.meat_done:
+            spawn_x, spawn_y = 818, 175
+        elif self.veg_done:
+            spawn_x, spawn_y = 240, 260
+        else:
+            spawn_x, spawn_y = 495, 180
+
         self.terry = Terry(spawn_x, spawn_y, carrying=False)
         self.sprites = arcade.SpriteList()
         self.sprites.append(self.terry)
         self.sort_by_depth()
 
-        # Lock indicator on the green checkered tiles in the patio
+        # --- Interactive Indicators ---
         self.indicators = arcade.SpriteList()
-        self.lock_sprite = None
+        exclamation_tex = textures.ui_image("Exclamation Mark Symbol.png")
+        lock_tex = textures.ui_image("Lock Symbol.png")
 
-        if not self.game_unlocked:
-            try:
-                lock_tex = textures.ui_image("Lock Symbol.png")
-            except Exception:
-                lock_tex = textures.ui_image("Lock_Symbol.png")
+        # 1. Upper-Left Red Zone Marker (MEATS - Patio Walkway)
+        self.meat_marker = arcade.Sprite(exclamation_tex, scale=0.20)
+        self.meat_marker.center_x = 210
+        self.meat_marker.base_y = 355
+        self.meat_marker.center_y = self.meat_marker.base_y
+        if not self.meat_done:
+            self.indicators.append(self.meat_marker)
 
-            self.lock_sprite = arcade.Sprite(lock_tex, scale=0.22)
-            self.lock_sprite.center_x = 185
-            self.lock_sprite.base_y = 405
-            self.lock_sprite.center_y = self.lock_sprite.base_y
-            self.indicators.append(self.lock_sprite)
+        # 2. Bottom-Right Red Zone Marker (VEGETABLES - Between Fruit Bins)
+        self.veg_marker = arcade.Sprite(exclamation_tex, scale=0.20)
+        self.veg_marker.center_x = 1050
+        self.veg_marker.base_y = 75
+        self.veg_marker.center_y = self.veg_marker.base_y
+        if not self.veg_done:
+            self.indicators.append(self.veg_marker)
 
-        # --- REQUIRED WIDGETS (Do not omit these lines) ---
+        # 3. Center Green Zone Padlock (Middle of aisle)
+        self.defend_lock = arcade.Sprite(lock_tex, scale=0.22)
+        self.defend_lock.center_x = 630
+        self.defend_lock.base_y = 75
+        self.defend_lock.center_y = self.defend_lock.base_y
+        self.indicators.append(self.defend_lock)
+
+        # Padlock unlock timer (plays hop-unlock-fade if both are cleared)
+        self.lock_anim_timer = 5.0 if self.defend_unlocked else 0.0
+
         self.footsteps = Footsteps(MARKET_STONE_AREAS)
         self.dialog = DialogBox()
+        self.stage_dialogue_queue = []
+        self.stage_dialogue_callback = None
         self.pause_menu = PauseMenu()
         self.settings_panel = SettingsPanel()
         self.widgets = [self.dialog, self.pause_menu, self.settings_panel]
@@ -82,50 +128,22 @@ class MarketStageView(StageView):
             anchor_x="center", anchor_y="center",
         )
 
-    def on_draw(self):
-        self.clear()
-        viewport = self.stage.viewport()
-
-        if self.bg_texture:
-            arcade.draw_texture_rect(
-                self.bg_texture,
-                cover_rect(self.bg_texture, viewport)
-            )
-        else:
-            arcade.draw_rect_filled(
-                arcade.XYWH(WIDTH / 2, HEIGHT / 2, WIDTH, HEIGHT),
-                (40, 44, 52)
-            )
-
-        # Sprites & Lock in Camera Space
-        self.camera.use()
-        for character in self.sprites:
-            character.draw_shadow()
-        self.sprites.draw(pixelated=True)
-        self.indicators.draw(pixelated=True)
-
-        # UI & HUD
-        self.window.default_camera.use()
-        self.hint.draw()
-
-        if self.dialog.visible:
-            self.dialog.draw()
-
-        if not self.settings_panel.visible:
-            self.pause_menu.draw()
-        self.settings_panel.draw()
+    def on_show_view(self):
+        self.held.clear()
+        self.relayout()
 
     def on_update(self, delta_time):
         if self.pause_menu.visible or self.settings_panel.visible:
             return
 
         delta_time = min(delta_time, 1 / 30)
+        self.time_elapsed += delta_time
 
         if self.dialog.visible:
             self.dialog.update(delta_time)
             return
 
-        # Player free movement
+        # Player Movement
         dx = (arcade.key.D in self.held) - (arcade.key.A in self.held)
         dy = (arcade.key.W in self.held) - (arcade.key.S in self.held)
         self.terry.update_movement(
@@ -138,80 +156,123 @@ class MarketStageView(StageView):
         if dy:
             self.sort_by_depth()
 
-        # Handle padlock bobbing & unlocking animation only if still locked
-        if not self.game_unlocked and self.lock_sprite:
-            self.time_elapsed += delta_time
-            if not hasattr(self, "lock_anim_timer"):
-                bob_offset = math.sin(self.time_elapsed * 4.0) * 5.0
-                self.lock_sprite.center_y = self.lock_sprite.base_y + bob_offset
+        # Indicator Bobbing
+        bob_offset = math.sin(self.time_elapsed * 4.0) * 6.0
+        if not self.meat_done:
+            self.meat_marker.center_y = self.meat_marker.base_y + bob_offset
+        if not self.veg_done:
+            self.veg_marker.center_y = self.veg_marker.base_y + bob_offset
 
-            if hasattr(self, "lock_anim_timer") and self.lock_anim_timer > 0:
-                self.lock_anim_timer -= delta_time
-                if self.lock_anim_timer <= 0:
-                    self.game_unlocked = True
-                    self.indicators.clear()  # Remove lock sprite once unlocked!
-                    self.lock_sprite = None
-                elif self.lock_anim_timer <= 2.0:
-                    try:
-                        self.lock_sprite.texture = textures.ui_image("Lock_unlocked.png")
-                    except Exception:
-                        pass
-                    self.lock_sprite.scale = 0.22
-                    self.lock_sprite.center_y = self.lock_sprite.base_y
-                else:
-                    progress = 4.0 - self.lock_anim_timer
-                    pop_curve = math.sin(progress * math.pi)
-                    self.lock_sprite.scale = 0.22 + (pop_curve * 0.08)
-                    self.lock_sprite.center_y = self.lock_sprite.base_y + (pop_curve * 14.0)
 
-        # Generous patio detection box
-        in_circle_x = 50 <= self.terry.center_x <= 360
-        in_circle_y = 180 <= self.terry.ground_y <= 530
-        self.near_circle = in_circle_x and in_circle_y
+        # Proximity Checks
+        self.near_meat = (110 <= self.terry.center_x <= 310) and (230 <= self.terry.ground_y <= 480)
+        self.near_veg = (1000 <= self.terry.center_x <= 1100) and (0 <= self.terry.ground_y <= 150)
+        self.near_defend = (600 <= self.terry.center_x <= 660) and (0 <= self.terry.ground_y <= 150)
 
-        if self.near_circle:
-            if not self.game_unlocked:
-                if hasattr(self, "lock_anim_timer") and self.lock_anim_timer > 0:
-                    self.hint.text = "Unlocking..."
-                else:
-                    self.hint.text = "Press Enter to unlock the produce stall!"
+        # Context Prompts
+        if self.near_meat:
+            if not self.meat_done:
+                self.hint.text = "Press Enter to gather prime meat!"
+                self.meat_marker.alpha = 0
             else:
-                self.hint.text = "Press Enter to start catching ingredients!"
+                self.hint.text = "Prime meat already secured!"
+        elif self.near_veg:
+            if not self.veg_done:
+                self.hint.text = "Press Enter to gather fresh vegetables!"
+                self.veg_marker.alpha = 0
+            else:
+                self.hint.text = "Vegetables already secured!"
+        elif self.near_defend:
+            if not self.defend_unlocked:
+                self.hint.text = "Gather both meat and vegetables to unlock basket defense!"
+            else:
+                self.hint.text = "Press Enter to defend your basket and escape!"
         else:
             self.hint.text = "WASD to move    Space to jump    Esc to pause"
+            if not self.meat_done:
+                self.meat_marker.alpha = 255
+            if not self.veg_done:
+                self.veg_marker.alpha = 2555
+
+
+    def on_draw(self):
+        self.clear()
+
+        # 1. World Layer in Camera Space
+        self.camera.use()
+        if self.bg_texture:
+            arcade.draw_texture_rect(self.bg_texture, arcade.XYWH(WIDTH / 2, HEIGHT / 2, WIDTH, HEIGHT))
+
+        for character in self.sprites:
+            character.draw_shadow()
+        self.sprites.draw(pixelated=True)
+        self.indicators.draw(pixelated=True)
+
+        # 2. UI in Screen Space
+        self.window.default_camera.use()
+        self.hint.draw()
+
+        if self.dialog.visible and getattr(self.dialog, "texture", None):
+            self.dialog.draw()
+
+        if not self.settings_panel.visible:
+            self.pause_menu.draw()
+        self.settings_panel.draw()
 
     def on_key_press(self, key, modifiers):
         if self.settings_panel.visible:
             if self.settings_panel.on_key_press(key) == "close":
                 self.settings_panel.close()
             return
-
         if self.pause_menu.visible:
             self.run_action(self.pause_menu.on_key_press(key))
             return
-
         if key == arcade.key.ESCAPE:
             self.held.clear()
             self.pause_menu.open()
             return
-
+        # Advance stage dialog if active
         if self.dialog.visible:
             if key in (arcade.key.ENTER, arcade.key.NUM_ENTER, arcade.key.SPACE):
-                self.dialog.advance()
+                if self.dialog.typing:
+                    self.dialog.advance()
+                else:
+                    self.advance_stage_dialogue()
             return
 
-        # Mini-game trigger (strictly Enter keys)
-        if key in (arcade.key.ENTER, arcade.key.NUM_ENTER) and self.near_circle:
-            if self.game_unlocked:
+        if key in (arcade.key.ENTER, arcade.key.NUM_ENTER):
+            from .market_dash_catch import MarketCatchView
+
+            # 1. Upper-Left: Meats
+            if self.near_meat and not self.meat_done:
                 self.held.clear()
                 audio.play("ui_click")
-                from .market_dash_catch import MarketCatchView
-                self.window.show_view(MarketCatchView())
+                self.window.show_view(MarketCatchView(mode="meat", veg_done=self.veg_done, meat_done=self.meat_done))
                 return
 
-            if not hasattr(self, "lock_anim_timer"):
+            # 2. Bottom-Right: Vegetables
+            if self.near_veg and not self.veg_done:
+                self.held.clear()
                 audio.play("ui_click")
-                self.lock_anim_timer = 4.0
+                self.window.show_view(MarketCatchView(mode="veg", veg_done=self.veg_done, meat_done=self.meat_done))
+                return
+
+            # 3. Center: Defense (Play pre-game warning dialogue before entering)
+            if self.near_defend and self.defend_unlocked:
+                self.held.clear()
+                audio.play("ui_click")
+
+                pre_defend_dialogue = [
+                    ("Terry", "Wait... why is everyone suddenly staring at my basket?"),
+                    ("Desperate Shopper", "Look! He's got the last prime steaks and fresh veggies! GET HIM!"),
+                    ("Terry", "Oh no... they're swarming the exit!"),
+                    ("Terry", "I'll have to use this frozen mackerel to defend myself and dash past them!"),
+                ]
+
+                def start_defend_game():
+                    self.window.show_view(MarketCatchView(mode="defend", veg_done=self.veg_done, meat_done=self.meat_done))
+
+                self.trigger_stage_dialogue(pre_defend_dialogue, start_defend_game)
                 return
 
         if key == arcade.key.SPACE:
@@ -241,7 +302,11 @@ class MarketStageView(StageView):
             self.run_action(self.pause_menu.on_mouse_press(canvas_x, canvas_y, button))
             return
         if self.dialog.visible:
-            self.dialog.advance()
+            if self.dialog.typing:
+                self.dialog.advance()
+            else:
+                self.advance_stage_dialogue()
+            return
 
     def run_action(self, action):
         if action == "resume":
@@ -253,3 +318,19 @@ class MarketStageView(StageView):
             self.window.show_view(MenuView())
         elif action == "quit":
             self.window.close()
+
+    def trigger_stage_dialogue(self, lines, on_finish):
+        self.stage_dialogue_queue = list(lines)
+        self.stage_dialogue_callback = on_finish
+        self.advance_stage_dialogue()
+
+    def advance_stage_dialogue(self):
+        if self.stage_dialogue_queue:
+            speaker, text = self.stage_dialogue_queue.pop(0)
+            self.dialog.open(speaker, text)
+        else:
+            self.dialog.close()
+            if self.stage_dialogue_callback:
+                cb = self.stage_dialogue_callback
+                self.stage_dialogue_callback = None
+                cb()

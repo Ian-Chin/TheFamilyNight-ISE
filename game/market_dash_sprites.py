@@ -4,12 +4,14 @@ from .config import HEIGHT
 from .market_dash_common import PLAY_LEFT, PLAY_RIGHT
 
 
-def get_separated_x(existing_sprites, min_gap=115, attempts=12):
+def get_separated_x(existing_sprites, min_gap=110, attempts=12):
     """Generates an X coordinate spaced away from existing entities."""
-    for _ in range(attempts):
-        candidate_x = random.randint(PLAY_LEFT + 40, PLAY_RIGHT - 40)
-        if all(abs(candidate_x - s.center_x) >= min_gap for s in existing_sprites if s.top > HEIGHT - 180):
-            return candidate_x
+    top_sprites = [s for s in existing_sprites if s.top > HEIGHT - 180]
+    for gap in (min_gap, min_gap * 0.75, min_gap * 0.5):
+        for _ in range(attempts // 3):
+            candidate_x = random.randint(PLAY_LEFT + 40, PLAY_RIGHT - 40)
+            if all(abs(candidate_x - s.center_x) >= gap for s in top_sprites):
+                return candidate_x
     return random.randint(PLAY_LEFT + 40, PLAY_RIGHT - 40)
 
 
