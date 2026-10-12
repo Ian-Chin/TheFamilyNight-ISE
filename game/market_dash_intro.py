@@ -7,7 +7,7 @@ from .dialogue import DialogBox
 from .options import SettingsPanel
 from .pause import PauseMenu
 from .views import MenuView, StageView
-from .market_dash_common import BG_DIR
+from .market_dash_common import BG_DIR, DialogueController
 
 
 # ============================================================================
@@ -22,6 +22,7 @@ class StorySlideView(StageView):
         self.pause_menu = PauseMenu()
         self.settings_panel = SettingsPanel()
         self.widgets = [self.dialog, self.pause_menu, self.settings_panel]
+
 
         self.slides = [
             # Fully asleep
@@ -71,6 +72,26 @@ class StorySlideView(StageView):
             ("Terry", "Okay, okay, I can do this. Just a few more items and I'll be home free.", BG_DIR / "Scene 2.2 - crowd in front door.jpg"),
             ("Terry", "I just need to get through this crowd and grab the ingredients.", BG_DIR / "Scene 2.3 - chaos scene in market.jpg"),
         ]
+
+        def do_advance():
+            if self.dialog.visible:
+                if self.dialog.typing:
+                    self.stop_typing_sound()
+                    self.dialog.advance()
+                else:
+                    self.stop_typing_sound()
+                    self.trigger_slide(self.current_slide + 1)
+            else:
+                # Essential for picture-only slides to advance automatically and with keys
+                self.stop_typing_sound()
+                self.trigger_slide(self.current_slide + 1)
+
+        def do_skip():
+            self.cleanup_audio()
+            from .market_dash_stage import MarketStageView
+            self.window.show_view(MarketStageView())
+
+        self.dialog_ctrl = DialogueController(do_advance, do_skip)
         self.current_slide = 0
         self.current_texture = None
         self.typing_player = None
@@ -80,8 +101,15 @@ class StorySlideView(StageView):
         self.is_shaking = False
         self.shake_intensity = 0.0
 
-        # Camera setup
+        # 1. World Camera (vibrates with screen shake)
         self.camera = arcade.camera.Camera2D(
+            position=(WIDTH / 2, HEIGHT / 2),
+            projection=arcade.LRBT(-WIDTH / 2, WIDTH / 2, -HEIGHT / 2, HEIGHT / 2),
+            viewport=self.stage.viewport()
+        )
+
+        # 2. UI Camera (stable in letterboxed canvas space for widgets/dialog)
+        self.ui_camera = arcade.camera.Camera2D(
             position=(WIDTH / 2, HEIGHT / 2),
             projection=arcade.LRBT(-WIDTH / 2, WIDTH / 2, -HEIGHT / 2, HEIGHT / 2),
             viewport=self.stage.viewport()
@@ -104,10 +132,14 @@ class StorySlideView(StageView):
         super().relayout()
         if hasattr(self, "camera"):
             self.camera.viewport = self.stage.viewport()
+        if hasattr(self, "ui_camera"):
+            self.ui_camera.viewport = self.stage.viewport()
+
+        # Placed inside the bottom-right corner of the dialog box
         self.hint = self.stage.text(
             "Press Enter/Space to advance    Esc to pause",
-            WIDTH / 2, 28, (230, 235, 245), 14,
-            anchor_x="center", anchor_y="center"
+            WIDTH - 80, 44, (200, 205, 215, 180), 12,
+            anchor_x="right", anchor_y="center"
         )
 
     def trigger_slide(self, index):
@@ -147,6 +179,7 @@ class StorySlideView(StageView):
         if text:
             audio.play("dialog_open")
             self.dialog.open(speaker or "", text)
+            self.dialog_ctrl.record(speaker, text)
             self.stop_typing_sound()
             self.typing_player = audio.play("dialog_type", loop=True)
         else:
@@ -162,16 +195,20 @@ class StorySlideView(StageView):
         if self.pause_menu.visible or self.settings_panel.visible:
             return
 
-        # Advance dialog typewriter
         if self.dialog.visible:
             self.dialog.update(delta_time)
             if not self.dialog.typing:
                 self.stop_typing_sound()
 
-        # Handle screen shake
+        # Always tick the controller so picture-only slides advance
+        self.dialog_ctrl.update(
+            delta_time,
+            is_dialog_visible=self.dialog.visible,
+            is_typing=self.dialog.typing
+        )
+
         if self.is_shaking:
             self.shake_time += delta_time
-            # Rapid vibration back and forth (frequency = 35)
             offset_x = math.sin(self.shake_time * 35.0) * self.shake_intensity
             offset_y = math.cos(self.shake_time * 30.0) * (self.shake_intensity * 0.5)
             self.camera.position = (WIDTH / 2 + offset_x, HEIGHT / 2 + offset_y)
@@ -181,22 +218,26 @@ class StorySlideView(StageView):
     def on_draw(self):
         self.clear()
 
-        # 1. World & Background in Camera space (shakes with phone ring)
+        # 1. Background image (camera shake)
         self.camera.use()
-
         if self.current_texture:
             arcade.draw_texture_rect(
                 self.current_texture,
                 arcade.XYWH(WIDTH / 2, HEIGHT / 2, WIDTH, HEIGHT)
             )
 
-        # 2. Switch to window default camera for UI widgets & dialog
+        # 2. Dialog box & Hint in native screen space (prevents double transformation)
         self.window.default_camera.use()
-        self.hint.draw()
-
-        if self.dialog.visible:
+        if self.dialog.visible and getattr(self.dialog, "texture", None):
             self.dialog.draw()
+            self.hint.draw()
 
+        # 3. Canvas UI layer: Option buttons (upper-right) & History log panel
+        self.ui_camera.use()
+        self.dialog_ctrl.draw(show_controls=True)
+
+        # 4. Modals in native screen space
+        self.window.default_camera.use()
         if not self.settings_panel.visible:
             self.pause_menu.draw()
         self.settings_panel.draw()
@@ -212,21 +253,61 @@ class StorySlideView(StageView):
             return
 
         if key == arcade.key.ESCAPE:
+            if self.dialog_ctrl.history_panel.visible:
+                self.dialog_ctrl.history_panel.toggle()
+                return
             self.pause_menu.open()
             return
 
+        # Close history log with Enter/Space
+        if self.dialog_ctrl.history_panel.visible:
+            if key in (arcade.key.ENTER, arcade.key.SPACE, arcade.key.NUM_ENTER):
+                self.dialog_ctrl.history_panel.toggle()
+            return
+
+        # Direct progression with Space / Enter
         if key in (arcade.key.ENTER, arcade.key.SPACE, arcade.key.NUM_ENTER):
             if self.dialog.visible:
                 if self.dialog.typing:
                     self.stop_typing_sound()
-                    self.dialog.advance()  # Finishes current typing line
+                    self.dialog.advance()
                 else:
                     self.stop_typing_sound()
                     self.trigger_slide(self.current_slide + 1)
             else:
-                # For silent slides where dialog is closed
                 self.stop_typing_sound()
                 self.trigger_slide(self.current_slide + 1)
+
+    def on_mouse_press(self, x, y, button, modifiers):
+        canvas_x, canvas_y = self.canvas_point(x, y)
+
+        if self.settings_panel.on_mouse_press(canvas_x, canvas_y, button):
+            return
+
+        if self.pause_menu.visible:
+            action = self.pause_menu.on_mouse_press(canvas_x, canvas_y, button)
+            self.run_action(action)
+            return
+
+        # 1. UI Control buttons (LOG, AUTO, SKIP) take priority
+        if self.dialog_ctrl.handle_mouse_press(canvas_x, canvas_y):
+            return
+
+        # 2. Advance on left click
+        if button == arcade.MOUSE_BUTTON_LEFT and not self.pause_menu.visible:
+            if self.dialog.visible:
+                if self.dialog.typing:
+                    self.stop_typing_sound()
+                    self.dialog.advance()
+                else:
+                    self.stop_typing_sound()
+                    self.trigger_slide(self.current_slide + 1)
+            else:
+                self.stop_typing_sound()
+                self.trigger_slide(self.current_slide + 1)
+
+    def on_mouse_scroll(self, x, y, scroll_x, scroll_y):
+        self.dialog_ctrl.history_panel.on_mouse_scroll(scroll_y)
 
     def run_action(self, action):
         if action == "resume":
@@ -251,17 +332,19 @@ class StorySlideView(StageView):
     def on_mouse_press(self, x, y, button, modifiers):
         canvas_x, canvas_y = self.canvas_point(x, y)
 
-        # 1. Check settings panel interactions
         if self.settings_panel.on_mouse_press(canvas_x, canvas_y, button):
             return
 
-        # 2. Check pause menu buttons (Resume, Settings, Main Menu, Quit)
         if self.pause_menu.visible:
             action = self.pause_menu.on_mouse_press(canvas_x, canvas_y, button)
             self.run_action(action)
             return
 
-        # 3. Normal story progression on left click (when pause menu is closed)
+        # Check Dialogue Controls (Log, Auto, Skip)
+        if self.dialog.visible and self.dialog_ctrl.handle_mouse_press(canvas_x, canvas_y):
+            return
+
+        # Standard story progression
         if button == arcade.MOUSE_BUTTON_LEFT and not self.pause_menu.visible:
             if self.dialog.visible:
                 if self.dialog.typing:
@@ -273,3 +356,4 @@ class StorySlideView(StageView):
             else:
                 self.stop_typing_sound()
                 self.trigger_slide(self.current_slide + 1)
+                
