@@ -390,7 +390,9 @@ class MarketCatchView(StageView):
             ]
             def to_stage():
                 from .market_dash_stage import MarketStageView
-                self.window.show_view(MarketStageView(veg_done=True, meat_done=self.meat_done))
+                self.window.show_view(
+                    MarketStageView(veg_done=True, meat_done=self.meat_done, last_completed="veg")
+                )
             self.trigger_wave_dialogue(dialogue, to_stage)
 
         elif self.mode == "meat":
@@ -401,18 +403,12 @@ class MarketCatchView(StageView):
             ]
             def to_stage():
                 from .market_dash_stage import MarketStageView
-                self.window.show_view(MarketStageView(veg_done=self.veg_done, meat_done=True))
+                self.window.show_view(
+                    MarketStageView(veg_done=self.veg_done, meat_done=True, last_completed="meat")
+                )
             self.trigger_wave_dialogue(dialogue, to_stage)
 
-        elif self.mode == "defend":
-            dialogue = [
-                ("Terry", "I dodged them all! The last of the mob finally gave up chasing!"),
-                ("Terry", "The basket is safe. Let's get out of here before more show up!"),
-            ]
-            def to_ending():
-                from .market_dash_ending import MarketEndingView
-                self.window.show_view(MarketEndingView())
-            self.trigger_wave_dialogue(dialogue, to_ending)
+            
     def on_draw(self):
         self.clear()
 

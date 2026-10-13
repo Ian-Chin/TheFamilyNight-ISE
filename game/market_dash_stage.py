@@ -19,7 +19,7 @@ from .market_dash_common import (
 class MarketStageView(StageView):
     """Explorable market with 2 Red Exclamation zones and 1 Central Padlock defense zone."""
 
-    def __init__(self, veg_done=False, meat_done=False):
+    def __init__(self, veg_done=False, meat_done=False, last_completed=None):
         super().__init__()
         self.veg_done = veg_done
         self.meat_done = meat_done
@@ -34,33 +34,13 @@ class MarketStageView(StageView):
 
         self.bg_texture = textures.background("market-dash/Scene 2.4 - market interior.jpg")
 
-        # Defense pre-battle dialogue state
-        self.stage_dialogue_queue = []
-        self.stage_dialogue_callback = None
-
-        def trigger_stage_dialogue(self, lines, on_finish):
-            self.stage_dialogue_queue = list(lines)
-            self.stage_dialogue_callback = on_finish
-            self.advance_stage_dialogue()
-
-        def advance_stage_dialogue(self):
-            if self.stage_dialogue_queue:
-                speaker, text = self.stage_dialogue_queue.pop(0)
-                self.dialog.open(speaker, text)
-            else:
-                self.dialog.close()
-                if self.stage_dialogue_callback:
-                    cb = self.stage_dialogue_callback
-                    self.stage_dialogue_callback = None
-                    cb()
-
         # Spawn coordinates strictly outside all shelf collision blocks
-        if self.defend_unlocked:
-            spawn_x, spawn_y = 525, 175
-        elif self.meat_done:
-            spawn_x, spawn_y = 818, 175
-        elif self.veg_done:
-            spawn_x, spawn_y = 240, 260
+        if last_completed == "veg" or (self.veg_done and not self.meat_done):
+            spawn_x, spawn_y = 1050, 75
+        elif last_completed == "meat" or (self.meat_done and not self.veg_done):
+            spawn_x, spawn_y = 210, 335
+        elif self.defend_unlocked:
+            spawn_x, spawn_y = 630, 90
         else:
             spawn_x, spawn_y = 495, 180
 
@@ -90,20 +70,24 @@ class MarketStageView(StageView):
         if not self.veg_done:
             self.indicators.append(self.veg_marker)
 
-        # 3. Center Green Zone Padlock (Middle of aisle)
+        # 3. Center Green Zone Padlock
         self.defend_lock = arcade.Sprite(lock_tex, scale=0.22)
         self.defend_lock.center_x = 630
         self.defend_lock.base_y = 75
         self.defend_lock.center_y = self.defend_lock.base_y
         self.indicators.append(self.defend_lock)
 
-        # Padlock unlock timer (plays hop-unlock-fade if both are cleared)
-        self.lock_anim_timer = 5.0 if self.defend_unlocked else 0.0
+        # Padlock unlock animation state
+        self.lock_animating = False
+        self.lock_anim_timer = 0.0
+
+        # Stage dialogue handling
+        self.stage_dialogue_queue = []
+        self.stage_dialogue_callback = None
+        self.stage_dialogue_bg = None
 
         self.footsteps = Footsteps(MARKET_STONE_AREAS)
         self.dialog = DialogBox()
-        self.stage_dialogue_queue = []
-        self.stage_dialogue_callback = None
         self.pause_menu = PauseMenu()
         self.settings_panel = SettingsPanel()
         self.widgets = [self.dialog, self.pause_menu, self.settings_panel]
@@ -132,6 +116,25 @@ class MarketStageView(StageView):
         self.held.clear()
         self.relayout()
 
+    def trigger_stage_dialogue(self, lines, on_finish):
+        self.stage_dialogue_queue = list(lines)
+        self.stage_dialogue_callback = on_finish
+        self.advance_stage_dialogue()
+
+    def advance_stage_dialogue(self):
+        if self.stage_dialogue_queue:
+            item = self.stage_dialogue_queue.pop(0)
+            speaker, text = item[0], item[1]
+            self.stage_dialogue_bg = item[2] if len(item) > 2 else None
+            self.dialog.open(speaker, text)
+        else:
+            self.dialog.close()
+            self.stage_dialogue_bg = None
+            if self.stage_dialogue_callback:
+                cb = self.stage_dialogue_callback
+                self.stage_dialogue_callback = None
+                cb()
+
     def on_update(self, delta_time):
         if self.pause_menu.visible or self.settings_panel.visible:
             return
@@ -139,6 +142,62 @@ class MarketStageView(StageView):
         delta_time = min(delta_time, 1 / 30)
         self.time_elapsed += delta_time
 
+        # --- STEP 1: LOCK ANIMATION SEQUENCE ---
+        if self.lock_animating:
+            self.lock_anim_timer -= delta_time
+
+            # When animation finishes completely -> Open Dialogue
+            if self.lock_anim_timer <= 0:
+                self.lock_animating = False
+                self.defend_lock.alpha = 0
+                if self.defend_lock in self.indicators:
+                    self.indicators.remove(self.defend_lock)
+
+                pre_defend_dialogue = [
+                    ("Terry", "Wait... why is the whole aisle going dead silent? Why is everyone staring at me?"),
+                    ("Desperate Shopper", "LOOK! He's got the last prime steaks AND the fresh produce! DON'T LET HIM LEAVE!"),
+                    ("Terry", "Oh no, no, no... they're completely swarming the checkout counters!"),
+                    ("Terry", "I fought tooth and nail for tonight's dinner—there's no way I'm handing this basket over!"),
+                    ("Terry", "Think, Terry, think... what do I have in here that can keep them at bay?"),
+                    (
+                        "Terry",
+                        "Wait... the frozen Pacific Mackerel! Solid as iron, aerodynamic, and ice-cold.",
+                        textures.background("market-dash/fish obtained.jpg")
+                    ),
+                    ("Terry", "Mum’s going to kill me when she finds out I used dinner as a blunt weapon..."),
+                    ("Terry", "No choice now. En garde, bargain hunters!")
+                ]
+
+                def start_defend_game():
+                    from .market_dash_catch import MarketCatchView
+                    self.window.show_view(MarketCatchView(mode="defend", veg_done=self.veg_done, meat_done=self.meat_done))
+
+                self.trigger_stage_dialogue(pre_defend_dialogue, start_defend_game)
+                return
+
+            elif self.lock_anim_timer <= 1.0:
+                self.defend_lock.alpha = max(0, int(255 * (self.lock_anim_timer / 1.0)))
+                self.defend_lock.scale = 0.22
+                self.defend_lock.center_y = self.defend_lock.base_y
+
+            elif self.lock_anim_timer <= 2.0:
+                try:
+                    self.defend_lock.texture = textures.ui_image("Lock_unlocked.png")
+                except Exception:
+                    pass
+                self.defend_lock.alpha = 255
+                self.defend_lock.scale = 0.22
+                self.defend_lock.center_y = self.defend_lock.base_y
+
+            else:
+                progress = 3.0 - self.lock_anim_timer
+                pop_curve = math.sin(progress * math.pi)
+                self.defend_lock.scale = 0.22 + (pop_curve * 0.08)
+                self.defend_lock.center_y = self.defend_lock.base_y + (pop_curve * 18.0)
+
+            return
+
+        # --- STEP 2: DIALOGUE UPDATE ---
         if self.dialog.visible:
             self.dialog.update(delta_time)
             return
@@ -162,7 +221,6 @@ class MarketStageView(StageView):
             self.meat_marker.center_y = self.meat_marker.base_y + bob_offset
         if not self.veg_done:
             self.veg_marker.center_y = self.veg_marker.base_y + bob_offset
-
 
         # Proximity Checks
         self.near_meat = (110 <= self.terry.center_x <= 310) and (230 <= self.terry.ground_y <= 480)
@@ -192,21 +250,24 @@ class MarketStageView(StageView):
             if not self.meat_done:
                 self.meat_marker.alpha = 255
             if not self.veg_done:
-                self.veg_marker.alpha = 2555
-
+                self.veg_marker.alpha = 255
 
     def on_draw(self):
         self.clear()
 
         # 1. World Layer in Camera Space
         self.camera.use()
-        if self.bg_texture:
+
+        if self.dialog.visible and self.stage_dialogue_bg:
+            arcade.draw_texture_rect(self.stage_dialogue_bg, arcade.XYWH(WIDTH / 2, HEIGHT / 2, WIDTH, HEIGHT))
+        elif self.bg_texture:
             arcade.draw_texture_rect(self.bg_texture, arcade.XYWH(WIDTH / 2, HEIGHT / 2, WIDTH, HEIGHT))
 
-        for character in self.sprites:
-            character.draw_shadow()
-        self.sprites.draw(pixelated=True)
-        self.indicators.draw(pixelated=True)
+        if not (self.dialog.visible and self.stage_dialogue_bg):
+            for character in self.sprites:
+                character.draw_shadow()
+            self.sprites.draw(pixelated=True)
+            self.indicators.draw(pixelated=True)
 
         # 2. UI in Screen Space
         self.window.default_camera.use()
@@ -231,7 +292,7 @@ class MarketStageView(StageView):
             self.held.clear()
             self.pause_menu.open()
             return
-        # Advance stage dialog if active
+
         if self.dialog.visible:
             if key in (arcade.key.ENTER, arcade.key.NUM_ENTER, arcade.key.SPACE):
                 if self.dialog.typing:
@@ -240,39 +301,29 @@ class MarketStageView(StageView):
                     self.advance_stage_dialogue()
             return
 
+        if self.lock_animating:
+            return
+
         if key in (arcade.key.ENTER, arcade.key.NUM_ENTER):
             from .market_dash_catch import MarketCatchView
 
-            # 1. Upper-Left: Meats
             if self.near_meat and not self.meat_done:
                 self.held.clear()
                 audio.play("ui_click")
                 self.window.show_view(MarketCatchView(mode="meat", veg_done=self.veg_done, meat_done=self.meat_done))
                 return
 
-            # 2. Bottom-Right: Vegetables
             if self.near_veg and not self.veg_done:
                 self.held.clear()
                 audio.play("ui_click")
                 self.window.show_view(MarketCatchView(mode="veg", veg_done=self.veg_done, meat_done=self.meat_done))
                 return
 
-            # 3. Center: Defense (Play pre-game warning dialogue before entering)
             if self.near_defend and self.defend_unlocked:
                 self.held.clear()
                 audio.play("ui_click")
-
-                pre_defend_dialogue = [
-                    ("Terry", "Wait... why is everyone suddenly staring at my basket?"),
-                    ("Desperate Shopper", "Look! He's got the last prime steaks and fresh veggies! GET HIM!"),
-                    ("Terry", "Oh no... they're swarming the exit!"),
-                    ("Terry", "I'll have to use this frozen mackerel to defend myself and dash past them!"),
-                ]
-
-                def start_defend_game():
-                    self.window.show_view(MarketCatchView(mode="defend", veg_done=self.veg_done, meat_done=self.meat_done))
-
-                self.trigger_stage_dialogue(pre_defend_dialogue, start_defend_game)
+                self.lock_animating = True
+                self.lock_anim_timer = 3.0
                 return
 
         if key == arcade.key.SPACE:
@@ -301,12 +352,12 @@ class MarketStageView(StageView):
         if self.pause_menu.visible:
             self.run_action(self.pause_menu.on_mouse_press(canvas_x, canvas_y, button))
             return
-        if self.dialog.visible:
+
+        if self.dialog.visible and button == arcade.MOUSE_BUTTON_LEFT:
             if self.dialog.typing:
                 self.dialog.advance()
             else:
                 self.advance_stage_dialogue()
-            return
 
     def run_action(self, action):
         if action == "resume":
@@ -318,19 +369,3 @@ class MarketStageView(StageView):
             self.window.show_view(MenuView())
         elif action == "quit":
             self.window.close()
-
-    def trigger_stage_dialogue(self, lines, on_finish):
-        self.stage_dialogue_queue = list(lines)
-        self.stage_dialogue_callback = on_finish
-        self.advance_stage_dialogue()
-
-    def advance_stage_dialogue(self):
-        if self.stage_dialogue_queue:
-            speaker, text = self.stage_dialogue_queue.pop(0)
-            self.dialog.open(speaker, text)
-        else:
-            self.dialog.close()
-            if self.stage_dialogue_callback:
-                cb = self.stage_dialogue_callback
-                self.stage_dialogue_callback = None
-                cb()
