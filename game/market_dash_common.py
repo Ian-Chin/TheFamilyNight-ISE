@@ -284,3 +284,124 @@ class RetryModal:
                     self.on_give_up()
                 return True
         return True  # Absorb click while modal is visible
+
+class SkipConfirmModal:
+    """Modal dialog asking to confirm skipping with a synopsis preview."""
+
+    def __init__(self):
+        self.visible = False
+        self.on_confirm = None
+        self.on_cancel = None
+        self.title = "SKIP STORY?"
+        self.synopsis = ""
+
+        # Button dimensions
+        self.btn_w = 130
+        self.btn_h = 38
+
+    def open(self, on_confirm, on_cancel, synopsis, title="SKIP STORY?"):
+        self.on_confirm = on_confirm
+        self.on_cancel = on_cancel
+        self.synopsis = synopsis
+        self.title = title
+        self.visible = True
+
+    def close(self):
+        self.visible = False
+        self.on_confirm = None
+        self.on_cancel = None
+
+    def draw(self):
+        if not self.visible:
+            return
+
+        from .config import WIDTH, HEIGHT
+
+        # 1. Dark overlay backdrop
+        arcade.draw_rect_filled(
+            arcade.XYWH(WIDTH / 2, HEIGHT / 2, WIDTH, HEIGHT),
+            (0, 0, 0, 180)
+        )
+
+        # 2. Expanded Wooden Panel Board
+        modal_w = 700   # Expanded from 540 for comfortable reading width
+        modal_h = 360   # Expanded from 240 so text doesn't hit buttons
+        cx, cy = WIDTH / 2, HEIGHT / 2
+
+        # Outer border & wood background
+        arcade.draw_rect_filled(arcade.XYWH(cx, cy, modal_w, modal_h), (85, 48, 24, 250))
+        arcade.draw_rect_filled(arcade.XYWH(cx, cy, modal_w - 8, modal_h - 8), (138, 88, 48, 250))
+        arcade.draw_rect_outline(arcade.XYWH(cx, cy, modal_w, modal_h), (42, 22, 10), 3)
+
+        # Title
+        arcade.draw_text(
+            self.title,
+            cx, cy + (modal_h / 2) - 28,
+            (255, 238, 185), 17, bold=True,
+            anchor_x="center", anchor_y="center"
+        )
+
+        # 3. Expanded Dark Synopsis Body Box
+        box_w = modal_w - 48
+        box_h = 205     # Plenty of vertical room for multiline text
+        box_y = cy + 18
+        arcade.draw_rect_filled(arcade.XYWH(cx, box_y, box_w, box_h), (40, 24, 14, 220))
+        arcade.draw_rect_outline(arcade.XYWH(cx, box_y, box_w, box_h), (70, 42, 24), 2)
+
+        # Synopsis text (multiline with safe internal margins)
+        arcade.draw_text(
+            self.synopsis,
+            cx - (box_w / 2) + 20,
+            box_y + (box_h / 2) - 22,
+            (240, 225, 205),
+            12,
+            width=int(box_w - 40),
+            multiline=True
+        )
+
+        # 4. Buttons (lowered below the expanded content box)
+        btn_y = cy - (modal_h / 2) + 38
+        skip_x = cx - 95
+        cancel_x = cx + 95
+
+        # Skip button (Reddish / Wood)
+        arcade.draw_rect_filled(arcade.XYWH(skip_x, btn_y, self.btn_w, self.btn_h), (140, 45, 45, 240))
+        arcade.draw_rect_outline(arcade.XYWH(skip_x, btn_y, self.btn_w, self.btn_h), (220, 110, 110), 2)
+        arcade.draw_text("Skip", skip_x, btn_y, (255, 240, 240), 13, bold=True, anchor_x="center", anchor_y="center")
+
+        # Cancel button (Greenish / Wood)
+        arcade.draw_rect_filled(arcade.XYWH(cancel_x, btn_y, self.btn_w, self.btn_h), (50, 75, 45, 240))
+        arcade.draw_rect_outline(arcade.XYWH(cancel_x, btn_y, self.btn_w, self.btn_h), (110, 180, 110), 2)
+        arcade.draw_text("Cancel", cancel_x, btn_y, (240, 255, 240), 13, bold=True, anchor_x="center", anchor_y="center")
+
+    def handle_mouse_press(self, x, y):
+        """Separate handler specifically for SkipConfirmModal's buttons."""
+        if not self.visible:
+            return False
+
+        from .config import WIDTH, HEIGHT
+        cx, cy = WIDTH / 2, HEIGHT / 2
+        modal_h = 360
+        btn_y = cy - (modal_h / 2) + 38
+        skip_x = cx - 95
+        cancel_x = cx + 95
+
+        # Click Skip
+        if (skip_x - self.btn_w / 2 <= x <= skip_x + self.btn_w / 2) and \
+           (btn_y - self.btn_h / 2 <= y <= btn_y + self.btn_h / 2):
+            if self.on_confirm:
+                cb = self.on_confirm
+                self.close()
+                cb()
+            return True
+
+        # Click Cancel
+        if (cancel_x - self.btn_w / 2 <= x <= cancel_x + self.btn_w / 2) and \
+           (btn_y - self.btn_h / 2 <= y <= btn_y + self.btn_h / 2):
+            if self.on_cancel:
+                cb = self.on_cancel
+                self.close()
+                cb()
+            return True
+
+        return True  # Consume all other clicks so background elements aren't triggered

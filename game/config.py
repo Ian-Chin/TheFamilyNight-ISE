@@ -427,6 +427,11 @@ SOUND_FILES = {
     "phone_ring": ("phone-ring", "sound", 0.75),
     "phone_pickup": ("phone-pickup", "sound", 0.8),
     "door_slam": ("door-slam", "sound", 0.85),
+    "market_ambience": ("market-ambience", "music", 0.85),
+    "get_snatched": ("get-snatched", "sound", 0.75),
+    "ingredient_get": ("ingredient-get", "sound", 0.75),
+    "swing_sword": ("swing-sword", "sound", 0.75),
+    "block": ("block", "sound", 0.75)
 }
 STEP_INTERVAL = 0.32   # seconds between footsteps while walking
 # surface -> (clip, how many of Terry's steps one play of that clip covers).

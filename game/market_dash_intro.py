@@ -7,7 +7,8 @@ from .dialogue import DialogBox
 from .options import SettingsPanel
 from .pause import PauseMenu
 from .views import MenuView, StageView
-from .market_dash_common import BG_DIR, DialogueController
+from .market_dash_common import BG_DIR, DialogueController, cover_rect, SkipConfirmModal
+from .chao_widgets import TitleCard
 
 
 # ============================================================================
@@ -21,8 +22,14 @@ class StorySlideView(StageView):
         self.dialog = DialogBox()
         self.pause_menu = PauseMenu()
         self.settings_panel = SettingsPanel()
-        self.widgets = [self.dialog, self.pause_menu, self.settings_panel]
+        self.skip_modal = SkipConfirmModal()
+        self.title_card = TitleCard()
+        self.title_card_active = True
 
+        # Include title_card so relayout() initializes self.band!
+        self.widgets = [
+            self.dialog, self.pause_menu, self.settings_panel, self.title_card
+        ]
 
         self.slides = [
             # Fully asleep
@@ -82,16 +89,34 @@ class StorySlideView(StageView):
                     self.stop_typing_sound()
                     self.trigger_slide(self.current_slide + 1)
             else:
-                # Essential for picture-only slides to advance automatically and with keys
                 self.stop_typing_sound()
                 self.trigger_slide(self.current_slide + 1)
 
-        def do_skip():
-            self.cleanup_audio()
-            from .market_dash_stage import MarketStageView
-            self.window.show_view(MarketStageView())
+        def request_skip():
+            synopsis_text = (
+                "After an abrupt morning wake-up call from his cousin Dave, Terry realizes "
+                "with horror that the big family BBQ feast is today—and his fridge is empty!\n\n"
+                "With only six hours before his relatives arrive, Terry rushes to the local market "
+                "only to find it overwhelmed by crazed discount shoppers. He must navigate the aisles "
+                "to grab fresh vegetables and prime meats before they sell out!"
+            )
 
-        self.dialog_ctrl = DialogueController(do_advance, do_skip)
+            def do_confirm_skip():
+                self.cleanup_audio()
+                from .market_dash_stage import MarketStageView
+                self.window.show_view(MarketStageView())
+
+            def do_cancel():
+                pass  # Modal closes and slideshow continues normally
+
+            self.skip_modal.open(
+                on_confirm=do_confirm_skip,
+                on_cancel=do_cancel,
+                synopsis=synopsis_text,
+                title="SKIP INTRO STORY?"
+            )
+
+        self.dialog_ctrl = DialogueController(do_advance, request_skip)
         self.current_slide = 0
         self.current_texture = None
         self.typing_player = None
@@ -134,8 +159,9 @@ class StorySlideView(StageView):
             self.camera.viewport = self.stage.viewport()
         if hasattr(self, "ui_camera"):
             self.ui_camera.viewport = self.stage.viewport()
+        if hasattr(self, "title_card"):
+            self.title_card.layout(self.stage)
 
-        # Placed inside the bottom-right corner of the dialog box
         self.hint = self.stage.text(
             "Press Enter/Space to advance    Esc to pause",
             WIDTH - 80, 44, (200, 205, 215, 180), 12,
@@ -152,27 +178,23 @@ class StorySlideView(StageView):
         self.current_slide = index
         speaker, text, img_target = self.slides[index]
 
-        # --- Screen Shake & Looping Phone Ring ---
         # Slides 0 to 3 are the ringing sequence
-        if 0 <= index <= 3:
+        if 0 <= index <= 7:
             self.is_shaking = True
             self.shake_intensity = 6.0
             if not self.ring_player:
                 self.ring_player = audio.play("phone_ring", loop=True)
         else:
             self.is_shaking = False
-            # Stop the ringing once Terry picks up the receiver
             if self.ring_player:
                 audio.bank().stop(self.ring_player)
                 self.ring_player = None
 
-        # --- One-Shot Sound Triggers ---
-        if index == 7:  # Terry picks up the phone
+        if index == 7:  # Terry picks up phone
             audio.play("phone_pickup")
         elif index == len(self.slides) - 1:  # Door slams on exit
             audio.play("door_slam")
 
-        # --- Texture & Dialog Rendering ---
         if img_target:
             self.current_texture = arcade.load_texture(str(img_target))
 
@@ -192,7 +214,7 @@ class StorySlideView(StageView):
             self.typing_player = None
 
     def on_update(self, delta_time):
-        if self.pause_menu.visible or self.settings_panel.visible:
+        if self.pause_menu.visible or self.settings_panel.visible or self.skip_modal.visible:
             return
 
         if self.dialog.visible:
@@ -200,7 +222,6 @@ class StorySlideView(StageView):
             if not self.dialog.typing:
                 self.stop_typing_sound()
 
-        # Always tick the controller so picture-only slides advance
         self.dialog_ctrl.update(
             delta_time,
             is_dialog_visible=self.dialog.visible,
@@ -215,10 +236,20 @@ class StorySlideView(StageView):
         else:
             self.camera.position = (WIDTH / 2, HEIGHT / 2)
 
+        if self.title_card_active:
+            self.title_card.update(delta_time)
+            if self.title_card.finished:
+                self.title_card_active = False
+
     def on_draw(self):
         self.clear()
 
-        # 1. Background image (camera shake)
+        # Draw entering board over the first scene
+        if self.title_card_active:
+            self.window.default_camera.use()
+            self.title_card.draw()
+
+        # 1. Background image (with camera shake)
         self.camera.use()
         if self.current_texture:
             arcade.draw_texture_rect(
@@ -226,7 +257,7 @@ class StorySlideView(StageView):
                 arcade.XYWH(WIDTH / 2, HEIGHT / 2, WIDTH, HEIGHT)
             )
 
-        # 2. Dialog box & Hint in native screen space (prevents double transformation)
+        # 2. Dialog box & Hint in native screen space
         self.window.default_camera.use()
         if self.dialog.visible and getattr(self.dialog, "texture", None):
             self.dialog.draw()
@@ -242,7 +273,16 @@ class StorySlideView(StageView):
             self.pause_menu.draw()
         self.settings_panel.draw()
 
+        # 5. Skip confirmation modal (always on topmost layer)
+        self.skip_modal.draw()
+
     def on_key_press(self, key, modifiers):
+        # Prevent input if skip modal is active
+        if self.skip_modal.visible:
+            if key == arcade.key.ESCAPE:
+                self.skip_modal.close()
+            return
+
         if self.settings_panel.visible:
             if self.settings_panel.on_key_press(key) == "close":
                 self.settings_panel.close()
@@ -265,7 +305,7 @@ class StorySlideView(StageView):
                 self.dialog_ctrl.history_panel.toggle()
             return
 
-        # Direct progression with Space / Enter
+        # Advance slides
         if key in (arcade.key.ENTER, arcade.key.SPACE, arcade.key.NUM_ENTER):
             if self.dialog.visible:
                 if self.dialog.typing:
@@ -281,6 +321,11 @@ class StorySlideView(StageView):
     def on_mouse_press(self, x, y, button, modifiers):
         canvas_x, canvas_y = self.canvas_point(x, y)
 
+        # 1. Skip modal captures clicks first
+        if self.skip_modal.visible:
+            self.skip_modal.handle_mouse_press(canvas_x, canvas_y)
+            return
+
         if self.settings_panel.on_mouse_press(canvas_x, canvas_y, button):
             return
 
@@ -289,11 +334,11 @@ class StorySlideView(StageView):
             self.run_action(action)
             return
 
-        # 1. UI Control buttons (LOG, AUTO, SKIP) take priority
+        # 2. UI Control buttons (LOG, AUTO, SKIP)
         if self.dialog_ctrl.handle_mouse_press(canvas_x, canvas_y):
             return
 
-        # 2. Advance on left click
+        # 3. Advance dialogue on left click
         if button == arcade.MOUSE_BUTTON_LEFT and not self.pause_menu.visible:
             if self.dialog.visible:
                 if self.dialog.typing:
@@ -309,16 +354,6 @@ class StorySlideView(StageView):
     def on_mouse_scroll(self, x, y, scroll_x, scroll_y):
         self.dialog_ctrl.history_panel.on_mouse_scroll(scroll_y)
 
-    def run_action(self, action):
-        if action == "resume":
-            self.pause_menu.close()
-        elif action == "settings":
-            self.settings_panel.open()
-        elif action == "menu":
-            self.window.show_view(MenuView())
-        elif action == "quit":
-            self.window.close()
-
     def on_mouse_motion(self, x, y, dx, dy):
         canvas_x, canvas_y = self.canvas_point(x, y)
         self.pause_menu.on_mouse_motion(canvas_x, canvas_y)
@@ -329,31 +364,14 @@ class StorySlideView(StageView):
     def on_mouse_release(self, x, y, button, modifiers):
         self.settings_panel.on_mouse_release()
 
-    def on_mouse_press(self, x, y, button, modifiers):
-        canvas_x, canvas_y = self.canvas_point(x, y)
-
-        if self.settings_panel.on_mouse_press(canvas_x, canvas_y, button):
-            return
-
-        if self.pause_menu.visible:
-            action = self.pause_menu.on_mouse_press(canvas_x, canvas_y, button)
-            self.run_action(action)
-            return
-
-        # Check Dialogue Controls (Log, Auto, Skip)
-        if self.dialog.visible and self.dialog_ctrl.handle_mouse_press(canvas_x, canvas_y):
-            return
-
-        # Standard story progression
-        if button == arcade.MOUSE_BUTTON_LEFT and not self.pause_menu.visible:
-            if self.dialog.visible:
-                if self.dialog.typing:
-                    self.stop_typing_sound()
-                    self.dialog.advance()
-                else:
-                    self.stop_typing_sound()
-                    self.trigger_slide(self.current_slide + 1)
-            else:
-                self.stop_typing_sound()
-                self.trigger_slide(self.current_slide + 1)
-                
+    def run_action(self, action):
+        if action == "resume":
+            self.pause_menu.close()
+        elif action == "settings":
+            self.settings_panel.open()
+        elif action == "menu":
+            self.cleanup_audio()
+            self.window.show_view(MenuView())
+        elif action == "quit":
+            self.cleanup_audio()
+            self.window.close()

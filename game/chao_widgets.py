@@ -38,9 +38,13 @@ def place(stage, text, x, y):
 class TitleCard:
     """The scene title, drifting up out of a blur while Terry walks in."""
 
-    def __init__(self):
+    def __init__(self, kicker=None, title=None, tagline=None):
         self.clock = 0.0
         self.stage = None
+        # Default to Chao dinner constants if no custom strings are provided
+        self.kicker_text = kicker if kicker is not None else CHAO_TITLE_KICKER
+        self.title_text = title if title is not None else CHAO_TITLE
+        self.tagline_text = tagline if tagline is not None else CHAO_TITLE_TAGLINE
 
     @property
     def length(self):
@@ -90,18 +94,20 @@ class TitleCard:
             stage.px(WIDTH), stage.px(CHAO_TITLE_BAND_H)
         )
         center = dict(anchor_x="center", anchor_y="center")
+
+        # Use the stored text strings rather than the hardcoded constants
         self.kicker = stage.text(
-            CHAO_TITLE_KICKER, 0, 0, TEXT_HOVER, CHAO_KICKER_SIZE,
+            self.kicker_text, 0, 0, TEXT_HOVER, CHAO_KICKER_SIZE,
             bold=True, **center,
         )
         self.title_shadow = stage.text(
-            CHAO_TITLE, 0, 0, TEXT_SHADOW, CHAO_TITLE_SIZE, bold=True, **center,
+            self.title_text, 0, 0, TEXT_SHADOW, CHAO_TITLE_SIZE, bold=True, **center,
         )
         self.title = stage.text(
-            CHAO_TITLE, 0, 0, TEXT_BRIGHT, CHAO_TITLE_SIZE, bold=True, **center,
+            self.title_text, 0, 0, TEXT_BRIGHT, CHAO_TITLE_SIZE, bold=True, **center,
         )
         self.tagline = stage.text(
-            CHAO_TITLE_TAGLINE, 0, 0, TEXT_DIM, CHAO_TAGLINE_SIZE,
+            self.tagline_text, 0, 0, TEXT_DIM, CHAO_TAGLINE_SIZE,
             italic=True, **center,
         )
         self.kicker_half = self.kicker.content_width / stage.scale / 2
@@ -242,9 +248,11 @@ class QuestPanel:
 
     SHADOW = (0, 0, 0, 210)
 
-    def __init__(self):
+    def __init__(self, quests=None):
         self.stage = None
-        self.done = {key: False for key, *_ in CHAO_QUESTS}
+        # Use custom quests if provided; otherwise fallback to CHAO_QUESTS for teammate compatibility
+        self.quest_defs = quests if quests is not None else CHAO_QUESTS
+        self.done = {key: False for key, *_ in self.quest_defs}
         self.progress = {}   # key -> text shown after the note, like "1/4"
 
     def complete(self, key):
@@ -280,7 +288,7 @@ class QuestPanel:
         self.rule_y = top - 12
         self.rows = []
         row_top = top - 30
-        for key, title, note, optional in CHAO_QUESTS:
+        for key, title, note, optional in self.quest_defs:
             self.rows.append({
                 "key": key,
                 "marker": (CHAO_QUEST_RIGHT - CHAO_QUEST_MARKER, row_top),

@@ -12,18 +12,54 @@ from .audio import Footsteps
 from .sprites import Terry
 from .market_dash_common import (
     MARKET_WALK_BOUNDS, MARKET_OBSTACLES,
-    MARKET_STONE_AREAS, cover_rect
+    MARKET_STONE_AREAS
 )
+from .effects import WalkDust
+from .chao_widgets import TitleCard, QuestPanel, Portraits
 
 
 class MarketStageView(StageView):
     """Explorable market with 2 Red Exclamation zones and 1 Central Padlock defense zone."""
-
     def __init__(self, veg_done=False, meat_done=False, last_completed=None):
         super().__init__()
         self.veg_done = veg_done
         self.meat_done = meat_done
         self.defend_unlocked = self.veg_done and self.meat_done
+        self.ambience_player = None
+
+        # 1. Title Card on first entry
+        self.show_title_card = not (self.veg_done or self.meat_done)
+        self.title_card = TitleCard(
+            kicker="S C E N E   2",
+            title="Market Dash",
+            tagline="Gather and Defend Ingredients"
+        )
+
+        self.footsteps = Footsteps(MARKET_STONE_AREAS)
+        self.dust = WalkDust(MARKET_STONE_AREAS)
+        self.dialog = DialogBox()
+        self.pause_menu = PauseMenu()
+        self.settings_panel = SettingsPanel()
+
+        # 2. Market Quests
+        market_quests = (
+            ("veg", "Gather Vegetables", "Head to the vegetable stalls", False),
+            ("meat", "Gather Prime Meat", "Head to the meat deli counter", False),
+            ("defend", "Defend Ingredients", "Escape through checkout", False),
+        )
+
+        self.quests = QuestPanel(quests=market_quests)
+
+        if self.veg_done:
+            self.quests.complete("veg")
+
+        if self.meat_done:
+            self.quests.complete("meat")
+
+        if not self.defend_unlocked:
+            self.quests.set_progress("defend", "Locked")
+        else:
+            self.quests.set_progress("defend", "Unlocked!")
 
         self.near_veg = False
         self.near_meat = False
@@ -34,7 +70,7 @@ class MarketStageView(StageView):
 
         self.bg_texture = textures.background("market-dash/Scene 2.4 - market interior.jpg")
 
-        # Spawn coordinates strictly outside all shelf collision blocks
+        # 3. Calculate spawn coordinates FIRST
         if last_completed == "veg" or (self.veg_done and not self.meat_done):
             spawn_x, spawn_y = 1050, 75
         elif last_completed == "meat" or (self.meat_done and not self.veg_done):
@@ -44,17 +80,38 @@ class MarketStageView(StageView):
         else:
             spawn_x, spawn_y = 495, 180
 
+        # 4. Create Terry with the calculated coordinates
         self.terry = Terry(spawn_x, spawn_y, carrying=False)
         self.sprites = arcade.SpriteList()
         self.sprites.append(self.terry)
         self.sort_by_depth()
 
-        # --- Interactive Indicators ---
+        # 5. Portraits Setup
+        try:
+            self.terry_portrait = textures.character("terry-idle-1.png")
+        except Exception:
+            self.terry_portrait = self.terry.texture
+
+        try:
+            self.shopper_portrait = textures.character("Marcus(dad).png")
+        except Exception:
+            self.shopper_portrait = None
+
+        self.portraits = Portraits(self.terry_portrait)
+        self.current_speaker = None
+        self.current_partner = None
+
+        # 6. Register all widgets once
+        self.widgets = [
+            self.dialog, self.pause_menu, self.settings_panel,
+            self.title_card, self.quests, self.portraits
+        ]
+
+        # 7. Interactive Indicators
         self.indicators = arcade.SpriteList()
         exclamation_tex = textures.ui_image("Exclamation Mark Symbol.png")
         lock_tex = textures.ui_image("Lock Symbol.png")
 
-        # 1. Upper-Left Red Zone Marker (MEATS - Patio Walkway)
         self.meat_marker = arcade.Sprite(exclamation_tex, scale=0.20)
         self.meat_marker.center_x = 210
         self.meat_marker.base_y = 355
@@ -62,7 +119,6 @@ class MarketStageView(StageView):
         if not self.meat_done:
             self.indicators.append(self.meat_marker)
 
-        # 2. Bottom-Right Red Zone Marker (VEGETABLES - Between Fruit Bins)
         self.veg_marker = arcade.Sprite(exclamation_tex, scale=0.20)
         self.veg_marker.center_x = 1050
         self.veg_marker.base_y = 75
@@ -70,27 +126,18 @@ class MarketStageView(StageView):
         if not self.veg_done:
             self.indicators.append(self.veg_marker)
 
-        # 3. Center Green Zone Padlock
         self.defend_lock = arcade.Sprite(lock_tex, scale=0.22)
         self.defend_lock.center_x = 630
         self.defend_lock.base_y = 75
         self.defend_lock.center_y = self.defend_lock.base_y
         self.indicators.append(self.defend_lock)
 
-        # Padlock unlock animation state
         self.lock_animating = False
         self.lock_anim_timer = 0.0
 
-        # Stage dialogue handling
         self.stage_dialogue_queue = []
         self.stage_dialogue_callback = None
         self.stage_dialogue_bg = None
-
-        self.footsteps = Footsteps(MARKET_STONE_AREAS)
-        self.dialog = DialogBox()
-        self.pause_menu = PauseMenu()
-        self.settings_panel = SettingsPanel()
-        self.widgets = [self.dialog, self.pause_menu, self.settings_panel]
 
         self.camera = arcade.camera.Camera2D(
             position=(WIDTH / 2, HEIGHT / 2),
@@ -99,6 +146,18 @@ class MarketStageView(StageView):
         )
         self.relayout()
 
+    def start_ambience(self):
+        """Starts looping market_ambience if not already playing."""
+        if getattr(self, "ambience_player", None) is None:
+            try:
+                if hasattr(audio, "play_music"):
+                    audio.play_music("market_ambience", loop=True)
+                    self.ambience_player = "market_ambience"
+                else:
+                    self.ambience_player = audio.play("market_ambience", loop=True)
+            except Exception:
+                self.ambience_player = None
+
     def sort_by_depth(self):
         self.sprites.sort(key=lambda sprite: -sprite.ground_y)
 
@@ -106,6 +165,12 @@ class MarketStageView(StageView):
         super().relayout()
         if hasattr(self, "camera"):
             self.camera.viewport = self.stage.viewport()
+        if hasattr(self, "title_card"):
+            self.title_card.layout(self.stage)
+        if hasattr(self, "quests"):
+            self.quests.layout(self.stage)
+        if hasattr(self, "portraits"):
+            self.portraits.layout(self.stage)
         self.hint = self.stage.text(
             "WASD to move    Space to jump    Esc to pause",
             WIDTH / 2, 26, (238, 240, 246), 14,
@@ -115,6 +180,10 @@ class MarketStageView(StageView):
     def on_show_view(self):
         self.held.clear()
         self.relayout()
+        self.start_ambience()
+        
+    def on_hide_view(self):
+        self.stop_ambience()
 
     def trigger_stage_dialogue(self, lines, on_finish):
         self.stage_dialogue_queue = list(lines)
@@ -126,10 +195,17 @@ class MarketStageView(StageView):
             item = self.stage_dialogue_queue.pop(0)
             speaker, text = item[0], item[1]
             self.stage_dialogue_bg = item[2] if len(item) > 2 else None
+
+            # Highlight Terry when he speaks, dim him when the shopper shouts
+            self.current_speaker = "left" if speaker == "Terry" else "right"
+            self.current_partner = None
+
             self.dialog.open(speaker, text)
         else:
             self.dialog.close()
             self.stage_dialogue_bg = None
+            self.current_speaker = None
+            self.current_partner = None
             if self.stage_dialogue_callback:
                 cb = self.stage_dialogue_callback
                 self.stage_dialogue_callback = None
@@ -146,7 +222,6 @@ class MarketStageView(StageView):
         if self.lock_animating:
             self.lock_anim_timer -= delta_time
 
-            # When animation finishes completely -> Open Dialogue
             if self.lock_anim_timer <= 0:
                 self.lock_animating = False
                 self.defend_lock.alpha = 0
@@ -169,6 +244,7 @@ class MarketStageView(StageView):
                 ]
 
                 def start_defend_game():
+                    self.stop_ambience()
                     from .market_dash_catch import MarketCatchView
                     self.window.show_view(MarketCatchView(mode="defend", veg_done=self.veg_done, meat_done=self.meat_done))
 
@@ -208,10 +284,15 @@ class MarketStageView(StageView):
         self.terry.update_movement(
             delta_time, dx, dy, MARKET_WALK_BOUNDS, MARKET_OBSTACLES
         )
+        
+        moving = bool(dx or dy) and not self.terry.jumping
         self.footsteps.update(
-            delta_time, bool(dx or dy) and not self.terry.jumping,
-            self.terry.center_x, self.terry.ground_y
+            delta_time, moving, self.terry.center_x, self.terry.ground_y
         )
+
+        feet_y = self.terry.ground_y - abs(self.terry.height) / 2
+        self.dust.update(delta_time, moving, self.terry.center_x, feet_y, dx, dy)
+
         if dy:
             self.sort_by_depth()
 
@@ -252,6 +333,11 @@ class MarketStageView(StageView):
             if not self.veg_done:
                 self.veg_marker.alpha = 255
 
+        if self.show_title_card:
+            self.title_card.update(delta_time)
+            if self.title_card.finished:
+                self.show_title_card = False
+
     def on_draw(self):
         self.clear()
 
@@ -266,6 +352,8 @@ class MarketStageView(StageView):
         if not (self.dialog.visible and self.stage_dialogue_bg):
             for character in self.sprites:
                 character.draw_shadow()
+            
+            self.dust.draw()
             self.sprites.draw(pixelated=True)
             self.indicators.draw(pixelated=True)
 
@@ -273,6 +361,28 @@ class MarketStageView(StageView):
         self.window.default_camera.use()
         self.hint.draw()
 
+        # Smoked plate lowered to enclose all 3 quest items
+        plate_w = 255
+        plate_h = 173
+        plate_x = WIDTH - (plate_w / 2) - 12
+        plate_y = HEIGHT - 160
+
+        arcade.draw_rect_filled(arcade.XYWH(plate_x, plate_y, plate_w, plate_h), (12, 10, 14, 215))
+        arcade.draw_rect_outline(arcade.XYWH(plate_x, plate_y, plate_w, plate_h), (180, 140, 90, 160), 2)
+        self.quests.draw()
+
+        if self.show_title_card:
+            self.title_card.draw()
+
+        # Draw Terry's portrait whenever dialogue is active
+        if self.dialog.visible and self.current_speaker:
+            self.portraits.draw(partner=None, speaking=self.current_speaker)
+
+        # Draw the dialogue box over his feet
+        if self.dialog.visible and getattr(self.dialog, "texture", None):
+            self.dialog.draw()
+
+        # Draw the Dialogue Box over the portraits' bottom edges
         if self.dialog.visible and getattr(self.dialog, "texture", None):
             self.dialog.draw()
 
@@ -309,12 +419,14 @@ class MarketStageView(StageView):
 
             if self.near_meat and not self.meat_done:
                 self.held.clear()
+                self.stop_ambience()
                 audio.play("ui_click")
                 self.window.show_view(MarketCatchView(mode="meat", veg_done=self.veg_done, meat_done=self.meat_done))
                 return
 
             if self.near_veg and not self.veg_done:
                 self.held.clear()
+                self.stop_ambience()
                 audio.play("ui_click")
                 self.window.show_view(MarketCatchView(mode="veg", veg_done=self.veg_done, meat_done=self.meat_done))
                 return
@@ -365,7 +477,19 @@ class MarketStageView(StageView):
         elif action == "settings":
             self.settings_panel.open()
         elif action == "menu":
+            self.stop_ambience()
             from .views import MenuView
             self.window.show_view(MenuView())
         elif action == "quit":
+            self.stop_ambience()
             self.window.close()
+
+    def stop_ambience(self):
+        try:
+            if hasattr(audio, "stop_music"):
+                audio.stop_music()
+            elif getattr(self, "ambience_player", None) is not None:
+                audio.stop(self.ambience_player)
+        except Exception:
+            pass
+        self.ambience_player = None

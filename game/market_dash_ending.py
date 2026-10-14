@@ -23,13 +23,17 @@ class MarketEndingView(StageView):
         self.settings_panel = SettingsPanel()
         self.widgets = [self.dialog, self.pause_menu, self.settings_panel]
 
-        # Dialogue state flags
         self.in_wave_dialogue = False
+        self.dialogue_bg = None  # Holds the current scene cutscene image
+
+        # Pass the background/cutscene texture as the 3rd tuple element
+        end_scene = textures.background("market-dash/Scene 3 - returning home.jpg")
+
         self.dialogue_queue = [
-            ("Terry", "Pant... pant... I actually made it through the checkout doors!"),
-            ("Terry", "Every single ingredient for tonight's dinner survived unscratched!"),
-            ("Terry", "The family is going to love this BBQ feast."),
-            ("Terry", "Let's hurry home before it gets dark!"),
+            ("Terry", "Pant... pant... I actually made it through the checkout doors!", None),
+            ("Terry", "Every single ingredient for tonight's dinner survived unscratched!", None),
+            ("Terry", "The family is going to love this BBQ feast.", end_scene),
+            ("Terry", "Let's hurry home before it gets dark!", end_scene),
         ]
 
         def end_advance():
@@ -54,7 +58,9 @@ class MarketEndingView(StageView):
     def on_show_view(self):
         self.in_wave_dialogue = True
         if self.dialogue_queue:
-            speaker, text = self.dialogue_queue.pop(0)
+            item = self.dialogue_queue.pop(0)
+            speaker, text = item[0], item[1]
+            self.dialogue_bg = item[2] if len(item) > 2 else None
             self.dialog.open(speaker, text)
             self.dialog_ctrl.record(speaker, text)
 
@@ -65,11 +71,14 @@ class MarketEndingView(StageView):
 
     def advance_dialogue(self):
         if self.dialogue_queue:
-            speaker, text = self.dialogue_queue.pop(0)
+            item = self.dialogue_queue.pop(0)
+            speaker, text = item[0], item[1]
+            self.dialogue_bg = item[2] if len(item) > 2 else None
             self.dialog.open(speaker, text)
             self.dialog_ctrl.record(speaker, text)
         else:
             self.dialog.close()
+            self.dialogue_bg = None
             self.in_wave_dialogue = False
             self.finish_scene()
 
@@ -94,25 +103,30 @@ class MarketEndingView(StageView):
     def on_draw(self):
         self.clear()
 
-        # 1. Background illustration in camera space
+        # 1. Background image in camera space
         self.camera.use()
-        if self.bg_texture:
+        if self.in_wave_dialogue and self.dialogue_bg:
+            arcade.draw_texture_rect(
+                self.dialogue_bg,
+                arcade.XYWH(WIDTH / 2, HEIGHT / 2, WIDTH, HEIGHT)
+            )
+        elif self.bg_texture:
             arcade.draw_texture_rect(
                 self.bg_texture,
                 arcade.XYWH(WIDTH / 2, HEIGHT / 2, WIDTH, HEIGHT)
             )
 
-        # 2. Dialogue in screen space
+        # 2. Dialogue Box (Screen Space)
         self.window.default_camera.use()
-        if self.dialog.visible and getattr(self.dialog, "texture", None):
+        if self.dialog.visible:
             self.dialog.draw()
 
-        # 3. Canvas buttons (Log, Auto, Skip)
-        self.camera.use()
-        if self.dialog.visible:
-            self.dialog_ctrl.draw()
+        # # 3. Dialogue Controls (Auto, Skip, Log buttons)
+        # self.camera.use()
+        # if self.dialog.visible:
+        #     self.dialog_ctrl.draw()
 
-        # 4. Modals
+        # 3. Modals / Pause Menus
         self.window.default_camera.use()
         if not self.settings_panel.visible:
             self.pause_menu.draw()
@@ -138,8 +152,7 @@ class MarketEndingView(StageView):
 
     def on_mouse_press(self, x, y, button, modifiers):
         canvas_x, canvas_y = self.canvas_point(x, y)
-        if self.dialog_ctrl.handle_mouse_press(canvas_x, canvas_y):
-            return
+
         if self.settings_panel.on_mouse_press(canvas_x, canvas_y, button):
             return
         if self.pause_menu.visible:
@@ -152,6 +165,7 @@ class MarketEndingView(StageView):
             else:
                 self.advance_dialogue()
 
+                
     def run_action(self, action):
         if action == "resume":
             self.pause_menu.close()

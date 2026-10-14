@@ -31,6 +31,7 @@ class MarketCatchView(StageView):
         self.mode = mode  # 'veg', 'meat', or 'defend'
         self.veg_done = veg_done
         self.meat_done = meat_done
+        self.completed = False
 
         self.bg_texture = textures.background("market-dash/Scene 2.5 - game background.jpg")
 
@@ -43,6 +44,7 @@ class MarketCatchView(StageView):
         # Duration: 30s for gathering, 45s for defend
         self.duration = 45.0 if self.mode == "defend" else 30.0
         self.time_left = self.duration
+
         # HP, Heart animation, and Damage Flash variables
         self.max_lives = 3
         self.lives = self.max_lives
@@ -51,7 +53,7 @@ class MarketCatchView(StageView):
         self.heart_anim_state = 0
         self.breaking_idx = -1
 
-        # Setup Heart sprites using teammate's Character_HP asset
+        # Setup Heart sprites
         self.hearts = arcade.SpriteList()
         hp_start_x = PLAY_LEFT + 28
         hp_y = HEIGHT - 32
@@ -64,18 +66,18 @@ class MarketCatchView(StageView):
         self.ingredient_spawn_timer = 0.0
         self.snatcher_spawn_timer = 0.0
 
-        # Terry Spin Mechanics
+        # Terry Spin Mechanics (Defend mode)
         self.spinning = False
         self.spin_timer = 0.0
         self.spin_angle = 180.0
 
-        # Load Terry Sprites
-        # Terry Block & Sprint Mechanics (for gathering and defense)
+        # Terry Block & Speed Boost Mechanics
         self.blocking = False
         self.block_timer = 0.0
-
-        self.sprint_cooldown = 0.0
-        self.sprint_distance = 140.0
+        self.block_duration = 0.45  # Increased slightly for comfortable parry timing
+        self.base_speed = 10.0
+        self.boost_speed = 17.0
+        self.speed_boosted = False
 
         # Load Terry Sprites
         tex_without_fish = arcade.load_texture(str(TERRY_GAME_DIR / "sprite without fish.png"))
@@ -88,15 +90,13 @@ class MarketCatchView(StageView):
 
         active_tex = self.terry_tex_defend if self.mode == "defend" else self.terry_tex_normal
         self.player = arcade.Sprite(active_tex, scale=0.15)
-        self.player.angle = 180
+        self.player.angle = 180  
         self.player.center_x = (PLAY_LEFT + PLAY_RIGHT) / 2
         self.player.center_y = 80
         self.player_move_dir = 0
-        self.last_move_dir = 1  # Track facing direction for sprint
         self.player_list = arcade.SpriteList()
         self.player_list.append(self.player)
 
-        # Load Ingredients
         # Load Ingredients
         self.all_ingredients = {}
         for f in sorted(list(INGREDIENTS_BASE_DIR.glob("*.png"))):
@@ -107,18 +107,16 @@ class MarketCatchView(StageView):
         veg_names = ["Cabbage", "Carrot", "Eggplant", "Green Pepperbell", "Onion"]
         meat_names = ["Beef Steak", "Angus Beef Steak", "Mackerel", "Raw Lamb Steak", "Egg"]
 
-        # Filter against available files in the directory
         self.veg_keys = [k for k in veg_names if k in self.all_ingredients][:5]
         self.meat_keys = [k for k in meat_names if k in self.all_ingredients][:5]
 
-        # Fallback if names differ slightly
+        # Fallback if filenames differ slightly
         if not self.veg_keys or not self.meat_keys:
             all_keys = list(self.all_ingredients.keys())
             half = len(all_keys) // 2
             self.veg_keys = all_keys[:half]
             self.meat_keys = all_keys[half:]
 
-        # Assign active keys according to mode
         if self.mode == "meat":
             self.active_keys = self.meat_keys
         elif self.mode == "veg":
@@ -127,7 +125,6 @@ class MarketCatchView(StageView):
             self.active_keys = []
 
         self.collected_status = {k: False for k in self.active_keys}
-
 
         # Load Snatchers
         self.snatcher_types = []
@@ -195,7 +192,7 @@ class MarketCatchView(StageView):
                 spawn_x = get_separated_x(list(self.items_list) + list(self.snatchers_list))
                 self.snatchers_list.append(SnatcherSprite(falls, grabs, initial_x=spawn_x))
         else:
-            # Defend mode (mackerel spin)
+            # Defend mode
             for _ in range(6):
                 falls, grabs = random.choice(self.snatcher_types)
                 spawn_x = get_separated_x(self.snatchers_list)
@@ -210,7 +207,7 @@ class MarketCatchView(StageView):
         speaker, text = item[0], item[1]
         img = item[2] if len(item) > 2 else None
 
-        if img and Path(img).exists():
+        if img and Path(str(img)).exists():
             self.dialogue_bg = arcade.load_texture(str(img))
         else:
             self.dialogue_bg = None
@@ -224,7 +221,7 @@ class MarketCatchView(StageView):
             speaker, text = item[0], item[1]
             img = item[2] if len(item) > 2 else None
 
-            if img and Path(img).exists():
+            if img and Path(str(img)).exists():
                 self.dialogue_bg = arcade.load_texture(str(img))
             else:
                 self.dialogue_bg = None
@@ -279,13 +276,16 @@ class MarketCatchView(StageView):
             return
 
         # 1. Timer countdown
-        self.time_left -= delta_time
-        if self.time_left <= 0:
-            if self.mode in ("veg", "meat") and not all(self.collected_status.values()):
-                self.show_retry_prompt()
-            else:
-                self.complete_game_mode()
-            return
+        if not self.completed:
+            self.time_left -= delta_time
+            if self.time_left <= 0:
+                self.time_left = 0
+                if self.mode in ("veg", "meat") and not all(self.collected_status.values()):
+                    self.show_retry_prompt()
+                else:
+                    self.completed = True
+                    self.complete_game_mode()
+                return
 
         # 2. Player Movement & Spinning
         if self.spinning:
@@ -309,12 +309,9 @@ class MarketCatchView(StageView):
             if not self.spinning:
                 self.player.texture = self.terry_tex_defend if self.mode == "defend" else self.terry_tex_normal
 
-        # Sprint cooldown tick
-        if self.sprint_cooldown > 0:
-            self.sprint_cooldown = max(0.0, self.sprint_cooldown - delta_time)
-
-        # Standard movement
-        self.player.center_x += self.player_move_dir * 10.0
+        # Movement with Shift speed boost
+        current_speed = self.boost_speed if self.speed_boosted else self.base_speed
+        self.player.center_x += self.player_move_dir * current_speed
         self.player.center_x = max(PLAY_LEFT + 40, min(PLAY_RIGHT - 40, self.player.center_x))
 
         # 3. Dynamic Hazard & Ingredient Spawning
@@ -349,11 +346,14 @@ class MarketCatchView(StageView):
                     item.reset_pos(existing_list=self.items_list)
 
             if arcade.check_for_collision(self.player, item):
-                audio.play("ui_click")
+                audio.play("ingredient_get") # check
                 self.collected_status[item.item_name] = True
                 item.remove_from_sprite_lists()
 
-                if all(self.collected_status[k] for k in self.active_keys):
+                if all(self.collected_status[k] for k in self.active_keys) and not self.completed:
+                    self.completed = True
+                    self.items_list.clear()
+                    self.snatchers_list.clear()
                     self.complete_game_mode()
                     return
 
@@ -368,11 +368,24 @@ class MarketCatchView(StageView):
                     all_entities = list(self.items_list) + [s for s in self.snatchers_list if s != snatcher]
                     snatcher.reset_pos(existing_list=all_entities)
 
-            if not snatcher.knocked_out and arcade.check_for_collision(self.player, snatcher):
-                if self.spinning or self.blocking:
+            if not snatcher.knocked_out:
+                # Calculate distance between player and snatcher
+                dist_x = abs(self.player.center_x - snatcher.center_x)
+                dist_y = abs(self.player.center_y - snatcher.center_y)
+                is_colliding = arcade.check_for_collision(self.player, snatcher)
+
+                # Match these thresholds to your expanded shield_radius
+                if self.blocking and (is_colliding or (dist_x < 75 and dist_y < 85)):
+                    audio.play("block")
+                    snatcher.trigger_knockout(self.player.center_x)
+
+                # Spin attack in defend mode
+                elif self.spinning and is_colliding:
                     audio.play("ui_click")
                     snatcher.trigger_knockout(self.player.center_x)
-                else:
+
+                # Unblocked hit
+                elif is_colliding:
                     self.take_damage()
                     all_entities = list(self.items_list) + [s for s in self.snatchers_list if s != snatcher]
                     snatcher.reset_pos(existing_list=all_entities)
@@ -390,9 +403,7 @@ class MarketCatchView(StageView):
             ]
             def to_stage():
                 from .market_dash_stage import MarketStageView
-                self.window.show_view(
-                    MarketStageView(veg_done=True, meat_done=self.meat_done, last_completed="veg")
-                )
+                self.window.show_view(MarketStageView(veg_done=True, meat_done=self.meat_done, last_completed="veg"))
             self.trigger_wave_dialogue(dialogue, to_stage)
 
         elif self.mode == "meat":
@@ -403,12 +414,19 @@ class MarketCatchView(StageView):
             ]
             def to_stage():
                 from .market_dash_stage import MarketStageView
-                self.window.show_view(
-                    MarketStageView(veg_done=self.veg_done, meat_done=True, last_completed="meat")
-                )
+                self.window.show_view(MarketStageView(veg_done=self.veg_done, meat_done=True, last_completed="meat"))
             self.trigger_wave_dialogue(dialogue, to_stage)
 
-            
+        elif self.mode == "defend":
+            dialogue = [
+                ("Terry", "I dodged them all! The last of the mob finally gave up chasing!"),
+                ("Terry", "My basket survived unscratched! Let's get out of here!"),
+            ]
+            def to_ending():
+                from .market_dash_ending import MarketEndingView
+                self.window.show_view(MarketEndingView())
+            self.trigger_wave_dialogue(dialogue, to_ending)
+
     def on_draw(self):
         self.clear()
 
@@ -424,6 +442,13 @@ class MarketCatchView(StageView):
             self.items_list.draw()
             self.snatchers_list.draw()
             self.player_list.draw()
+
+            # Visual shield aura while Terry is actively blocking
+            if self.blocking and self.mode in ("veg", "meat"):
+                cx, cy = self.player.center_x, self.player.center_y + 10
+                shield_radius = 65
+                arcade.draw_circle_filled(cx, cy, shield_radius, (160, 230, 255, 60))
+                arcade.draw_circle_outline(cx, cy, shield_radius, (130, 220, 255, 220), border_width=3)
 
             # Progress Bar Plaque
             progress = max(0.0, min(1.0, self.time_left / self.duration))
@@ -493,12 +518,12 @@ class MarketCatchView(StageView):
             # --- Bottom Key Hints ---
             if self.mode in ("veg", "meat"):
                 arcade.draw_text(
-                    "Left Click: Block   |   Right Click: Sprint Dash",
+                    "Left Click: Block   |   Hold Shift: Speed Boost",
                     WIDTH / 2 - 40, 25, (255, 235, 175), 13, anchor_x="center", bold=True
                 )
             elif self.mode == "defend":
                 arcade.draw_text(
-                    "Left Click: Spin & Defend   |   Right Click: Sprint Dash",
+                    "Left Click: Spin & Defend   |   Hold Shift: Speed Boost",
                     WIDTH / 2 - 40, 25, (255, 230, 140), 13, anchor_x="center", bold=True
                 )
 
@@ -508,22 +533,16 @@ class MarketCatchView(StageView):
             flash_rect = arcade.XYWH(self.window.width / 2, self.window.height / 2, self.window.width, self.window.height)
             arcade.draw_rect_filled(flash_rect, (255, 30, 30, int(self.damage_alpha)))
 
-        # 3. Dialogue & Dialogue Controls
-        if self.in_wave_dialogue and self.dialog.visible and getattr(self.dialog, "texture", None):
-            self.dialog.draw()
-
-        self.camera.use()
+        # 3. Dialogue & Dialogue Controls (Screen Space)
         if self.in_wave_dialogue and self.dialog.visible:
-            self.dialog_ctrl.draw()
+            self.dialog.draw()
 
         # 4. Modals (Retry & Pause)
         self.retry_modal.draw()
 
-        self.window.default_camera.use()
         if not self.settings_panel.visible:
             self.pause_menu.draw()
         self.settings_panel.draw()
-
 
     def on_key_press(self, key, modifiers):
         if self.retry_modal.visible:
@@ -550,10 +569,17 @@ class MarketCatchView(StageView):
             self.pause_menu.open()
             return
 
+        # Shift speed boost
+        if key in (arcade.key.LSHIFT, arcade.key.RSHIFT):
+            self.speed_boosted = True
+
         self.held.add(key)
         self.update_movement()
 
     def on_key_release(self, key, modifiers):
+        if key in (arcade.key.LSHIFT, arcade.key.RSHIFT):
+            self.speed_boosted = False
+
         self.held.discard(key)
         self.update_movement()
 
@@ -561,8 +587,6 @@ class MarketCatchView(StageView):
         dx = (arcade.key.D in self.held or arcade.key.RIGHT in self.held) - \
              (arcade.key.A in self.held or arcade.key.LEFT in self.held)
         self.player_move_dir = dx
-        if dx != 0:
-            self.last_move_dir = dx
 
     def on_mouse_press(self, x, y, button, modifiers):
         canvas_x, canvas_y = self.canvas_point(x, y)
@@ -571,8 +595,6 @@ class MarketCatchView(StageView):
             return
 
         if self.in_wave_dialogue:
-            if self.dialog_ctrl.handle_mouse_press(canvas_x, canvas_y):
-                return
             if button == arcade.MOUSE_BUTTON_LEFT:
                 if self.dialog.typing:
                     self.dialog.advance()
@@ -582,31 +604,20 @@ class MarketCatchView(StageView):
 
         if self.settings_panel.on_mouse_press(canvas_x, canvas_y, button):
             return
-        
         if self.pause_menu.visible:
             self.run_action(self.pause_menu.on_mouse_press(canvas_x, canvas_y, button))
             return
 
-        # --- LEFT CLICK: BLOCK (or Spin in defend mode) ---
         if button == arcade.MOUSE_BUTTON_LEFT:
             if self.mode == "defend" and not self.spinning:
-                audio.play("ui_click")
+                audio.play("swing_sword")
                 self.spinning = True
                 self.spin_timer = 0.35
-            elif not self.blocking:
-                audio.play("ui_click")
+            elif self.mode in ("veg", "meat") and not self.blocking:
+                audio.play("block")
                 self.blocking = True
-                self.block_timer = 0.35
+                self.block_timer = self.block_duration
 
-        # --- RIGHT CLICK: SPRINT DASH ---
-        if button == arcade.MOUSE_BUTTON_RIGHT and self.sprint_cooldown <= 0:
-            audio.play("ui_click")
-            self.sprint_cooldown = 0.60
-            
-            # Dash direction based on currently held key, or last moved direction
-            dash_dir = self.player_move_dir if self.player_move_dir != 0 else self.last_move_dir
-            self.player.center_x += dash_dir * self.sprint_distance
-            self.player.center_x = max(PLAY_LEFT + 40, min(PLAY_RIGHT - 40, self.player.center_x))
 
     def on_mouse_motion(self, x, y, dx, dy):
         self.pause_menu.on_mouse_motion(*self.canvas_point(x, y))
@@ -625,9 +636,9 @@ class MarketCatchView(StageView):
     def take_damage(self):
         if self.lives <= 0:
             return
-        audio.play("ui_click")
+        audio.play("get_snatched")
         self.lives -= 1
-        self.damage_alpha = 140.0  # Triggers the red screen flash
+        self.damage_alpha = 140.0
 
         # Target the lost heart
         self.breaking_idx = self.lives
