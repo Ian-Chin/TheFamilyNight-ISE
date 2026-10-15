@@ -244,6 +244,12 @@ class StorySlideView(StageView):
     def on_draw(self):
         self.clear()
 
+        # 1. Use the virtual canvas camera (1280x720) so canvas_x/canvas_y match 1:1
+        if hasattr(self, "camera"):
+            self.camera.use()
+        elif hasattr(self, "stage"):
+            self.stage.use()
+
         # Draw entering board over the first scene
         if self.title_card_active:
             self.window.default_camera.use()
@@ -275,6 +281,11 @@ class StorySlideView(StageView):
 
         # 5. Skip confirmation modal (always on topmost layer)
         self.skip_modal.draw()
+
+        if self.pause_menu.visible:
+            self.pause_menu.draw()
+        if self.settings_panel.visible:
+            self.settings_panel.draw()
 
     def on_key_press(self, key, modifiers):
         # Prevent input if skip modal is active

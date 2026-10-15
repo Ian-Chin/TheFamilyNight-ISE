@@ -8,7 +8,8 @@ from .dialogue import DialogBox
 from .options import SettingsPanel
 from .pause import PauseMenu
 from .views import MenuView, StageView
-from .market_dash_common import DialogueController, cover_rect
+from .market_dash_common import DialogueController
+from game.bumpy_bus import BumpyBusView
 
 
 class MarketEndingView(StageView):
@@ -83,9 +84,7 @@ class MarketEndingView(StageView):
             self.finish_scene()
 
     def finish_scene(self):
-        # Route back to menu or forward to the next scene (e.g. BBQ prep)
-        from .views import MenuView
-        self.window.show_view(MenuView())
+        self.window.show_view(BumpyBusView())
 
     def on_update(self, delta_time):
         if self.pause_menu.visible or self.settings_panel.visible:

@@ -30,7 +30,7 @@ class MarketStageView(StageView):
         # 1. Title Card on first entry
         self.show_title_card = not (self.veg_done or self.meat_done)
         self.title_card = TitleCard(
-            kicker="S C E N E   2",
+            kicker="S C E N E   1",
             title="Market Dash",
             tagline="Gather and Defend Ingredients"
         )
@@ -240,7 +240,7 @@ class MarketStageView(StageView):
                         textures.background("market-dash/fish obtained.jpg")
                     ),
                     ("Terry", "Mum’s going to kill me when she finds out I used dinner as a blunt weapon..."),
-                    ("Terry", "No choice now. En garde, bargain hunters!")
+                    ("Terry", "No choice now.")
                 ]
 
                 def start_defend_game():
@@ -361,26 +361,24 @@ class MarketStageView(StageView):
         self.window.default_camera.use()
         self.hint.draw()
 
-        # Smoked plate lowered to enclose all 3 quest items
-        plate_w = 255
-        plate_h = 173
-        plate_x = WIDTH - (plate_w / 2) - 12
-        plate_y = HEIGHT - 160
+        # Only draw the quest checklist when Terry is walking around (hide during dialogue & menus)
+        if not self.dialog.visible and not self.pause_menu.visible and not self.settings_panel.visible:
+            # Sized and anchored directly to the top-right corner where QuestPanel renders
+            plate_w = 345
+            plate_h = 240
+            plate_x = self.window.width - (plate_w / 2) - 12
+            plate_y = self.window.height - (plate_h / 2) - 155
 
-        arcade.draw_rect_filled(arcade.XYWH(plate_x, plate_y, plate_w, plate_h), (12, 10, 14, 215))
-        arcade.draw_rect_outline(arcade.XYWH(plate_x, plate_y, plate_w, plate_h), (180, 140, 90, 160), 2)
-        self.quests.draw()
+            arcade.draw_rect_filled(arcade.XYWH(plate_x, plate_y, plate_w, plate_h), (12, 10, 14, 215))
+            arcade.draw_rect_outline(arcade.XYWH(plate_x, plate_y, plate_w, plate_h), (180, 140, 90, 160), 2)
+            self.quests.draw()
 
         if self.show_title_card:
             self.title_card.draw()
 
-        # Draw Terry's portrait whenever dialogue is active
+        # Render Character Avatars above the dialogue box
         if self.dialog.visible and self.current_speaker:
-            self.portraits.draw(partner=None, speaking=self.current_speaker)
-
-        # Draw the dialogue box over his feet
-        if self.dialog.visible and getattr(self.dialog, "texture", None):
-            self.dialog.draw()
+            self.portraits.draw(partner=self.current_partner, speaking=self.current_speaker)
 
         # Draw the Dialogue Box over the portraits' bottom edges
         if self.dialog.visible and getattr(self.dialog, "texture", None):

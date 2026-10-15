@@ -97,7 +97,7 @@ class DialogueHistoryPanel:
         if not self.visible:
             return
 
-        panel_w = 980
+        panel_w = 1000
         panel_h = 520
         cx = WIDTH / 2
         cy = HEIGHT / 2
@@ -213,30 +213,18 @@ class DialogueController:
         return False
 
 class RetryModal:
-    """Confirmation modal shown when Terry fails an ingredient or defense mini-game."""
+    """Centered confirmation modal for minigame retry/give-up."""
     def __init__(self):
         self.visible = False
-        self.title = "WAVE FAILED!"
-        self.message = "You lost all lives! Try again?"
+        self.title = "FAILED!"
+        self.message = "Would you like to try again or return to market?"
         self.on_retry = None
         self.on_give_up = None
 
-        # Modal Dimensions
-        self.w = 420
-        self.h = 220
-        self.cx = WIDTH / 2
-        self.cy = HEIGHT / 2
-
-        # Buttons (Canvas Space)
-        btn_y = self.cy - 45
-        self.btn_retry = {"id": "retry", "label": "TRY AGAIN", "x": self.cx - 95, "y": btn_y, "w": 140, "h": 40}
-        self.btn_give_up = {"id": "give_up", "label": "GIVE UP", "x": self.cx + 95, "y": btn_y, "w": 140, "h": 40}
-        self.buttons = [self.btn_retry, self.btn_give_up]
-
-    def open(self, on_retry_cb, on_give_up_cb, title="CHALLENGE FAILED!", message="Would you like to try again?"):
+    def open(self, on_retry, on_give_up, title="FAILED!", message="Would you like to try again or return to market?"):
         self.visible = True
-        self.on_retry = on_retry_cb
-        self.on_give_up = on_give_up_cb
+        self.on_retry = on_retry
+        self.on_give_up = on_give_up
         self.title = title
         self.message = message
 
@@ -247,161 +235,200 @@ class RetryModal:
         if not self.visible:
             return
 
-        # Dimmed backdrop
-        arcade.draw_rect_filled(arcade.XYWH(self.cx, self.cy, WIDTH, HEIGHT), (0, 0, 0, 160))
+        window = arcade.get_window()
 
-        # Main frame
-        arcade.draw_rect_filled(arcade.XYWH(self.cx, self.cy, self.w, self.h), (35, 24, 18, 250))
-        arcade.draw_rect_filled(arcade.XYWH(self.cx, self.cy, self.w - 8, self.h - 8), (70, 46, 32, 255))
-        arcade.draw_rect_outline(arcade.XYWH(self.cx, self.cy, self.w, self.h), (195, 140, 80), 3)
+        # 1. Full-screen dimmer overlay
+        arcade.draw_rect_filled(
+            arcade.XYWH(window.width / 2, window.height / 2, window.width, window.height),
+            (0, 0, 0, 185)
+        )
 
-        # Texts
-        arcade.draw_text(self.title, self.cx, self.cy + 60, (255, 95, 95), 16, bold=True, anchor_x="center", anchor_y="center")
-        arcade.draw_text(self.message, self.cx, self.cy + 18, (240, 235, 225), 12, anchor_x="center", anchor_y="center")
+        # 2. Centered Modal Box in Window/Screen coordinates
+        cx = window.width / 2
+        cy = window.height / 2
+        box_w = 480
+        box_h = 240
+
+        # Wooden Box
+        arcade.draw_rect_filled(arcade.XYWH(cx, cy, box_w, box_h), (50, 30, 20, 245))
+        arcade.draw_rect_filled(arcade.XYWH(cx, cy, box_w - 6, box_h - 6), (75, 45, 30, 250))
+        arcade.draw_rect_outline(arcade.XYWH(cx, cy, box_w, box_h), (180, 140, 90, 220), 2)
+
+        # Title Text
+        arcade.draw_text(
+            self.title, cx, cy + 65, (235, 75, 75), 16, bold=True,
+            anchor_x="center", anchor_y="center"
+        )
+
+        # Message Text
+        arcade.draw_text(
+            self.message, cx, cy + 20, (240, 230, 215), 11,
+            anchor_x="center", anchor_y="center"
+        )
 
         # Buttons
-        for btn in self.buttons:
-            is_retry = (btn["id"] == "retry")
-            bg_col = (48, 120, 52) if is_retry else (135, 42, 38)
-            border_col = (115, 230, 125) if is_retry else (240, 110, 105)
+        btn_w, btn_h = 130, 38
+        btn_y = cy - 45
+        retry_x = cx - 80
+        giveup_x = cx + 80
 
-            arcade.draw_rect_filled(arcade.XYWH(btn["x"], btn["y"], btn["w"], btn["h"]), bg_col)
-            arcade.draw_rect_outline(arcade.XYWH(btn["x"], btn["y"], btn["w"], btn["h"]), border_col, 2)
-            arcade.draw_text(btn["label"], btn["x"], btn["y"], (255, 255, 255), 12, bold=True, anchor_x="center", anchor_y="center")
+        # "TRY AGAIN" button
+        arcade.draw_rect_filled(arcade.XYWH(retry_x, btn_y, btn_w, btn_h), (40, 140, 65, 230))
+        arcade.draw_rect_outline(arcade.XYWH(retry_x, btn_y, btn_w, btn_h), (100, 220, 130), 2)
+        arcade.draw_text("TRY AGAIN", retry_x, btn_y, (255, 255, 255), 11, bold=True, anchor_x="center", anchor_y="center")
 
-    def handle_mouse_press(self, canvas_x, canvas_y):
+        # "GIVE UP" button
+        arcade.draw_rect_filled(arcade.XYWH(giveup_x, btn_y, btn_w, btn_h), (160, 45, 45, 230))
+        arcade.draw_rect_outline(arcade.XYWH(giveup_x, btn_y, btn_w, btn_h), (230, 100, 100), 2)
+        arcade.draw_text("GIVE UP", giveup_x, btn_y, (255, 255, 255), 11, bold=True, anchor_x="center", anchor_y="center")
+
+    def handle_mouse_press(self, mouse_x, mouse_y):
         if not self.visible:
             return False
 
-        for btn in self.buttons:
-            bx, by, bw, bh = btn["x"], btn["y"], btn["w"], btn["h"]
-            if (bx - bw / 2 <= canvas_x <= bx + bw / 2) and (by - bh / 2 <= canvas_y <= by + bh / 2):
-                if btn["id"] == "retry" and self.on_retry:
-                    self.close()
-                    self.on_retry()
-                elif btn["id"] == "give_up" and self.on_give_up:
-                    self.close()
-                    self.on_give_up()
+        window = arcade.get_window()
+        btn_w, btn_h = 130, 38
+
+        # Test both Screen Coordinates AND Virtual Canvas Coordinates:
+        test_centers = [
+            (window.width / 2, window.height / 2),
+            (WIDTH / 2, HEIGHT / 2)
+        ]
+
+        for cx, cy in test_centers:
+            btn_y = cy - 45
+            retry_x = cx - 80
+            giveup_x = cx + 80
+
+            # Hit test for "TRY AGAIN"
+            if (retry_x - btn_w / 2 <= mouse_x <= retry_x + btn_w / 2) and \
+               (btn_y - btn_h / 2 <= mouse_y <= btn_y + btn_h / 2):
+                callback = self.on_retry
+                self.close()
+                if callback:
+                    callback()
                 return True
-        return True  # Absorb click while modal is visible
+
+            # Hit test for "GIVE UP"
+            if (giveup_x - btn_w / 2 <= mouse_x <= giveup_x + btn_w / 2) and \
+               (btn_y - btn_h / 2 <= mouse_y <= btn_y + btn_h / 2):
+                callback = self.on_give_up
+                self.close()
+                if callback:
+                    callback()
+                return True
+
+        # Absorb the click so it doesn't trigger game actions behind the modal
+        return True
 
 class SkipConfirmModal:
-    """Modal dialog asking to confirm skipping with a synopsis preview."""
+    """Centered confirmation modal for skipping intro cutscenes."""
 
     def __init__(self):
         self.visible = False
         self.on_confirm = None
         self.on_cancel = None
-        self.title = "SKIP STORY?"
-        self.synopsis = ""
+        self.title = "SKIP INTRO STORY?"
+        self.message = (
+            "After an abrupt morning wake up call from his cousin Dave, Terry realizes with horror that the\n"
+            "big family BBQ feast is today—and his fridge is empty!\n\n"
+            "With only six hours before his relatives arrive, Terry rushes to the local market only to find it\n"
+            "overwhelmed by crazed discount shoppers. He must navigate the aisles to grab fresh vegetables\n"
+            "and prime meats before they sell out!"
+        )
 
-        # Button dimensions
-        self.btn_w = 130
-        self.btn_h = 38
-
-    def open(self, on_confirm, on_cancel, synopsis, title="SKIP STORY?"):
+    def open(self, on_confirm, on_cancel=None, synopsis=None, **kwargs):
+        self.visible = True
         self.on_confirm = on_confirm
         self.on_cancel = on_cancel
-        self.synopsis = synopsis
-        self.title = title
-        self.visible = True
+        if synopsis:
+            self.message = synopsis
+        elif "message" in kwargs and kwargs["message"]:
+            self.message = kwargs["message"]
+        if "title" in kwargs and kwargs["title"]:
+            self.title = kwargs["title"]
 
     def close(self):
         self.visible = False
-        self.on_confirm = None
-        self.on_cancel = None
 
     def draw(self):
         if not self.visible:
             return
 
-        from .config import WIDTH, HEIGHT
+        # Use virtual canvas center so it aligns with stage canvas coordinates
+        cx = (WIDTH / 2) + 200
+        cy = (HEIGHT / 2) + 120
 
-        # 1. Dark overlay backdrop
+        # 1. Full-screen dimmer overlay
         arcade.draw_rect_filled(
-            arcade.XYWH(WIDTH / 2, HEIGHT / 2, WIDTH, HEIGHT),
+            arcade.XYWH(cx, cy, WIDTH, HEIGHT),
             (0, 0, 0, 180)
         )
 
-        # 2. Expanded Wooden Panel Board
-        modal_w = 700   # Expanded from 540 for comfortable reading width
-        modal_h = 360   # Expanded from 240 so text doesn't hit buttons
-        cx, cy = WIDTH / 2, HEIGHT / 2
+        # 2. Centered Modal Box
+        box_w = 580
+        box_h = 300
 
-        # Outer border & wood background
-        arcade.draw_rect_filled(arcade.XYWH(cx, cy, modal_w, modal_h), (85, 48, 24, 250))
-        arcade.draw_rect_filled(arcade.XYWH(cx, cy, modal_w - 8, modal_h - 8), (138, 88, 48, 250))
-        arcade.draw_rect_outline(arcade.XYWH(cx, cy, modal_w, modal_h), (42, 22, 10), 3)
+        # Outer border & dark wooden frame
+        arcade.draw_rect_filled(arcade.XYWH(cx, cy, box_w, box_h), (50, 30, 20, 245))
+        arcade.draw_rect_filled(arcade.XYWH(cx, cy, box_w - 6, box_h - 6), (75, 45, 30, 250))
+        arcade.draw_rect_outline(arcade.XYWH(cx, cy, box_w, box_h), (180, 140, 90, 220), 2)
 
         # Title
         arcade.draw_text(
-            self.title,
-            cx, cy + (modal_h / 2) - 28,
-            (255, 238, 185), 17, bold=True,
+            self.title, cx, cy + 115, (255, 235, 185), 14, bold=True,
             anchor_x="center", anchor_y="center"
         )
 
-        # 3. Expanded Dark Synopsis Body Box
-        box_w = modal_w - 48
-        box_h = 205     # Plenty of vertical room for multiline text
-        box_y = cy + 18
-        arcade.draw_rect_filled(arcade.XYWH(cx, box_y, box_w, box_h), (40, 24, 14, 220))
-        arcade.draw_rect_outline(arcade.XYWH(cx, box_y, box_w, box_h), (70, 42, 24), 2)
-
-        # Synopsis text (multiline with safe internal margins)
+        # Body text / synopsis
         arcade.draw_text(
-            self.synopsis,
-            cx - (box_w / 2) + 20,
-            box_y + (box_h / 2) - 22,
-            (240, 225, 205),
-            12,
-            width=int(box_w - 40),
-            multiline=True
+            self.message, cx - (box_w / 2) + 24, cy + 70, (235, 225, 210), 10,
+            width=box_w - 48, multiline=True
         )
 
-        # 4. Buttons (lowered below the expanded content box)
-        btn_y = cy - (modal_h / 2) + 38
-        skip_x = cx - 95
-        cancel_x = cx + 95
+        # Buttons geometry
+        btn_w, btn_h = 120, 36
+        btn_y = cy - 105
+        skip_x = cx - 70
+        cancel_x = cx + 80
 
-        # Skip button (Reddish / Wood)
-        arcade.draw_rect_filled(arcade.XYWH(skip_x, btn_y, self.btn_w, self.btn_h), (140, 45, 45, 240))
-        arcade.draw_rect_outline(arcade.XYWH(skip_x, btn_y, self.btn_w, self.btn_h), (220, 110, 110), 2)
-        arcade.draw_text("Skip", skip_x, btn_y, (255, 240, 240), 13, bold=True, anchor_x="center", anchor_y="center")
+        # Skip button (Red)
+        arcade.draw_rect_filled(arcade.XYWH(skip_x, btn_y, btn_w, btn_h), (160, 45, 45, 230))
+        arcade.draw_rect_outline(arcade.XYWH(skip_x, btn_y, btn_w, btn_h), (230, 100, 100), 2)
+        arcade.draw_text("Skip", skip_x, btn_y, (255, 255, 255), 11, bold=True, anchor_x="center", anchor_y="center")
 
-        # Cancel button (Greenish / Wood)
-        arcade.draw_rect_filled(arcade.XYWH(cancel_x, btn_y, self.btn_w, self.btn_h), (50, 75, 45, 240))
-        arcade.draw_rect_outline(arcade.XYWH(cancel_x, btn_y, self.btn_w, self.btn_h), (110, 180, 110), 2)
-        arcade.draw_text("Cancel", cancel_x, btn_y, (240, 255, 240), 13, bold=True, anchor_x="center", anchor_y="center")
+        # Cancel button (Green)
+        arcade.draw_rect_filled(arcade.XYWH(cancel_x, btn_y, btn_w, btn_h), (40, 140, 65, 230))
+        arcade.draw_rect_outline(arcade.XYWH(cancel_x, btn_y, btn_w, btn_h), (100, 220, 130), 2)
+        arcade.draw_text("Cancel", cancel_x, btn_y, (255, 255, 255), 11, bold=True, anchor_x="center", anchor_y="center")
 
-    def handle_mouse_press(self, x, y):
-        """Separate handler specifically for SkipConfirmModal's buttons."""
+    def handle_mouse_press(self, mouse_x, mouse_y):
         if not self.visible:
             return False
 
-        from .config import WIDTH, HEIGHT
-        cx, cy = WIDTH / 2, HEIGHT / 2
-        modal_h = 360
-        btn_y = cy - (modal_h / 2) + 38
-        skip_x = cx - 95
-        cancel_x = cx + 95
+        cx = WIDTH / 2
+        cy = HEIGHT / 2
 
-        # Click Skip
-        if (skip_x - self.btn_w / 2 <= x <= skip_x + self.btn_w / 2) and \
-           (btn_y - self.btn_h / 2 <= y <= btn_y + self.btn_h / 2):
+        btn_w, btn_h = 120, 36
+        btn_y = cy - 105
+        skip_x = cx - 75
+        cancel_x = cx + 65
+
+        # Hit test for Skip button
+        if (skip_x - btn_w / 2 <= mouse_x <= skip_x + btn_w / 2) and \
+           (btn_y - btn_h / 2 <= mouse_y <= btn_y + btn_h / 2):
+            self.close()
             if self.on_confirm:
-                cb = self.on_confirm
-                self.close()
-                cb()
+                self.on_confirm()
             return True
 
-        # Click Cancel
-        if (cancel_x - self.btn_w / 2 <= x <= cancel_x + self.btn_w / 2) and \
-           (btn_y - self.btn_h / 2 <= y <= btn_y + self.btn_h / 2):
+        # Hit test for Cancel button (closes modal regardless of whether callback exists)
+        if (cancel_x - btn_w / 2 <= mouse_x <= cancel_x + btn_w / 2) and \
+           (btn_y - btn_h / 2 <= mouse_y <= btn_y + btn_h / 2):
+            self.close()
             if self.on_cancel:
-                cb = self.on_cancel
-                self.close()
-                cb()
+                self.on_cancel()
             return True
 
-        return True  # Consume all other clicks so background elements aren't triggered
+        # Block mouse clicks from bleeding through to dialogue underneath
+        return True
