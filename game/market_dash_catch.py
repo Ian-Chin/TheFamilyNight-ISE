@@ -239,15 +239,28 @@ class MarketCatchView(StageView):
 
     def show_retry_prompt(self):
         """Shows the Try Again / Give Up modal on defeat or timeout."""
+        if self.retry_modal.visible:
+            return
+
         def do_retry():
+            self.retry_modal.close()
+            # Launch fresh stage of the same minigame
             self.window.show_view(MarketCatchView(self.mode, self.veg_done, self.meat_done))
 
         def do_give_up():
+            self.retry_modal.close()
+            # Return to market interior aisle
             from .market_dash_stage import MarketStageView
             self.window.show_view(MarketStageView(veg_done=self.veg_done, meat_done=self.meat_done))
 
         mode_name = "Fresh Vegetables" if self.mode == "veg" else "Prime Meats" if self.mode == "meat" else "Basket Defense"
-        self.retry_modal.open(do_retry, do_give_up, title=f"{mode_name.upper()} FAILED!", message="Would you like to try again or return to market?")
+        self.retry_modal.open(
+            on_retry=do_retry,
+            on_give_up=do_give_up,
+            title=f"{mode_name.upper()} FAILED!",
+            message="Would you like to try again or return to market?"
+        )
+
 
     def on_update(self, delta_time):
         # Decay red damage flash
@@ -290,7 +303,7 @@ class MarketCatchView(StageView):
         # 2. Player Movement & Spinning
         if self.spinning:
             self.spin_timer -= delta_time
-            self.spin_angle += 1440.0 * delta_time
+            self.spin_angle -= 1440.0 * delta_time
             self.player.angle = self.spin_angle
             if self.spin_timer <= 0:
                 self.spinning = False
@@ -385,7 +398,7 @@ class MarketCatchView(StageView):
                     snatcher.trigger_knockout(self.player.center_x)
 
                 # Unblocked hit
-                elif is_colliding:
+                elif is_colliding and not self.retry_modal.visible:
                     self.take_damage()
                     all_entities = list(self.items_list) + [s for s in self.snatchers_list if s != snatcher]
                     snatcher.reset_pos(existing_list=all_entities)
@@ -527,22 +540,25 @@ class MarketCatchView(StageView):
                     WIDTH / 2 - 40, 25, (255, 230, 140), 13, anchor_x="center", bold=True
                 )
 
-        # 2. Screen-Space Red Damage Flash
+        # 2. Screen-Space Overlays & UI
         self.window.default_camera.use()
+
+        # Red damage flash
         if self.damage_alpha > 0:
             flash_rect = arcade.XYWH(self.window.width / 2, self.window.height / 2, self.window.width, self.window.height)
             arcade.draw_rect_filled(flash_rect, (255, 30, 30, int(self.damage_alpha)))
 
-        # 3. Dialogue & Dialogue Controls (Screen Space)
+        # Dialogue
         if self.in_wave_dialogue and self.dialog.visible:
             self.dialog.draw()
 
-        # 4. Modals (Retry & Pause)
-        self.retry_modal.draw()
-
+        # Pause and settings
         if not self.settings_panel.visible:
             self.pause_menu.draw()
         self.settings_panel.draw()
+
+        # DRAW RETRY MODAL HERE (ON THE DEFAULT CAMERA)
+        self.retry_modal.draw()
 
     def on_key_press(self, key, modifiers):
         if self.retry_modal.visible:
@@ -590,22 +606,19 @@ class MarketCatchView(StageView):
 
     def on_mouse_press(self, x, y, button, modifiers):
         canvas_x, canvas_y = self.canvas_point(x, y)
+
+        # 1. Handle RetryModal click
         if self.retry_modal.visible:
             self.retry_modal.handle_mouse_press(canvas_x, canvas_y)
             return
 
-        if self.in_wave_dialogue:
-            if button == arcade.MOUSE_BUTTON_LEFT:
-                if self.dialog.typing:
-                    self.dialog.advance()
-                else:
-                    self.advance_wave_dialogue()
-            return
-
+        # 2. Settings & Pause
         if self.settings_panel.on_mouse_press(canvas_x, canvas_y, button):
             return
+
         if self.pause_menu.visible:
-            self.run_action(self.pause_menu.on_mouse_press(canvas_x, canvas_y, button))
+            action = self.pause_menu.on_mouse_press(canvas_x, canvas_y, button)
+            self.run_action(action)
             return
 
         if button == arcade.MOUSE_BUTTON_LEFT:
