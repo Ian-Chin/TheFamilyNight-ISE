@@ -23,7 +23,9 @@ TITLE = "Terry's Story"
 
 # --- Sprite sources ----------------------------------------------------------
 MOVEMENT_SHEET = "terry-movements.png"
-IDLE_FILES = ("terry-idle-1.png", "terry-idle-2.png")
+# Terry's two idle drawings, side by side on one white sheet.
+IDLE_SHEET = "terry-idle-sheet.png"
+IDLE_SHEET_COLS = 2
 SHEET_COLS = 4
 SHEET_ROWS = 3
 JUMP_ROW = 1
@@ -56,6 +58,18 @@ RIM_DARK = 4     # pixels of hard contour, at CHARACTER_ART_HEIGHT
 RIM_GLOW = 9     # pixels of soft halo outside the contour
 RIM_DARK_COLOR = (24, 18, 30, 255)
 RIM_GLOW_COLOR = (255, 250, 232, 150)
+
+# The family breathing while they stand about: one white sheet per character,
+# frames left to right, baked from their art by tools/make_idle_sheets.py.
+# Art file -> sheet; art without a sheet just stands still.
+IDLE_SHEETS = {
+    "Marcus(dad).png": "marcus-idle-sheet.png",
+    "Christine(mom).png": "christine-idle-sheet.png",
+    "jess.png": "jess-idle-sheet.png",
+    "tom.png": "tom-idle-sheet.png",
+}
+IDLE_SHEET_FRAMES = 4
+NPC_IDLE_FRAME = 0.32    # seconds per breathing frame
 
 # --- Gameplay tuning ---------------------------------------------------------
 WALK_SPEED = 260.0
@@ -225,6 +239,129 @@ CHAO_MARK_BOB_TIME = 1.2 # seconds for one bob
 # How far Terry's feet may stand from the table's edge to start the dinner.
 CHAO_TABLE_RANGE = 70
 
+# Starting the dinner: the food fades onto the table, then the screen dips to
+# black and comes back up with the family sat round it.
+CHAO_DINNER_SERVED_BG = "chao-dinner-served.png"
+CHAO_SERVE_FADE = 0.9    # seconds for the food to fade onto the table
+CHAO_SERVE_HOLD = 0.8    # seconds to look at the food before the dip
+CHAO_SEAT_FADE = 0.45    # seconds down to black, and again back up
+CHAO_SEATED_HOLD = 1.2   # seconds of the family at the table before Terry speaks
+# Who sits where, as (name, stool x, stool y, height, eating). The stools are
+# the six round seats either side of the table; the bottom right one is left
+# free. Height is the whole figure, head to shoes, as if standing.
+CHAO_SEATS = (
+    ("Marcus", 121, 462, 88, True),
+    ("Christine", 121, 399, 84, False),
+    ("Tom", 121, 336, 82, True),
+    ("Jess", 332, 462, 78, False),
+    ("Terry", 332, 399, 84, True),
+)
+# Seated, the head rests just above the middle of the stool, and the shoes
+# tuck in just under the head, shifted toward the table as if the legs go
+# under it.
+CHAO_SEAT_LIFT = 4       # stool middle to the bottom of the head
+CHAO_FEET_DROP = 8       # stool middle to the middle of the shoes
+CHAO_FEET_SHIFT = 20     # how far the shoes sit toward the table
+CHAO_FEET_SWING = 1.5    # canvas units the shoes swing as the legs dangle
+CHAO_FEET_SWING_TIME = 1.7
+# Where each face's eyes and mouth are, as (left, top, right, bottom) boxes in
+# pixels of the cut-out at CHARACTER_ART_HEIGHT, measured off the art. Blinks
+# and chewing are painted over these.
+CHAO_FACES = {
+    "Marcus(dad).png": (((77, 140, 108, 164), (157, 140, 189, 164)), (101, 184, 171, 220)),
+    "Christine(mom).png": (((76, 147, 115, 168), (162, 147, 201, 168)), (114, 190, 164, 213)),
+    "jess.png": (((112, 120, 155, 146), (204, 120, 248, 146)), (152, 166, 207, 195)),
+    "tom.png": (((79, 145, 111, 170), (164, 145, 196, 170)), (112, 183, 165, 213)),
+    "Terry": (((99, 154, 108, 203), (156, 154, 164, 203)), (116, 216, 146, 232)),
+}
+# Terry's face when he arrives and the whole family is already there. It
+# replaces his sprite with a few hops, then the opening lines start.
+TERRY_SHOCKED = "terry-shocked.png"
+CHAO_SHOCK_LEAD = 0.75   # seconds of the shocked face before he speaks
+CHAO_SHOCK_HOP = 16      # canvas units of the first hop
+CHAO_SHOCK_HOP_TIME = 0.2   # seconds per hop
+CHAO_SHOCK_HOPS = 3      # each one lower than the last
+
+# --- Kids at the table mini game --------------------------------------------
+# Jess and Tom keep getting up to run around the garden. The player clicks a
+# runaway and drags them back: they throw a tantrum all the way, now and then
+# yanking the cursor aside, and wriggle free if the escape bar fills before
+# they are dropped on the glowing box over their stool. After a while seated
+# they run off again.
+
+# One white sheet per kid, like Terry's movement sheet: read left to right,
+# top to bottom, the running frames come first and the tantrum frames after.
+KID_SHEETS = {"Tom": "tom-run-sheet.png", "Jess": "jess-run-sheet.png"}
+KID_SHEET_COLS = 5
+KID_SHEET_ROWS = 2
+KID_RUN_FRAMES = 7
+KID_CAUGHT_FRAMES = 3
+KID_HEIGHT = 84          # canvas units, head to shoes, while running
+KID_RUN_SPEED = 175.0
+KID_RUN_FRAME = 0.08     # seconds per running frame
+KID_CAUGHT_FRAME = 0.12  # seconds per tantrum frame
+KID_SHAKE = 2.5          # canvas units a carried kid shakes
+KID_SEATED_MIN = 2.5     # seconds a returned kid stays put, at least
+KID_SEATED_MAX = 6.0     # and at most
+# Ground the kids run about on, as (left, right, bottom, top); targets are
+# picked in here. They path round the scenery in CHAO_OBSTACLES on a grid of
+# KID_GRID cells, keeping KID_CLEARANCE between their feet and its edges.
+KID_RUN_AREA = (70, 1210, 70, 640)
+KID_GRID = 20
+KID_CLEARANCE = 24
+KID_HIT_PAD = 10         # extra canvas units round a kid that still grabs
+# Carrying: the escape bar fills over KID_ESCAPE_TIME; full, they get away and
+# cannot be grabbed again for KID_ESCAPE_COOLDOWN.
+KID_ESCAPE_TIME = 3.2
+KID_ESCAPE_COOLDOWN = 0.8
+KID_BAR_W = 74
+KID_BAR_H = 9
+KID_BAR_GAP = 10         # top of the kid's head to the bar
+KID_BAR_SAFE = (126, 214, 150)
+KID_BAR_DANGER = (236, 92, 80)
+# Every so often a carried kid tugs the cursor: a short shove in a random
+# direction, spread over a few frames so it reads as a yank, not a teleport.
+KID_TUG_EVERY = (0.7, 1.5)   # seconds between tugs, picked at random
+KID_TUG = (28, 48)           # canvas units a tug moves the cursor
+KID_TUG_TIME = 0.12
+# The drop box over each kid's stool while they are being carried.
+KID_SEAT_BOX = (84, 104)     # width and height, canvas units
+KID_SEAT_BOX_RISE = 22       # stool middle to the middle of the box
+KID_SEAT_COLOR = (255, 214, 138)
+KID_SEAT_READY = (126, 214, 150)   # once the kid is over it
+KIDS_GAME_TIME = 40.0    # seconds the mini game lasts
+KIDS_GOOD_SHARE = 0.75   # share of the time seated needed to move on
+# The timer plank at the top middle of the screen.
+KIDS_HUD_TOP = HEIGHT - 26
+KIDS_HUD_W = 300
+KIDS_HUD_H = 76
+KIDS_TIMER_SIZE = 26
+KIDS_HUD_NOTE_SIZE = 12
+KIDS_HINT = "Drag a runaway kid onto their glowing seat before they wriggle free"
+
+# Eating, one bite at a time: the hand on the table side reaches for the
+# plate, brings a morsel up to the mouth, and the mouth chews it while the
+# hand settles back. Then a pause before the next bite.
+CHAO_REACH_TIME = 0.45   # seconds out to the plate, and again up to the mouth
+CHAO_CHEW_TIME = 0.26    # seconds per chew
+CHAO_CHEWS = 4
+CHAO_BITE_GAP = 1.3      # seconds of rest between one bite and the next
+CHAO_PLATE_REACH = 22    # canvas units past the head's side the plate is
+CHAO_CHEW_BOB = 2.5      # canvas units a chew lifts the head
+CHAO_CHEW_SQUASH = 0.04  # share of the head's height a chew squashes away
+CHAO_BITE_LEAN = 6       # degrees leaned toward the table over a bite
+CHAO_MORSEL = 9          # canvas units across the bite of food
+# Those not eating chat: the mouth flaps in bursts and the hands gesture.
+CHAO_TALK_FLAP = 0.14    # seconds per mouth open or shut while talking
+CHAO_TALK_BURST = 1.6    # seconds of talking, then the same again quiet
+CHAO_GESTURE = 3         # canvas units the hands bob while talking
+CHAO_SWAY_TIME = 2.8
+CHAO_SWAY_ANGLE = 2.5
+CHAO_SWAY_BOB = 1.2
+# Everyone blinks every few seconds, each on their own beat.
+CHAO_BLINK_EVERY = 3.4
+CHAO_BLINK_TIME = 0.13
+
 # How close Terry's feet must be to someone's for the interact prompt to show.
 CHAO_TALK_RANGE = 120
 CHAO_PROMPT_LABEL = "Interact"
@@ -307,6 +444,7 @@ BACKGROUND_VIDEOS = {
     "bbq-scene-bg.jpeg": "garden-food.mp4",
     "chao-dinner-bg.jpg": "garden-empty.mp4",
     "chao-dinner-night.png": "garden-night.mp4",
+    "chao-dinner-served.png": "garden-night-dinner.mp4",
 }
 GRAPHICS_MODES = ("quality", "performance")
 VIDEO_QUEUE = 4   # decoded frames held ahead of the one on screen
@@ -378,14 +516,46 @@ DIALOG_ARROW = 17           # side of the blinking "go on" triangle
 DIALOG_BLINK = 0.5
 
 BBQ_OPENING_DIALOG = ("Terry", "The food ingredients is finally purchased, is time to start cooking!")
-# The opening beat of the scene, once Terry has walked in.
-CHAO_OPENING_DIALOG = (
-    "Terry", "Everyone made it, and the lights are up. Time to get dinner started at the table.",
+# Terry arrives to find everyone already in the garden. The first line is
+# said with the shocked face.
+CHAO_SHOCK_DIALOG = (
+    ("Terry", "Whoa! Everyone's here already? That was fast!"),
+    ("Terry", "Okay, okay. Lights are up, family's here. Time to set up dinner at the table."),
 )
-# Terry's line when he starts the dinner at the table.
-CHAO_DINNER_START_DIALOG = (
-    "Terry", "Dinner is served, everyone! Grab a seat before the food gets cold.",
+# The table prompt, and the card that asks before the mini game starts.
+CHAO_TABLE_PROMPT = "Set up"
+CHAO_SETUP_TITLE = "Dinner Time"
+CHAO_SETUP_MESSAGE = "You are about to enter a mini game."
+CHAO_SETUP_ITEMS = [
+    ("Set up", "setup", "play"),
+    ("Wait", "wait", "book"),
+]
+# Table talk once everyone is seated, ending with the kids running off.
+CHAO_TABLE_TALK = (
+    ("Terry", "Dinner is served, everyone! Dig in before the food gets cold."),
+    ("Marcus", "Now this is a proper feast. Well done, son."),
+    ("Christine", "Kids, vegetables first, then the chicken."),
+    ("Jess", "Psst, Tom. Want to run around?"),
+    ("Tom", "Yes! Race you to the grill!"),
 )
+# The results card at the end of the mini game.
+KIDS_WIN_TITLE = "Dinner Saved!"
+KIDS_LOSE_TITLE = "What a Mess!"
+KIDS_RESULT_MESSAGE = "The kids stayed seated {share}% of the time."
+KIDS_RETRY_MESSAGE = "The kids stayed seated {share}% of the time. You need {need}% to move on."
+KIDS_WIN_ITEMS = [
+    ("Continue", "continue", "book"),
+    ("Play again", "retry", "play"),
+]
+KIDS_LOSE_ITEMS = [
+    ("Try again", "retry", "play"),
+]
+# Terry once the mini game is over and he carries on.
+CHAO_AFTER_GAME_DIALOG = (
+    ("Terry", "Phew. Finally, a quiet dinner with the whole family."),
+)
+PAUSE_MESSAGE_SIZE = 16
+PAUSE_MESSAGE_GAP = 40   # room the message line takes under the title
 # Sample lines, one per family member, said when Terry talks to them.
 # A short exchange with each family member: their line, then Terry's reply.
 CHAO_NPC_DIALOG = {

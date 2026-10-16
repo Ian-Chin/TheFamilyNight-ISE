@@ -20,7 +20,8 @@ from .config import (
     CHAO_TITLE, CHAO_TITLE_BAND_H, CHAO_TITLE_DELAY, CHAO_TITLE_FADE,
     CHAO_TITLE_HOLD, CHAO_TITLE_KICKER, CHAO_TITLE_RISE, CHAO_TITLE_RULE,
     CHAO_TITLE_SIZE, CHAO_TITLE_TAGLINE, CHAO_TITLE_Y, GLASS_EDGE_HOVER,
-    DIALOG_BOTTOM, DIALOG_H, KEYCAP_TEXT, PLANK_PAD, PORTRAIT_DIM, PORTRAIT_H,
+    DIALOG_BOTTOM, DIALOG_H, KEYCAP_TEXT, KIDS_HINT, KIDS_HUD_H,
+    KIDS_HUD_NOTE_SIZE, KIDS_HUD_TOP, KIDS_HUD_W, KIDS_TIMER_SIZE, PLANK_PAD, PORTRAIT_DIM, PORTRAIT_H,
     PORTRAIT_INSET, PORTRAIT_SINK, PORTRAIT_SPEAKING_GROW, QUEST_DONE,
     TEXT_BRIGHT, TEXT_DIM, TEXT_HOVER, TEXT_SHADOW, WIDTH,
 )
@@ -162,7 +163,8 @@ class TitleCard:
 class InteractPrompt:
     """A floating "Interact [Enter]" tag with a pointer down at its target."""
 
-    def __init__(self):
+    def __init__(self, label=CHAO_PROMPT_LABEL):
+        self.label_text = label
         self.stage = None
         self.clock = 0.0
 
@@ -173,11 +175,11 @@ class InteractPrompt:
         self.stage = stage
         center_y = dict(anchor_y="center")
         self.label_shadow = stage.text(
-            CHAO_PROMPT_LABEL, 0, 0, TEXT_SHADOW, CHAO_PROMPT_SIZE,
+            self.label_text, 0, 0, TEXT_SHADOW, CHAO_PROMPT_SIZE,
             bold=True, **center_y,
         )
         self.label = stage.text(
-            CHAO_PROMPT_LABEL, 0, 0, TEXT_BRIGHT, CHAO_PROMPT_SIZE,
+            self.label_text, 0, 0, TEXT_BRIGHT, CHAO_PROMPT_SIZE,
             bold=True, **center_y,
         )
         self.key = stage.text(
@@ -378,3 +380,57 @@ class Portraits:
                 color=arcade.color.WHITE if talking else arcade.types.Color(*PORTRAIT_DIM),
                 pixelated=True,
             )
+
+class KidsHud:
+    """The mini game's clock and seat count, on a plank at the top middle,
+    with the how-to line along the bottom of the screen."""
+
+    def __init__(self):
+        self.stage = None
+        self.shown = None   # (seconds, seated, total) last written to the text
+
+    def layout(self, stage):
+        self.stage = stage
+        self.shown = None
+        pad = stage.px(PLANK_PAD)
+        self.plank = textures.plank(
+            stage.px(KIDS_HUD_W), stage.px(KIDS_HUD_H), pad, False,
+        )
+        self.plank_hurry = textures.plank(
+            stage.px(KIDS_HUD_W), stage.px(KIDS_HUD_H), pad, True,
+        )
+        middle = WIDTH / 2
+        center = dict(anchor_x="center", anchor_y="center")
+        top = KIDS_HUD_TOP
+        self.timer = [
+            stage.text("", middle + offset, top - 28 - offset, shade,
+                       KIDS_TIMER_SIZE, bold=True, **center)
+            for offset, shade in ((2, TEXT_SHADOW), (0, TEXT_BRIGHT))
+        ]
+        self.note = stage.text("", middle, top - 58, TEXT_DIM,
+                               KIDS_HUD_NOTE_SIZE, **center)
+        self.hint = [
+            stage.text(KIDS_HINT, middle + offset, 26 - offset, shade, 14,
+                       bold=True, **center)
+            for offset, shade in ((1.5, TEXT_SHADOW), (0, TEXT_HOVER))
+        ]
+
+    def draw(self, time_left, seated, total):
+        stage = self.stage
+        seconds = math.ceil(time_left)
+        if self.shown != (seconds, seated, total):
+            self.shown = (seconds, seated, total)
+            clock = f"{seconds // 60}:{seconds % 60:02d}"
+            for text in self.timer:
+                text.text = clock
+            self.note.text = f"Kids in their seats: {seated}/{total}"
+        hurry = seconds <= 10
+        arcade.draw_texture_rect(
+            self.plank_hurry if hurry else self.plank,
+            stage.rect(WIDTH / 2 - KIDS_HUD_W / 2 - PLANK_PAD,
+                       KIDS_HUD_TOP - KIDS_HUD_H - PLANK_PAD,
+                       KIDS_HUD_W + 2 * PLANK_PAD, KIDS_HUD_H + 2 * PLANK_PAD),
+        )
+        self.timer[1].color = TEXT_HOVER if hurry else TEXT_BRIGHT
+        for text in (*self.timer, self.note, *self.hint):
+            text.draw()

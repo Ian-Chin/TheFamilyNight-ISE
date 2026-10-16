@@ -11,24 +11,35 @@ import arcade
 from . import audio, textures
 from .config import (
     HEIGHT, PAUSE_BUTTON_GAP, PAUSE_BUTTON_H, PAUSE_BUTTON_W, PAUSE_DIM,
-    PAUSE_ITEMS, PAUSE_PANEL_PAD, PAUSE_PANEL_W, PAUSE_TITLE, PAUSE_TITLE_GAP,
-    PAUSE_TITLE_SIZE, PLANK_PAD, TEXT_HOVER, WIDTH,
+    PAUSE_ITEMS, PAUSE_MESSAGE_GAP, PAUSE_MESSAGE_SIZE, PAUSE_PANEL_PAD,
+    PAUSE_PANEL_W, PAUSE_TITLE, PAUSE_TITLE_GAP, PAUSE_TITLE_SIZE, PLANK_PAD,
+    TEXT_DIM, TEXT_HOVER, WIDTH,
 )
 from .ui import MenuButton
 
 
 class PauseMenu:
-    """A dimmed screen with a parchment panel of buttons, centred on the canvas."""
+    """A dimmed screen with a parchment panel of buttons, centred on the canvas.
 
-    def __init__(self, items=PAUSE_ITEMS, title=PAUSE_TITLE):
+    With a `message`, a line of text sits between the title and the buttons;
+    the panel is sized for one either way, so it can be changed later with
+    `set_text` without moving anything.
+    """
+
+    def __init__(self, items=PAUSE_ITEMS, title=PAUSE_TITLE, message=None,
+                 width=PAUSE_PANEL_W):
         self.title = title
+        self.message = message
+        self.stage = None
         self.visible = False
+        message_gap = PAUSE_MESSAGE_GAP if message is not None else 0
 
         stack_h = (
             len(items) * PAUSE_BUTTON_H + (len(items) - 1) * PAUSE_BUTTON_GAP
         )
-        self.width = PAUSE_PANEL_W
-        self.height = PAUSE_TITLE_GAP + PAUSE_PANEL_PAD + stack_h + PAUSE_PANEL_PAD
+        self.width = width
+        self.height = (PAUSE_TITLE_GAP + message_gap + PAUSE_PANEL_PAD
+                       + stack_h + PAUSE_PANEL_PAD)
         self.left = (WIDTH - self.width) / 2
         self.bottom = (HEIGHT - self.height) / 2
 
@@ -60,8 +71,23 @@ class PauseMenu:
             self.bottom + self.height - PAUSE_TITLE_GAP / 2, TEXT_HOVER,
             PAUSE_TITLE_SIZE, anchor_x="center", anchor_y="center", bold=True,
         )
+        self.message_text = None
+        if self.message is not None:
+            self.message_text = stage.text(
+                self.message, self.left + self.width / 2,
+                self.bottom + self.height - PAUSE_TITLE_GAP - PAUSE_MESSAGE_GAP / 2 + 6,
+                TEXT_DIM, PAUSE_MESSAGE_SIZE, anchor_x="center", anchor_y="center",
+            )
         for button in self.buttons:
             button.layout(stage)
+
+    def set_text(self, title, message=None):
+        """Change the words on the panel; it keeps its size."""
+        self.title = title
+        if message is not None:
+            self.message = message
+        if self.stage is not None:
+            self.layout(self.stage)
 
     def draw(self):
         if not self.visible:
@@ -74,6 +100,8 @@ class PauseMenu:
             self.width + 2 * PLANK_PAD, self.height + 2 * PLANK_PAD,
         ))
         self.title_text.draw()
+        if self.message_text is not None:
+            self.message_text.draw()
         for button in self.buttons:
             button.draw()
 
