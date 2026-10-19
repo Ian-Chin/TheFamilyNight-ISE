@@ -2,7 +2,13 @@
 
 import sys
 
-import arcade
+import pyglet
+
+# pyglet checks for an OpenGL error after every single GL call when this is
+# on, which costs more than the drawing itself. Set before arcade loads.
+pyglet.options.debug_gl = False
+
+import arcade  # noqa: E402
 
 from game.config import HEIGHT, TITLE, WIDTH
 from game.views import MenuView
@@ -45,6 +51,9 @@ def main():
     elif "--bus" in sys.argv:
         from game.bumpy_bus import BumpyBusView
         window.show_view(BumpyBusView())
+    elif "--feast" in sys.argv:
+        from game.feast_typing import TypingFeastView
+        window.show_view(TypingFeastView())
     elif "--bbq" in sys.argv or "--after-bus" in sys.argv:
         from game.bbq_scene import BbqView
         from game.config import CHAO_FADE_IN

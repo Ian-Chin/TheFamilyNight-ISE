@@ -46,15 +46,18 @@ class SoundBank:
         entry = self.sounds.get(name)
         return 0.0 if entry is None else mixer.volume(entry[1], entry[2])
 
-    def play(self, name, loop=False):
-        """Start `name` and return its player, or None if there is no clip."""
+    def play(self, name, loop=False, speed=1.0):
+        """Start `name` and return its player, or None if there is no clip.
+
+        `speed` above 1 plays it faster and higher, below 1 slower and lower.
+        """
         entry = self.sounds.get(name)
         if entry is None:
             return None
         volume = self.volume(name)
         if volume <= 0.0 and not loop:
             return None
-        return entry[0].play(volume=volume, loop=loop)
+        return entry[0].play(volume=volume, loop=loop, speed=speed)
 
     def stop(self, player):
         if player is not None:
@@ -73,8 +76,8 @@ def bank():
     return _bank
 
 
-def play(name, loop=False):
-    return bank().play(name, loop=loop)
+def play(name, loop=False, speed=1.0):
+    return bank().play(name, loop=loop, speed=speed)
 
 
 class Ambience:

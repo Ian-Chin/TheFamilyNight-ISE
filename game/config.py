@@ -451,6 +451,87 @@ HUD_HOVER_GROW = 1.06
 HUD_PLATE_INSET = 12   # canvas units of plate around an icon
 HUD_PLATE_PAD = 8      # room around the plate for its shadow
 
+# --- Leftover feast typing game ---------------------------------------------
+# Everyone has gone and Terry is left with the food. The table empties a
+# course at a time as words are typed: (still, its looping video), full first.
+FEAST_STAGES = (
+    ("chao-dinner-keyword-game/Gemini_Generated_Image_5npgt25npgt25npg.jpg", "env-stage2.mp4"),
+    ("chao-dinner-keyword-game/Gemini_Generated_Image_aqqpzraqqpzraqqp.jpg", "env-stage3.mp4"),
+    ("chao-dinner-keyword-game/Gemini_Generated_Image_tupohwtupohwtupo.jpg", "env-stage5.mp4"),
+    ("chao-dinner-keyword-game/Gemini_Generated_Image_1u1t7m1u1t7m1u1t.jpg", "env-stage1.mp4"),
+    ("chao-dinner-keyword-game/Gemini_Generated_Image_rpphyjrpphyjrpph.jpg", "env-stage4.mp4"),
+)
+# Said as each course goes, for stages 1 to 4.
+FEAST_STAGE_LINES = (
+    "Salad and pie, gone!",
+    "The roast chicken is history!",
+    "Just the bread and crumbs left...",
+    "Clean plates! Every last bite!",
+)
+FEAST_TIME = 60.0         # seconds on the clock
+FEAST_GOAL_WORDS = 36     # correct words that clear the whole table
+FEAST_MAX_EXTRA = 8       # extra letters allowed past the end of a word
+FEAST_STAGE_FADE = 0.9    # seconds one course crossfades into the next
+FEAST_COUNT_STEP = 0.7    # seconds per number of the count in
+FEAST_HURRY = 10          # seconds left when the clock turns red and ticks
+FEAST_COMBO_EVERY = 10    # clean words in a row between combo fanfares
+# The garden fills the top of the screen, cropped to the table: the top
+# FEAST_CROP of the art is cut off and its foot stops at FEAST_SCENE_BOTTOM.
+FEAST_SCENE_BOTTOM = 286
+FEAST_CROP = 0.33
+FEAST_TABLE_AREA = (330, 1180, 360, 560)   # where the crumbs fly from
+FEAST_FLOOR = (13, 15, 21)       # the dark ground the keyboard sits on
+# Words come one at a time: the one to type sits big in the middle, and the
+# next few wait in a stack under it, each sliding up a place as a word is done.
+FEAST_FONT = ("Consolas", "Cascadia Mono", "Courier New", "monospace")
+FEAST_WORD_SIZE = 46      # the word being typed
+FEAST_WORD_Y = 352        # middle of the word being typed
+# The waiting words under it: (canvas y, font size, opacity), nearest first.
+FEAST_QUEUE = ((290, 26, 215), (252, 21, 140), (220, 17, 75))
+FEAST_SLIDE = 0.2         # seconds for the stack to move up a place
+FEAST_OUT_TIME = 0.4      # seconds the finished word floats up and fades
+FEAST_UNTYPED = (118, 124, 140)
+FEAST_CORRECT = (236, 232, 222)
+FEAST_WRONG = (236, 92, 80)
+FEAST_EXTRA = (150, 54, 50)
+FEAST_CARET = (255, 204, 110)
+# On-screen keyboard under the words.
+FEAST_KEY_ROWS = ("qwertyuiop", "asdfghjkl", "zxcvbnm")
+FEAST_KEY_W = 40
+FEAST_KEY_H = 32
+FEAST_KEY_GAP = 5
+FEAST_KEY_TOP = 168       # top of the first row
+FEAST_SPACE_W = 250
+FEAST_KEY_GLOW = 0.28     # seconds a pressed key stays lit
+FEAST_KEY_HIT = (126, 214, 150)
+FEAST_KEY_FACE = (26, 29, 38)
+FEAST_KEY_EDGE = (255, 255, 255, 46)
+FEAST_WORDS = (
+    "the", "be", "of", "and", "a", "to", "in", "he", "have", "it", "that",
+    "for", "they", "with", "as", "not", "on", "she", "at", "by", "this",
+    "we", "you", "do", "but", "from", "or", "which", "one", "would", "all",
+    "will", "there", "say", "who", "make", "when", "can", "more", "if", "no",
+    "man", "out", "other", "so", "what", "time", "up", "go", "about", "than",
+    "into", "could", "state", "only", "new", "year", "some", "take", "come",
+    "these", "know", "see", "use", "get", "like", "then", "first", "any",
+    "work", "now", "may", "such", "give", "over", "think", "most", "even",
+    "find", "day", "also", "after", "way", "many", "must", "look", "before",
+    "great", "back", "through", "long", "where", "much", "should", "well",
+    "people", "down", "own", "just", "because", "good", "each", "those",
+    "feel", "seem", "how", "high", "too", "place", "little", "world", "very",
+    "still", "hand", "old", "life", "tell", "write", "become", "here",
+    "show", "house", "both", "between", "need", "mean", "call", "develop",
+    "under", "last", "right", "move", "thing", "general", "school", "never",
+    "same", "another", "begin", "while", "number", "part", "turn", "real",
+    "leave", "might", "want", "point", "form", "off", "child", "few",
+    "small", "since", "against", "ask", "late", "home", "interest", "large",
+    "family", "dinner", "table", "chicken", "bread", "salad", "pie", "plate",
+    "fork", "spoon", "knife", "cheese", "carrot", "steak", "garden", "lights",
+    "lantern", "grill", "smoke", "night", "bite", "chew", "taste", "sweet",
+    "salty", "crispy", "warm", "full", "hungry", "feast", "eat", "food",
+    "crumb", "gravy", "roast", "butter", "pepper", "onion", "potato", "juice",
+)
+
 # --- Animated backgrounds ----------------------------------------------------
 VIDEO_DIR = BACKGROUND_DIR / "video"
 # Still art -> the looping video drawn in its place in quality mode. The still
@@ -461,6 +542,7 @@ BACKGROUND_VIDEOS = {
     "chao-dinner-bg.jpg": "garden-empty.mp4",
     "chao-dinner-night.png": "garden-night.mp4",
     "chao-dinner-served.png": "garden-night-dinner.mp4",
+    **dict(FEAST_STAGES),
 }
 GRAPHICS_MODES = ("quality", "performance")
 VIDEO_QUEUE = 4   # decoded frames held ahead of the one on screen
@@ -570,6 +652,36 @@ KIDS_LOSE_ITEMS = [
 CHAO_AFTER_GAME_DIALOG = (
     ("Terry", "Phew. Finally, a quiet dinner with the whole family."),
 )
+# A while later: the screen dips to black over a clock, and the family are
+# full. They head off one by one and leave Terry with the rest of the food.
+CHAO_SKIP_TEXT = "30 minutes later..."
+CHAO_SKIP_FADE = 0.6     # seconds down to black, and again back up
+CHAO_SKIP_HOLD = 2.4     # seconds the clock spins on the black
+CHAO_FULL_DIALOG = (
+    ("Marcus", "Ahh, I'm stuffed. I couldn't eat another bite if I tried."),
+    ("Christine", "Me too. I'll go put my feet up and catch my drama. Lovely dinner, Terry!"),
+    ("Marcus", "Good job tonight, son. I'm off to watch the match."),
+    ("Jess", "Can we go play now? Come on, Tom!"),
+    ("Tom", "Yay! Bye Terry! Thanks for the food!"),
+)
+CHAO_LEAVE_FADE = 0.55   # seconds down to black while the family leave
+# Terry alone at the table, the first line with the shocked face.
+CHAO_ALONE_DIALOG = (
+    ("Terry", "Wait... everyone's gone? But there's still SO much food left!"),
+    ("Terry", "I'm not letting a single bite go to waste. Time to finish this feast."),
+)
+# Where Terry stands once he gets up from the table, beside its right end.
+CHAO_ALONE_SPOT = (420, 392)
+CHAO_LEFTOVER_QUESTS = (
+    ("leftovers", "Finish the leftovers", "Head back to the dinner table", False),
+)
+CHAO_FEAST_PROMPT = "Eat"
+CHAO_FEAST_TITLE = "Leftover Feast"
+CHAO_FEAST_MESSAGE = "You are about to enter a typing mini game."
+CHAO_FEAST_ITEMS = [
+    ("Start", "feast", "play"),
+    ("Wait", "wait", "book"),
+]
 PAUSE_MESSAGE_SIZE = 16
 PAUSE_MESSAGE_GAP = 40   # room the message line takes under the title
 # Sample lines, one per family member, said when Terry talks to them.
@@ -617,7 +729,21 @@ SOUND_FILES = {
     "get_snatched": ("get-snatched", "sound", 0.75),
     "ingredient_get": ("ingredient-get", "sound", 0.75),
     "swing_sword": ("swing-sword", "sound", 0.75),
-    "block": ("block", "sound", 0.75)
+    "block": ("block", "sound", 0.75),
+
+    # leftover feast typing game
+    "feast_key": ("feast-key", "sound", 0.55),
+    "feast_error": ("feast-error", "sound", 0.7),
+    "feast_word": ("feast-word", "sound", 0.5),
+    "feast_chomp": ("feast-chomp", "sound", 0.8),
+    "feast_stage": ("feast-stage", "sound", 0.75),
+    "feast_combo": ("feast-combo", "sound", 0.6),
+    "feast_count": ("feast-count", "sound", 0.7),
+    "feast_go": ("feast-go", "sound", 0.75),
+    "feast_tick": ("feast-tick", "sound", 0.6),
+    "feast_whoosh": ("feast-whoosh", "sound", 0.6),
+    "feast_win": ("feast-win", "sound", 0.8),
+    "feast_lose": ("feast-lose", "sound", 0.8),
 }
 STEP_INTERVAL = 0.32   # seconds between footsteps while walking
 # surface -> (clip, how many of Terry's steps one play of that clip covers).

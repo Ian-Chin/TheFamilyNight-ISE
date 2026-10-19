@@ -12,6 +12,11 @@ Terry standing on the left of the dialogue box and them on the right.
 Terry arrives to find the family already there, and pulls a shocked face
 with a few hops before his opening lines.
 
+Once the kids are dealt with, the clock skips on half an hour. The family
+are full and head off, leaving Terry alone with a table of food; he gets up,
+and the table now offers the leftover feast typing game (feast_typing.py),
+which the player can start straight away or after a wander.
+
 Setting up the dinner at the table first asks whether to start the mini game.
 Going ahead fades the food onto the table, dips to black and comes back up
 with the whole family sat on the stools round it, tucking in. A little table
@@ -34,7 +39,10 @@ from .chao_widgets import (
     InteractPrompt, KidsHud, Portraits, QuestPanel, TitleCard,
 )
 from .config import (
-    CHAO_AFTER_GAME_DIALOG, CHAO_DINNER_BG, CHAO_DINNER_SERVED_BG,
+    CHAO_AFTER_GAME_DIALOG, CHAO_ALONE_DIALOG, CHAO_ALONE_SPOT,
+    CHAO_FEAST_ITEMS, CHAO_FEAST_MESSAGE, CHAO_FEAST_PROMPT, CHAO_FEAST_TITLE,
+    CHAO_FULL_DIALOG, CHAO_LEAVE_FADE, CHAO_LEFTOVER_QUESTS, CHAO_SKIP_FADE,
+    CHAO_SKIP_HOLD, CHAO_SKIP_TEXT, CHAO_DINNER_BG, CHAO_DINNER_SERVED_BG,
     CHAO_ENTRY_Y, CHAO_FADE_IN, CHAO_MARK_BOB, CHAO_MARK_BOB_TIME,
     CHAO_NPC_DIALOG, CHAO_NPCS, CHAO_OBSTACLES, CHAO_PATH_X, CHAO_SEAT_FADE,
     CHAO_SEATED_HOLD, CHAO_SEATS, CHAO_SERVE_FADE, CHAO_SERVE_HOLD,
@@ -44,7 +52,8 @@ from .config import (
     CHAO_TABLE_MARK_POS, CHAO_TABLE_PROMPT, CHAO_TABLE_RANGE, CHAO_TABLE_TALK,
     CHAO_TALK_RANGE, CHAO_TITLE_BLUR, CHAO_WALK_BOUNDS, HEIGHT,
     KIDS_GOOD_SHARE, KIDS_LOSE_ITEMS, KIDS_LOSE_TITLE, KIDS_RESULT_MESSAGE,
-    KIDS_RETRY_MESSAGE, KIDS_WIN_ITEMS, KIDS_WIN_TITLE, TERRY_HEIGHT, WIDTH,
+    KIDS_RETRY_MESSAGE, KIDS_WIN_ITEMS, KIDS_WIN_TITLE, TERRY_HEIGHT,
+    TEXT_BRIGHT, TEXT_HOVER, TEXT_SHADOW, WIDTH,
 )
 from .dialogue import DialogBox
 from .effects import WalkDust
@@ -126,6 +135,10 @@ class ChaoDinnerView(StageView):
         # Called once the current run of dialogue lines is finished.
         self.after_script = None
         self.held = set()
+        # A dip to black with something done under it, or None. See start_dip.
+        self.dip = None
+        # Everyone has gone and Terry is up again, with the food to finish.
+        self.leftovers = False
 
         # Terry's shocked face, sized so his body matches the idle art and
         # stood on the same spot. Seconds since it came up, or None.
@@ -165,13 +178,16 @@ class ChaoDinnerView(StageView):
             KIDS_LOSE_ITEMS, KIDS_LOSE_TITLE,
             KIDS_RETRY_MESSAGE.format(share=100, need=100), width=700,
         )
+        self.feast_card = PauseMenu(
+            CHAO_FEAST_ITEMS, CHAO_FEAST_TITLE, CHAO_FEAST_MESSAGE, width=480,
+        )
         self.kids_hud = KidsHud()
         self.pause_menu = PauseMenu()
         self.settings_panel = SettingsPanel()
         self.widgets = [
             self.title_card, self.prompt, self.table_prompt, self.quests,
             self.portraits, self.dialog, self.setup_card, self.win_card,
-            self.lose_card,
+            self.lose_card, self.feast_card,
             self.kids_hud, self.pause_menu, self.settings_panel,
         ]
         # HUD: build it and lay it out with the other widgets.
@@ -211,6 +227,13 @@ class ChaoDinnerView(StageView):
             WIDTH / 2, 26, (238, 240, 246), 14,
             anchor_x="center", anchor_y="center",
         )
+        self.skip_texts = [
+            self.stage.text(
+                CHAO_SKIP_TEXT, WIDTH / 2 + offset, HEIGHT / 2 - 90 - offset,
+                shade, 30, anchor_x="center", anchor_y="center", italic=True,
+            )
+            for offset, shade in ((2, TEXT_SHADOW), (0, TEXT_BRIGHT))
+        ]
 
     def zoom_in(self):
         """Close the camera in on the table, so CHAO_ZOOM_VIEW fills the stage."""
@@ -260,13 +283,24 @@ class ChaoDinnerView(StageView):
         return round(255 * (1 - abs(t - CHAO_SEAT_FADE) / CHAO_SEAT_FADE))
 
     @property
+    def dip_alpha(self):
+        if self.dip is None:
+            return 0
+        t, fade, hold = self.dip["clock"], self.dip["fade"], self.dip["hold"]
+        if t < fade:
+            return round(255 * t / fade)
+        if t < fade + hold:
+            return 255
+        return round(255 * max(0.0, 1 - (t - fade - hold) / fade))
+
+    @property
     def card_open(self):
         """The set-up question or the results are up, holding the scene."""
         return any(card.visible for card in self.cards)
 
     @property
     def cards(self):
-        return (self.setup_card, self.win_card, self.lose_card)
+        return (self.setup_card, self.win_card, self.lose_card, self.feast_card)
 
     @property
     def entrance_over(self):
@@ -378,12 +412,14 @@ class ChaoDinnerView(StageView):
             #     self.placeholder.set_title(self.panel)
             #     self.placeholder.draw()
 
-        alpha = max(self.fade_alpha, self.seat_alpha)
+        alpha = max(self.fade_alpha, self.seat_alpha, self.dip_alpha)
         if alpha:
             arcade.draw_rect_filled(
                 arcade.LBWH(0, 0, self.window.width, self.window.height),
                 (0, 0, 0, alpha),
             )
+        if self.dip is not None and self.dip["time_skip"]:
+            self.draw_time_skip(self.dip_alpha)
         self.title_card.draw()
 
         if self.dialog.visible:
@@ -397,6 +433,32 @@ class ChaoDinnerView(StageView):
         if not self.settings_panel.visible:
             self.pause_menu.draw()
         self.settings_panel.draw()
+
+    def draw_time_skip(self, alpha):
+        """A clock face with its hands spinning round, over the black."""
+        stage = self.stage
+        s = stage.scale
+        x, y = stage.to_screen(WIDTH / 2, HEIGHT / 2 + 20)
+        radius = 70 * s
+        rim = (*TEXT_HOVER, alpha)
+        arcade.draw_circle_filled(x, y, radius, (20, 22, 30, alpha))
+        arcade.draw_circle_outline(x, y, radius, rim, 5 * s)
+        for hour in range(12):
+            angle = hour * math.pi / 6
+            inner = radius * (0.78 if hour % 3 else 0.68)
+            arcade.draw_line(x + math.sin(angle) * inner, y + math.cos(angle) * inner,
+                             x + math.sin(angle) * radius * 0.88,
+                             y + math.cos(angle) * radius * 0.88, rim, 3 * s)
+        # Half an hour goes by: the minute hand makes several quick turns.
+        spin = self.dip["clock"] * 2 * math.pi * 1.6
+        for angle, length, width in ((spin, 0.75, 4), (spin / 12 + 1.2, 0.48, 6)):
+            arcade.draw_line(x, y, x + math.sin(angle) * radius * length,
+                             y + math.cos(angle) * radius * length,
+                             (*TEXT_BRIGHT, alpha), width * s)
+        arcade.draw_circle_filled(x, y, 6 * s, rim)
+        for text in self.skip_texts:
+            text.color = (*text.color[:3], alpha)
+            text.draw()
 
     # --- dialogue and interactions -----------------------------------------
 
@@ -471,7 +533,7 @@ class ChaoDinnerView(StageView):
         self.held.clear()
         self.target = None
         if kind == "table":
-            self.setup_card.open()
+            (self.feast_card if self.leftovers else self.setup_card).open()
         else:
             self.talk_to(npc)
 
@@ -554,6 +616,81 @@ class ChaoDinnerView(StageView):
             self.serve_clock = None
             self.play_script(CHAO_TABLE_TALK, then=self.start_kids_game)
 
+    # --- after the dinner --------------------------------------------------
+
+    def start_dip(self, fade, hold, at_black=None, after=None, time_skip=False):
+        """Dip to black over `fade` seconds, hold, and come back up.
+
+        `at_black` is called once the screen is fully black, `after` once it
+        is clear again. With `time_skip`, a spinning clock and "30 minutes
+        later" show on the black.
+        """
+        self.held.clear()
+        self.target = None
+        self.dip = {"clock": 0.0, "fade": fade, "hold": hold, "at_black": at_black,
+                    "after": after, "time_skip": time_skip}
+
+    def update_dip(self, delta_time):
+        dip = self.dip
+        dip["clock"] += delta_time
+        if dip["at_black"] is not None and dip["clock"] >= dip["fade"]:
+            then, dip["at_black"] = dip["at_black"], None
+            then()
+            if self.dip is not dip:
+                return
+        if dip["clock"] >= 2 * dip["fade"] + dip["hold"]:
+            self.dip = None
+            if dip["after"] is not None:
+                dip["after"]()
+
+    def time_skip(self):
+        """Half an hour on: everyone is full."""
+        self.start_dip(CHAO_SKIP_FADE, CHAO_SKIP_HOLD, time_skip=True,
+                       after=lambda: self.play_script(CHAO_FULL_DIALOG, then=self.family_leaves))
+
+    def family_leaves(self):
+        self.start_dip(CHAO_LEAVE_FADE, 0.5, at_black=self.leave_table,
+                       after=lambda: self.play_script(CHAO_ALONE_DIALOG, then=self.get_up))
+
+    def leave_table(self):
+        """Under the black: only Terry is left on his stool, looking shocked."""
+        for name, diner in self.diner_by_name.items():
+            diner.visible = name == "Terry"
+        self.kids = None
+        self.shocked = True
+        self.shock_clock = 0.0
+        self.portraits.terry = self.shocked_face
+
+    def get_up(self):
+        self.start_dip(CHAO_LEAVE_FADE, 0.3, at_black=self.stand_alone,
+                       after=self.feast_card.open)
+
+    def stand_alone(self):
+        """Under the black: Terry stands by the table, free to walk again."""
+        self.diners = None
+        self.diner_by_name = {}
+        self.zoomed = False
+        self.camera.position = (WIDTH / 2, HEIGHT / 2)
+        self.camera.zoom = 1.0
+        self.npcs = []
+        self.sprites = arcade.SpriteList()
+        self.sprites.append(self.terry)
+        self.terry.visible = True
+        self.terry.center_x, self.terry.ground_y = CHAO_ALONE_SPOT
+        self.terry.center_y = self.terry.ground_y
+        self.dinner_started = False
+        self.leftovers = True
+        self.table_prompt = InteractPrompt(CHAO_FEAST_PROMPT)
+        self.quests = QuestPanel(CHAO_LEFTOVER_QUESTS)
+        self.widgets += [self.table_prompt, self.quests]
+        self.table_prompt.layout(self.stage)
+        self.quests.layout(self.stage)
+
+    def start_feast(self):
+        from .feast_typing import TypingFeastView
+
+        self.start_dip(0.6, 1.0, at_black=lambda: self.window.show_view(TypingFeastView()))
+
     def update_dust(self, delta_time, moving, dx, dy):
         feet_y = self.terry.ground_y - abs(self.terry.height) / 2
         self.dust.update(delta_time, moving, self.terry.center_x, feet_y, dx, dy)
@@ -600,6 +737,11 @@ class ChaoDinnerView(StageView):
             self.shock_clock += delta_time
         for npc in self.npcs:
             npc.animate(delta_time)
+
+        if self.dip is not None:
+            self.update_dust(delta_time, False, 0, 0)
+            self.update_dip(delta_time)
+            return
 
         if self.dialog.visible:
             # Dust already in the air settles while the dialogue is up.
@@ -793,6 +935,10 @@ class ChaoDinnerView(StageView):
             self.start_dinner()
         elif action == "wait":
             self.setup_card.close()
+            self.feast_card.close()
+        elif action == "feast":
+            self.feast_card.close()
+            self.start_feast()
         elif action == "retry":
             self.win_card.close()
             self.lose_card.close()
@@ -800,7 +946,7 @@ class ChaoDinnerView(StageView):
         elif action == "continue":
             self.win_card.close()
             self.game_over = True
-            self.play_script(CHAO_AFTER_GAME_DIALOG)
+            self.play_script(CHAO_AFTER_GAME_DIALOG, then=self.time_skip)
         elif action == "settings":
             self.settings_panel.open()
         elif action == "menu":
