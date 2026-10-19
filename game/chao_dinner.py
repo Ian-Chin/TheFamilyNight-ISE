@@ -40,7 +40,7 @@ from .config import (
     CHAO_SEATED_HOLD, CHAO_SEATS, CHAO_SERVE_FADE, CHAO_SERVE_HOLD,
     CHAO_SETUP_ITEMS, CHAO_SETUP_MESSAGE, CHAO_SETUP_TITLE, CHAO_SHOCK_DIALOG,
     CHAO_SHOCK_HOP, CHAO_SHOCK_HOP_TIME, CHAO_SHOCK_HOPS, CHAO_SHOCK_LEAD,
-    CHAO_STONE_AREAS, CHAO_STOP_Y, CHAO_TABLE_MARK, CHAO_TABLE_MARK_H,
+    CHAO_STONE_AREAS, CHAO_STOP_Y, CHAO_ZOOM, CHAO_ZOOM_ORIGIN, CHAO_TABLE_MARK, CHAO_TABLE_MARK_H,
     CHAO_TABLE_MARK_POS, CHAO_TABLE_PROMPT, CHAO_TABLE_RANGE, CHAO_TABLE_TALK,
     CHAO_TALK_RANGE, CHAO_TITLE_BLUR, CHAO_WALK_BOUNDS, HEIGHT,
     KIDS_GOOD_SHARE, KIDS_LOSE_ITEMS, KIDS_LOSE_TITLE, KIDS_RESULT_MESSAGE,
@@ -186,6 +186,7 @@ class ChaoDinnerView(StageView):
             projection=arcade.LRBT(-WIDTH / 2, WIDTH / 2, -HEIGHT / 2, HEIGHT / 2),
             viewport=self.stage.viewport(),
         )
+        self.zoomed = False   # the camera has closed in on the table
         self.relayout()
 
     def on_show_view(self):
@@ -210,6 +211,28 @@ class ChaoDinnerView(StageView):
             WIDTH / 2, 26, (238, 240, 246), 14,
             anchor_x="center", anchor_y="center",
         )
+
+    def zoom_in(self):
+        """Close the camera in on the table, so CHAO_ZOOM_VIEW fills the stage."""
+        self.zoomed = True
+        left, bottom = CHAO_ZOOM_ORIGIN
+        self.camera.position = (left + WIDTH / CHAO_ZOOM / 2,
+                                bottom + HEIGHT / CHAO_ZOOM / 2)
+        self.camera.zoom = CHAO_ZOOM
+
+    def scene_point(self, x, y):
+        """Window pixels to scene units, through the camera's zoom."""
+        x, y = self.canvas_point(x, y)
+        if not self.zoomed:
+            return x, y
+        left, bottom = CHAO_ZOOM_ORIGIN
+        return left + x / CHAO_ZOOM, bottom + y / CHAO_ZOOM
+
+    def scene_to_screen(self, x, y):
+        if self.zoomed:
+            left, bottom = CHAO_ZOOM_ORIGIN
+            x, y = (x - left) * CHAO_ZOOM, (y - bottom) * CHAO_ZOOM
+        return self.stage.to_screen(x, y)
 
     @property
     def fade_alpha(self):
@@ -278,7 +301,14 @@ class ChaoDinnerView(StageView):
         self.clear()
         viewport = self.stage.viewport()
         background = self.backdrop.texture
-        arcade.draw_texture_rect(background, cover_rect(background, viewport))
+        if self.zoomed:
+            # Closed in, the backdrop goes through the camera with everyone
+            # else; the camera's viewport crops what falls off the stage.
+            self.camera.use()
+            canvas = arcade.LBWH(0, 0, WIDTH, HEIGHT)
+            arcade.draw_texture_rect(background, cover_rect(background, canvas))
+        else:
+            arcade.draw_texture_rect(background, cover_rect(background, viewport))
         # Until the family sits down, the table with the food on it is a
         # second backdrop faded in over the bare one.
         served = self.serve_share
@@ -488,6 +518,8 @@ class ChaoDinnerView(StageView):
             )
         self.diners = list(self.diner_by_name.values())
         self.kids = KidsGame(self.diner_by_name)
+        # Under the black, so the cut comes up already close on the table.
+        self.zoom_in()
 
     @property
     def game_running(self):
@@ -588,7 +620,7 @@ class ChaoDinnerView(StageView):
                 self.kids.update(delta_time)
                 if self.kids.pointer_moved:
                     # The carried kid tugged; the real cursor goes with them.
-                    x, y = self.stage.to_screen(*self.kids.pointer)
+                    x, y = self.scene_to_screen(*self.kids.pointer)
                     self.window.set_mouse_position(round(x), round(y))
                 if self.kids.finished:
                     self.end_kids_game()
@@ -711,7 +743,7 @@ class ChaoDinnerView(StageView):
     def on_mouse_drag(self, x, y, dx, dy, buttons, modifiers):
         self.settings_panel.on_mouse_drag(*self.canvas_point(x, y))
         if self.kids is not None and not self.pause_menu.visible:
-            self.kids.drag(*self.canvas_point(x, y))
+            self.kids.drag(*self.scene_point(x, y))
 
     def on_mouse_release(self, x, y, button, modifiers):
         self.settings_panel.on_mouse_release()
@@ -735,7 +767,7 @@ class ChaoDinnerView(StageView):
                 return
         if (self.game_running and not self.dialog.visible
                 and button == arcade.MOUSE_BUTTON_LEFT):
-            self.kids.press(canvas_x, canvas_y)
+            self.kids.press(*self.scene_point(x, y))
             return
         if not self.playing:
             return

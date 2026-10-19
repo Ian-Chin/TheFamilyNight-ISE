@@ -23,7 +23,7 @@ import arcade
 
 from . import audio, textures
 from .config import (
-    CHAO_OBSTACLES, CHAO_STONE_AREAS, CHAO_WALK_BOUNDS, KID_CLEARANCE, KID_GRID, KID_BAR_DANGER, KID_BAR_GAP, KID_BAR_H,
+    CHAO_OBSTACLES, CHAO_STONE_AREAS, KID_BOUNDS, KID_CLEARANCE, KID_GRID, KID_BAR_DANGER, KID_BAR_GAP, KID_BAR_H,
     KID_BAR_SAFE, KID_BAR_W, KID_CAUGHT_FRAME, KID_ESCAPE_COOLDOWN,
     KID_ESCAPE_TIME, KID_HEIGHT, KID_HIT_PAD, KID_RUN_AREA, KID_RUN_FRAME,
     KID_RUN_SPEED, KID_SEAT_BOX, KID_SEAT_BOX_RISE, KID_SEAT_COLOR,
@@ -46,7 +46,7 @@ def _mix(a, b, t):
 # feet could stand at its middle, clear of every obstacle by KID_CLEARANCE.
 
 def blocked(x, y):
-    left, right, bottom, top = CHAO_WALK_BOUNDS
+    left, right, bottom, top = KID_BOUNDS
     if not (left <= x <= right and bottom <= y <= top):
         return True
     return any(_inside(x, y, box, KID_CLEARANCE) for box in CHAO_OBSTACLES)
@@ -426,7 +426,7 @@ class KidsGame:
 
     def move_pointer(self, x, y):
         """Put the cursor at canvas (x, y), and the carried kid under it."""
-        left, right, bottom, top = CHAO_WALK_BOUNDS
+        left, right, bottom, top = KID_BOUNDS
         x = min(max(x, left), right)
         y = min(max(y, bottom), top)
         self.pointer = (x, y)

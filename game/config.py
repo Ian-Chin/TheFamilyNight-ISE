@@ -303,10 +303,26 @@ KID_CAUGHT_FRAME = 0.12  # seconds per tantrum frame
 KID_SHAKE = 2.5          # canvas units a carried kid shakes
 KID_SEATED_MIN = 2.5     # seconds a returned kid stays put, at least
 KID_SEATED_MAX = 6.0     # and at most
+# Once the family is seated the camera closes in on the table: the canvas is
+# shown CHAO_ZOOM times larger, with CHAO_ZOOM_ORIGIN as the bottom left of
+# what is still on screen. CHAO_ZOOM_VIEW is that part, as (left, right,
+# bottom, top).
+CHAO_ZOOM = 1.6
+CHAO_ZOOM_ORIGIN = (0, 176)
+CHAO_ZOOM_VIEW = (
+    CHAO_ZOOM_ORIGIN[0], CHAO_ZOOM_ORIGIN[0] + WIDTH / CHAO_ZOOM,
+    CHAO_ZOOM_ORIGIN[1], CHAO_ZOOM_ORIGIN[1] + HEIGHT / CHAO_ZOOM,
+)
+# Where a kid's feet may go, kept far enough in from the edges of the zoomed
+# view that the whole kid, and the escape bar over their head, stay on screen.
+KID_BOUNDS = (
+    CHAO_ZOOM_VIEW[0] + 36, CHAO_ZOOM_VIEW[1] - 36,
+    CHAO_ZOOM_VIEW[2] + 16, CHAO_ZOOM_VIEW[3] - KID_HEIGHT - 30,
+)
 # Ground the kids run about on, as (left, right, bottom, top); targets are
 # picked in here. They path round the scenery in CHAO_OBSTACLES on a grid of
 # KID_GRID cells, keeping KID_CLEARANCE between their feet and its edges.
-KID_RUN_AREA = (70, 1210, 70, 640)
+KID_RUN_AREA = KID_BOUNDS
 KID_GRID = 20
 KID_CLEARANCE = 24
 KID_HIT_PAD = 10         # extra canvas units round a kid that still grabs
