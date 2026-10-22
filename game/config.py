@@ -132,9 +132,8 @@ BBQ_PREP_SCENE_BG = "BBQ-Scene/First person view - Food on top table with Terry.
 BBQ_SCENE_EMPTY_BG = "chao-dinner-bg.jpg"
 # Chopping Scene Stages
 CHOP_MEAT_BG_1 = "BBQ-Scene/Chopping_meat_begin.jpg"
-CHOP_MEAT_BG_2 = "BBQ-Scene/Chopping_meat_deep_into.jpg"
-CHOP_MEAT_BG_3 = "BBQ-Scene/Chopping_meat_in_half.jpg"
-CHOP_MEAT_BG_4 = "BBQ-Scene/Chopped_meat_pieces.jpg"
+CHOP_MEAT_BG_2 = "BBQ-Scene/Chopping_meat_in_half.jpg"
+CHOP_MEAT_BG_3 = "BBQ-Scene/Chopped_meat_pieces.jpg"
 CHOP_MEAT_RUINED = "BBQ-Scene/Chopped_meat_ruined.jpg"
 
 CHOP_CARROT_BG_1 = "BBQ-Scene/Chopping_carrot_begin.jpg"

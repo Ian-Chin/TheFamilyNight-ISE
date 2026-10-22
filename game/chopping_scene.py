@@ -4,7 +4,7 @@ import arcade
 
 from . import audio, textures
 from .config import (
-    CHOP_MEAT_BG_1, CHOP_MEAT_BG_2, CHOP_MEAT_BG_3, CHOP_MEAT_BG_4, CHOP_MEAT_RUINED,
+    CHOP_MEAT_BG_1, CHOP_MEAT_BG_2, CHOP_MEAT_BG_3, CHOP_MEAT_RUINED,
     CHOP_CARROT_BG_1, CHOP_CARROT_BG_2, CHOP_CARROT_BG_3, CHOP_CARROT_RUINED,
     CHOP_ONION_BG_1, CHOP_ONION_BG_2, CHOP_ONION_BG_3, CHOP_ONION_RUINED,
     CHOP_PEPPER_BG_1, CHOP_PEPPER_BG_2, CHOP_PEPPER_BG_3, CHOP_PEPPER_RUINED,
@@ -20,55 +20,108 @@ def cover_rect(texture, rect):
     scale = max(rect.width / texture.width, rect.height / texture.height)
     return arcade.XYWH(rect.x, rect.y, texture.width * scale, texture.height * scale)
 
+# --- Food Particle System for Chopping Visual Effects ---
+class FoodParticle:
+    def __init__(self, x, y, color):
+        self.x = x + random.uniform(-30, 30)
+        self.y = y + random.uniform(-10, 20)
+        
+        self.vx = random.uniform(-250, 250)
+        self.vy = random.uniform(100, 350)
+        
+        self.color = color
+        self.size = random.uniform(8, 16)
+        self.angle = random.uniform(0, 360)
+        self.spin = random.uniform(-300, 300)
+        
+        self.lifetime = random.uniform(0.4, 0.8)
+        self.age = 0.0
+
+    def update(self, dt):
+        self.age += dt
+        
+        self.x += self.vx * dt
+        self.y += self.vy * dt
+        self.vy -= 1000 * dt  
+        self.angle += self.spin * dt
+
+    def draw(self):
+        progress = self.age / self.lifetime
+        alpha = max(0, int(255 * (1.0 - progress)))
+        
+        if alpha > 0:
+            rect = arcade.XYWH(self.x - self.size/2, self.y - self.size/2, self.size, self.size)
+            arcade.draw_rect_filled(rect, (*self.color, alpha), tilt_angle=self.angle)
+
+    @property
+    def is_dead(self):
+        return self.age >= self.lifetime
+# -------------------------------------------------------------
+
 class ChoppingView(StageView):
     def __init__(self):
         super().__init__()
         
         self.backgrounds = [
-            # Meat Sequence (0 - 4)
+            # Meat Sequence (0 - 3)
             textures.background(CHOP_MEAT_BG_1),      # 0
             textures.background(CHOP_MEAT_BG_2),      # 1
-            textures.background(CHOP_MEAT_BG_3),      # 2
-            textures.background(CHOP_MEAT_BG_4),      # 3
-            textures.background(CHOP_MEAT_RUINED),    # 4
+            textures.background(CHOP_MEAT_BG_3),      # 2 (Success)
+            textures.background(CHOP_MEAT_RUINED),    # 3 (Fail)
             
-            # Carrot Sequence (5 - 8)
-            textures.background(CHOP_CARROT_BG_1),    # 5
-            textures.background(CHOP_CARROT_BG_2),    # 6
-            textures.background(CHOP_CARROT_BG_3),    # 7
-            textures.background(CHOP_CARROT_RUINED),  # 8
+            # Carrot Sequence (4 - 7)
+            textures.background(CHOP_CARROT_BG_1),    # 4
+            textures.background(CHOP_CARROT_BG_2),    # 5
+            textures.background(CHOP_CARROT_BG_3),    # 6 (Success)
+            textures.background(CHOP_CARROT_RUINED),  # 7 (Fail)
             
-            # Onion Sequence (9 - 12)
-            textures.background(CHOP_ONION_BG_1),     # 9
-            textures.background(CHOP_ONION_BG_2),     # 10
-            textures.background(CHOP_ONION_BG_3),     # 11
-            textures.background(CHOP_ONION_RUINED),   # 12
+            # Onion Sequence (8 - 11)
+            textures.background(CHOP_ONION_BG_1),     # 8
+            textures.background(CHOP_ONION_BG_2),     # 9
+            textures.background(CHOP_ONION_BG_3),     # 10 (Success)
+            textures.background(CHOP_ONION_RUINED),   # 11 (Fail)
             
-            # Green Pepper Sequence (13 - 16)
-            textures.background(CHOP_PEPPER_BG_1),    # 13
-            textures.background(CHOP_PEPPER_BG_2),    # 14
-            textures.background(CHOP_PEPPER_BG_3),    # 15
-            textures.background(CHOP_PEPPER_RUINED),  # 16
+            # Green Pepper Sequence (12 - 15)
+            textures.background(CHOP_PEPPER_BG_1),    # 12
+            textures.background(CHOP_PEPPER_BG_2),    # 13
+            textures.background(CHOP_PEPPER_BG_3),    # 14 (Success)
+            textures.background(CHOP_PEPPER_RUINED),  # 15 (Fail)
             
-            # Eggplant Sequence (17 - 21)
-            textures.background(CHOP_EGGPLANT_BG_1),  # 17
-            textures.background(CHOP_EGGPLANT_BG_2),  # 18
-            textures.background(CHOP_EGGPLANT_BG_3),  # 19
-            textures.background(CHOP_EGGPLANT_BG_4),  # 20
-            textures.background(CHOP_EGGPLANT_RUINED),# 21
+            # Eggplant Sequence (16 - 20)
+            textures.background(CHOP_EGGPLANT_BG_1),  # 16
+            textures.background(CHOP_EGGPLANT_BG_2),  # 17
+            textures.background(CHOP_EGGPLANT_BG_3),  # 18
+            textures.background(CHOP_EGGPLANT_BG_4),  # 19 (Success)
+            textures.background(CHOP_EGGPLANT_RUINED),# 20 (Fail)
             
-            # Final Scenes (22 - 23)
-            textures.background(CHOP_FINISH_BG),      # 22 
-            textures.background(CHOP_FAILED_BG),      # 23 
+            textures.background(CHOP_FINISH_BG),      # 21 
+            textures.background(CHOP_FAILED_BG),      # 22 
         ]
         self.stage_idx = 0  
         
-        # --- Core Game Stats ---
         self.progress = 0       
         self.max_lives = 3
         self.lives = self.max_lives
         self.streak = 0  
-        self.damage_alpha = 0  # NEW: Tracks the opacity of the red screen flash
+        self.damage_alpha = 0  
+        
+        self.success_timer = 0.0  
+        self.fail_reason = ""
+        
+        # --- Knife Sprite & Visual Effects ---
+        self.particles = []
+        self.knife_list = arcade.SpriteList()
+        self.knife = arcade.Sprite(textures.ui_image("Knife_hand.png"), scale=0.8)
+        self.knife_list.append(self.knife)
+        
+        self.knife_base_x = WIDTH - 200
+        self.knife_base_y = HEIGHT / 2 + 100
+        self.knife.center_x = self.knife_base_x
+        self.knife.center_y = self.knife_base_y
+        
+        self.chop_anim_timer = 0.0  
+        self.knife_target_x = self.knife_base_x
+        self.knife_target_y = self.knife_base_y
         
         # --- UI Sprites ---
         self.terry_portrait = arcade.Sprite("assets/emotions/Terry_original.png", scale=0.8)
@@ -101,7 +154,6 @@ class ChoppingView(StageView):
         self.widgets = [self.dialog]
         self.typing_player = None
 
-        # --- NEW: Setup the scaling camera for the UI ---
         self.camera = arcade.camera.Camera2D(
             position=(WIDTH / 2, HEIGHT / 2),
             projection=arcade.LRBT(-WIDTH / 2, WIDTH / 2, -HEIGHT / 2, HEIGHT / 2),
@@ -118,8 +170,18 @@ class ChoppingView(StageView):
     def set_emotion(self, emotion_name):
         self.terry_portrait.texture = arcade.load_texture(f"assets/emotions/{emotion_name}.png")
 
+    def spawn_food_particles(self, x, y):
+        if self.stage_idx <= 3: color = (220, 80, 80)        # Meat
+        elif self.stage_idx <= 7: color = (255, 140, 0)      # Carrot 
+        elif self.stage_idx <= 11: color = (230, 200, 240)   # Onion 
+        elif self.stage_idx <= 15: color = (50, 200, 50)     # Pepper 
+        else: color = (100, 50, 120)                         # Eggplant 
+        
+        for _ in range(15):
+            self.particles.append(FoodParticle(x, y, color))
+
     def on_show_view(self):
-        self.trigger_dialog("Let's prep! The CHOP button will appear randomly. Click it within 2 seconds, or you lose a heart!")
+        self.trigger_dialog("Let's prep! Click exactly on the CHOP button. Don't miss, and don't chop too fast!")
 
     def trigger_dialog(self, text):
         audio.play("dialog_open")
@@ -132,18 +194,47 @@ class ChoppingView(StageView):
             self.typing_player = None
 
     def spawn_button(self):
-        self.chop_button.center_x = random.randint(200, WIDTH - 300)
-        self.chop_button.center_y = random.randint(200, HEIGHT - 200)
+        # NEW: Safe zones avoiding UI and Food
+        safe_zones = [
+            (400, 900, 580, 660),   # Top Center
+            (100, 300, 100, 550),   # Left Side
+            (350, 900, 80, 180),    # Bottom Center
+            (950, 1180, 80, 300),   # Bottom Right
+        ]
+        
+        for _ in range(15):
+            zone = random.choice(safe_zones)
+            new_x = random.randint(zone[0], zone[1])
+            new_y = random.randint(zone[2], zone[3])
+            
+            # Ensure it does not spawn in the same spot
+            dist = math.hypot(new_x - self.chop_button.center_x, new_y - self.chop_button.center_y)
+            if dist > 200:
+                break
+                
+        self.chop_button.center_x = new_x
+        self.chop_button.center_y = new_y
         self.button_active = True
         self.slice_timer = 2.0
 
-    def fail_slice(self):
+    def fail_slice(self, reason="timeout", click_x=None, click_y=None):
         self.button_active = False
+        self.success_timer = 0.0  
         self.lives -= 1
         self.streak = 0  
-        
-        # Trigger the red screen flash
         self.damage_alpha = 150  
+        self.fail_reason = reason
+        
+        # Knife targets the exact misclick OR hits the food again if spamming
+        if reason == "misclick" and click_x is not None and click_y is not None:
+            self.chop_anim_timer = 0.15
+            self.knife_target_x = click_x
+            self.knife_target_y = click_y
+        elif reason == "overchop":
+            self.chop_anim_timer = 0.15
+            self.knife_target_x = WIDTH / 2 - 50
+            self.knife_target_y = HEIGHT / 2 - 50
+            self.spawn_food_particles(self.knife_target_x, self.knife_target_y)
         
         self.breaking_idx = self.max_lives - self.lives - 1
         if 0 <= self.breaking_idx < self.max_lives:
@@ -152,22 +243,59 @@ class ChoppingView(StageView):
             self.heart_anim_state = 1
             self.pending_fail_dialog = True 
             
-            if self.stage_idx < 5:
-                self.stage_idx = 4   
-            elif 5 <= self.stage_idx < 9:
-                self.stage_idx = 8   
-            elif 9 <= self.stage_idx < 13:
-                self.stage_idx = 12  
-            elif 13 <= self.stage_idx < 17:
-                self.stage_idx = 16  
-            elif 17 <= self.stage_idx < 22:
-                self.stage_idx = 21  
+            # NEW: ONLY turn the food to mush if they overchopped! 
+            if reason == "overchop":
+                if self.stage_idx < 4: self.stage_idx = 3   
+                elif 4 <= self.stage_idx < 8: self.stage_idx = 7   
+                elif 8 <= self.stage_idx < 12: self.stage_idx = 11  
+                elif 12 <= self.stage_idx < 16: self.stage_idx = 15  
+                elif 16 <= self.stage_idx < 21: self.stage_idx = 20  
 
     def on_update(self, delta_time):
-        # ALWAYS process visual animations, even if dialog is visible
+        for p in self.particles:
+            p.update(delta_time)
+        self.particles = [p for p in self.particles if not p.is_dead]
+
+        # --- Dynamic Knife Animation ---
+        if self.chop_anim_timer > 0:
+            self.chop_anim_timer -= delta_time
+            progress = max(0, self.chop_anim_timer / 0.15) 
+            
+            if progress > 0.5: t = (1.0 - progress) * 2.0  
+            else: t = progress * 2.0          
+                
+            self.knife.angle = -60 * t
+            self.knife.center_x = self.knife_base_x + (self.knife_target_x - self.knife_base_x) * t
+            self.knife.center_y = self.knife_base_y + (self.knife_target_y - self.knife_base_y) * t
+        else:
+            self.knife.angle = 0
+            self.knife.center_x = self.knife_base_x
+            self.knife.center_y = self.knife_base_y
+
         if self.damage_alpha > 0:
-            # Smoothly fade the red flash away over ~0.5 seconds
             self.damage_alpha = max(0, self.damage_alpha - (300 * delta_time))
+            
+        # --- Timer to trigger successful chop dialogs safely ---
+        if self.success_timer > 0:
+            self.success_timer -= delta_time
+            if self.success_timer <= 0:
+                if self.stage_idx == 2:
+                    self.progress += 20
+                    self.trigger_dialog("Perfect! Meat is prepped. (Progress 20%)")
+                elif self.stage_idx == 6:
+                    self.progress += 20
+                    self.trigger_dialog("Nice and crunchy! Carrots are done. (Progress 40%)")
+                elif self.stage_idx == 10:
+                    self.progress += 20
+                    self.trigger_dialog("My eyes are watering... but the onions are done! (Progress 60%)")
+                elif self.stage_idx == 14:
+                    self.progress += 20
+                    self.trigger_dialog("Green peppers are sliced perfectly! (Progress 80%)")
+                elif self.stage_idx == 19:
+                    self.progress += 20
+                    self.trigger_dialog("The eggplant is ready! (Progress 100%)")
+                else:
+                    self.spawn_button()
 
         if self.heart_anim_timer > 0:
             self.heart_anim_timer -= delta_time
@@ -186,12 +314,17 @@ class ChoppingView(StageView):
                         self.pending_fail_dialog = False
                         
                         if self.lives <= 0:
-                            self.stage_idx = 23
+                            self.stage_idx = 22 
                             self.set_emotion("Terry_sad")
                             self.trigger_dialog("I ruined too much food! I have to restart the whole prep...")
                         else:
                             self.set_emotion("Terry_shocked")
-                            self.trigger_dialog("Oh no! I missed the cut and ruined this piece. Moving to the next food...")
+                            if self.fail_reason == "misclick":
+                                self.trigger_dialog("Ouch! I completely missed the food and chopped the board! Let me try that again.")
+                            elif self.fail_reason == "overchop":
+                                self.trigger_dialog("Oh no! I chopped too fast and mashed it into pieces! Moving to next food...")
+                            else:
+                                self.trigger_dialog("I took too long and lost my focus. Let me try that again!")
 
         if self.dialog.visible:
             self.dialog.update(delta_time)
@@ -202,28 +335,30 @@ class ChoppingView(StageView):
         if self.button_active:
             self.slice_timer -= delta_time
             if self.slice_timer <= 0:
-                self.fail_slice()
+                self.fail_slice(reason="timeout")
 
     def on_draw(self):
         self.clear()
         
-        # 1. Draw Background (Default Screen Camera)
         self.window.default_camera.use()
         current_bg = self.backgrounds[self.stage_idx]
         arcade.draw_texture_rect(current_bg, cover_rect(current_bg, self.stage.viewport()))
         
-        # Draw Damage Flash over the background (Using actual window dimensions)
         if self.damage_alpha > 0:
             flash_rect = arcade.XYWH(self.window.width / 2, self.window.height / 2, self.window.width, self.window.height)
             arcade.draw_rect_filled(flash_rect, (255, 0, 0, int(self.damage_alpha)))
         
-        # 2. Draw Scaled UI (Canvas Camera)
         self.camera.use()
         
-        if self.stage_idx != 22:
+        if self.stage_idx < 21:
+            for p in self.particles:
+                p.draw()
+            self.knife_list.draw(pixelated=True)
+        
+        if self.stage_idx != 21:
             self.portrait_list.draw(pixelated=True)
             
-        if self.stage_idx < 22:
+        if self.stage_idx < 21:
             self.hearts.draw(pixelated=True)
             
             arcade.draw_text("Chopping Progress", 40, HEIGHT - 35, arcade.color.WHITE, 16, bold=True, font_name="Kenney Pixel Square")
@@ -251,91 +386,127 @@ class ChoppingView(StageView):
                 timer_color, font_size=20, anchor_x="center", bold=True
             )
             
-        # 3. Draw Dialogue (Default Screen Camera)
         self.window.default_camera.use()
         self.dialog.draw()
         
     def on_mouse_press(self, x, y, button, modifiers):
-        if self.dialog.visible or not self.button_active:
+        if self.dialog.visible:
             return
             
         canvas_x, canvas_y = self.stage.to_canvas(x, y)
         
         if button == arcade.MOUSE_BUTTON_LEFT:
-            if self.chop_button.collides_with_point((canvas_x, canvas_y)):
+            if self.success_timer > 0:
                 audio.play("ui_click")
-                self.button_active = False
-                self.stage_idx += 1
-                
-                self.streak += 1
-                if self.streak > 1:
-                    self.set_emotion("Terry_excited")
+                self.fail_slice(reason="overchop", click_x=canvas_x, click_y=canvas_y)
+                return
+            
+            if self.button_active:
+                audio.play("ui_click")
+                if self.chop_button.collides_with_point((canvas_x, canvas_y)):
+                    self.button_active = False
+                    self.stage_idx += 1
+                    
+                    self.chop_anim_timer = 0.15
+                    # NEW: Knife swings to the food, not the button!
+                    self.knife_target_x = WIDTH / 2 - 50
+                    self.knife_target_y = HEIGHT / 2 - 50
+                    self.spawn_food_particles(self.knife_target_x, self.knife_target_y)
+                    
+                    self.streak += 1
+                    if self.streak > 1:
+                        self.set_emotion("Terry_excited")
+                    else:
+                        self.set_emotion("Terry_smile_excited")
+                    
+                    self.success_timer = 0.3
                 else:
-                    self.set_emotion("Terry_smile_excited")
-                
-                if self.stage_idx == 3:
-                    self.progress += 20
-                    self.trigger_dialog("Perfect! Meat is prepped. (Progress 20%)")
-                elif self.stage_idx == 7:
-                    self.progress += 20
-                    self.trigger_dialog("Nice and crunchy! Carrots are done. (Progress 40%)")
-                elif self.stage_idx == 11:
-                    self.progress += 20
-                    self.trigger_dialog("My eyes are watering... but the onions are done! (Progress 60%)")
-                elif self.stage_idx == 15:
-                    self.progress += 20
-                    self.trigger_dialog("Green peppers are sliced perfectly! (Progress 80%)")
-                elif self.stage_idx == 20:
-                    self.progress += 20
-                    self.trigger_dialog("The eggplant is ready! (Progress 100%)")
-                else:
-                    self.spawn_button()
+                    self.fail_slice(reason="misclick", click_x=canvas_x, click_y=canvas_y)
 
     def on_key_press(self, key, modifiers):
+        if not self.dialog.visible:
+            if key in (arcade.key.ENTER, arcade.key.NUM_ENTER, arcade.key.RETURN):
+                if self.lives <= 0:
+                    self.window.show_view(ChoppingView())
+                    return
+                    
+                # Moving to next food because of success OR overchop ruin
+                if self.stage_idx in (2, 3):
+                    self.set_emotion("Terry_nervous" if self.stage_idx == 3 else "Terry_original")
+                    self.streak = 0
+                    self.stage_idx = 4
+                    self.trigger_dialog("Let's slice up these fresh carrots next!")
+                
+                elif self.stage_idx in (6, 7):
+                    self.set_emotion("Terry_nervous" if self.stage_idx == 7 else "Terry_original")
+                    self.streak = 0
+                    self.stage_idx = 8
+                    self.trigger_dialog("Alright, onions are next. Let's chop fast before I cry!")
+                    
+                elif self.stage_idx in (10, 11):
+                    self.set_emotion("Terry_nervous" if self.stage_idx == 11 else "Terry_original")
+                    self.streak = 0
+                    self.stage_idx = 12
+                    self.trigger_dialog("Time for the green peppers!")
+                    
+                elif self.stage_idx in (14, 15):
+                    self.set_emotion("Terry_nervous" if self.stage_idx == 15 else "Terry_original")
+                    self.streak = 0
+                    self.stage_idx = 16
+                    self.trigger_dialog("Last but not least, the eggplant!")
+                    
+                elif self.stage_idx in (19, 20):
+                    self.stage_idx = 21
+                    self.trigger_dialog("All ingredients are prepped! Time to fire up the BBQ.")
+                    
+                elif self.stage_idx == 21:
+                    self.window.show_view(BbqView(chop_unlocked=True, grill_unlocked=True, grill_completed=False))
+
+                else:
+                    # NEW: They misclicked or timed out. Keep trying on the exact same food!
+                    if not self.button_active:
+                        self.spawn_button()
+            return
+            
         if self.dialog.visible:
             if key in (arcade.key.ENTER, arcade.key.NUM_ENTER, arcade.key.RETURN):
                 self.stop_typing_sound()
                 self.dialog.advance()
                 
+                # Check immediately after advancing if we need to do the same transitions
                 if not self.dialog.visible:
                     if self.lives <= 0:
                         self.window.show_view(ChoppingView())
                         return
-                        
-                    if self.stage_idx in (3, 4):
-                        self.set_emotion("Terry_nervous" if self.stage_idx == 4 else "Terry_original")
-                        self.streak = 0
-                        self.stage_idx = 5
-                        self.trigger_dialog("Let's slice up these fresh carrots next!")
                     
-                    elif self.stage_idx in (7, 8):
-                        self.set_emotion("Terry_nervous" if self.stage_idx == 8 else "Terry_original")
+                    if self.stage_idx in (2, 3):
+                        self.set_emotion("Terry_nervous" if self.stage_idx == 3 else "Terry_original")
                         self.streak = 0
-                        self.stage_idx = 9
+                        self.stage_idx = 4
+                        self.trigger_dialog("Let's slice up these fresh carrots next!")
+                    elif self.stage_idx in (6, 7):
+                        self.set_emotion("Terry_nervous" if self.stage_idx == 7 else "Terry_original")
+                        self.streak = 0
+                        self.stage_idx = 8
                         self.trigger_dialog("Alright, onions are next. Let's chop fast before I cry!")
-                        
-                    elif self.stage_idx in (11, 12):
-                        self.set_emotion("Terry_nervous" if self.stage_idx == 12 else "Terry_original")
+                    elif self.stage_idx in (10, 11):
+                        self.set_emotion("Terry_nervous" if self.stage_idx == 11 else "Terry_original")
                         self.streak = 0
-                        self.stage_idx = 13
+                        self.stage_idx = 12
                         self.trigger_dialog("Time for the green peppers!")
-                        
-                    elif self.stage_idx in (15, 16):
-                        self.set_emotion("Terry_nervous" if self.stage_idx == 16 else "Terry_original")
+                    elif self.stage_idx in (14, 15):
+                        self.set_emotion("Terry_nervous" if self.stage_idx == 15 else "Terry_original")
                         self.streak = 0
-                        self.stage_idx = 17
+                        self.stage_idx = 16
                         self.trigger_dialog("Last but not least, the eggplant!")
-                        
-                    elif self.stage_idx in (20, 21):
-                        self.stage_idx = 22
+                    elif self.stage_idx in (19, 20):
+                        self.stage_idx = 21
                         self.trigger_dialog("All ingredients are prepped! Time to fire up the BBQ.")
-                        
-                    elif self.stage_idx == 22:
+                    elif self.stage_idx == 21:
                         self.window.show_view(BbqView(chop_unlocked=True, grill_unlocked=True, grill_completed=False))
-
-                    elif self.stage_idx in (0, 5, 9, 13, 17) and not self.button_active:
-                        self.spawn_button()
-            return
+                    else:
+                        if not self.button_active:
+                            self.spawn_button()
 
         if key == arcade.key.ESCAPE:
             self.window.show_view(BbqView(chop_unlocked=True))
