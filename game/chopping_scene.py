@@ -194,7 +194,7 @@ class ChoppingView(StageView):
             self.typing_player = None
 
     def spawn_button(self):
-        # NEW: Safe zones avoiding UI and Food
+        # Safe zones avoiding UI and Food
         safe_zones = [
             (400, 900, 580, 660),   # Top Center
             (100, 300, 100, 550),   # Left Side
@@ -225,6 +225,13 @@ class ChoppingView(StageView):
         self.damage_alpha = 150  
         self.fail_reason = reason
         
+        # --- NEW: Play HP reduced sound whenever lives decrease ---
+        audio.play("hp_reduced")
+        
+        # --- NEW: Play chop_table sound if user misclicked outside the button ---
+        if reason == "misclick":
+            audio.play("chop_table")
+        
         # Knife targets the exact misclick OR hits the food again if spamming
         if reason == "misclick" and click_x is not None and click_y is not None:
             self.chop_anim_timer = 0.15
@@ -243,7 +250,6 @@ class ChoppingView(StageView):
             self.heart_anim_state = 1
             self.pending_fail_dialog = True 
             
-            # NEW: ONLY turn the food to mush if they overchopped! 
             if reason == "overchop":
                 if self.stage_idx < 4: self.stage_idx = 3   
                 elif 4 <= self.stage_idx < 8: self.stage_idx = 7   
@@ -397,18 +403,25 @@ class ChoppingView(StageView):
         
         if button == arcade.MOUSE_BUTTON_LEFT:
             if self.success_timer > 0:
-                audio.play("ui_click")
+                audio.play("click_button")
                 self.fail_slice(reason="overchop", click_x=canvas_x, click_y=canvas_y)
                 return
             
             if self.button_active:
-                audio.play("ui_click")
                 if self.chop_button.collides_with_point((canvas_x, canvas_y)):
                     self.button_active = False
+                    
+                    # --- NEW: Play specific sound depending on whether it's meat or vegetables ---
+                    if self.stage_idx in (0, 1):
+                        audio.play("chop_meat")
+                    elif self.stage_idx in (4, 5, 8, 9, 12, 13, 16, 17, 18):
+                        audio.play(random.choice(["chop_vege_1", "chop_vege_2"]))
+                    else:
+                        audio.play("click_button")
+                    
                     self.stage_idx += 1
                     
                     self.chop_anim_timer = 0.15
-                    # NEW: Knife swings to the food, not the button!
                     self.knife_target_x = WIDTH / 2 - 50
                     self.knife_target_y = HEIGHT / 2 - 50
                     self.spawn_food_particles(self.knife_target_x, self.knife_target_y)
@@ -425,12 +438,11 @@ class ChoppingView(StageView):
 
     def on_key_press(self, key, modifiers):
         if not self.dialog.visible:
-            if key in (arcade.key.ENTER, arcade.key.NUM_ENTER, arcade.key.RETURN):
+            if key in (arcade.key.ENTER, arcade.key.NUM_ENTER, arcade.key.RETURN, arcade.key.SPACE):
                 if self.lives <= 0:
                     self.window.show_view(ChoppingView())
                     return
                     
-                # Moving to next food because of success OR overchop ruin
                 if self.stage_idx in (2, 3):
                     self.set_emotion("Terry_nervous" if self.stage_idx == 3 else "Terry_original")
                     self.streak = 0
@@ -463,17 +475,15 @@ class ChoppingView(StageView):
                     self.window.show_view(BbqView(chop_unlocked=True, grill_unlocked=True, grill_completed=False))
 
                 else:
-                    # NEW: They misclicked or timed out. Keep trying on the exact same food!
                     if not self.button_active:
                         self.spawn_button()
             return
             
         if self.dialog.visible:
-            if key in (arcade.key.ENTER, arcade.key.NUM_ENTER, arcade.key.RETURN):
+            if key in (arcade.key.ENTER, arcade.key.NUM_ENTER, arcade.key.RETURN, arcade.key.SPACE):
                 self.stop_typing_sound()
                 self.dialog.advance()
                 
-                # Check immediately after advancing if we need to do the same transitions
                 if not self.dialog.visible:
                     if self.lives <= 0:
                         self.window.show_view(ChoppingView())

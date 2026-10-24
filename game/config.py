@@ -744,10 +744,10 @@ SOUND_FILES = {
     "feast_win": ("feast-win", "sound", 0.8),
     "feast_lose": ("feast-lose", "sound", 0.8),
 
-    "chop_meat": ("Chop_meat", "sfx", 1.0),
+    "chop_meat": ("Chop_meat", "sfx", 1.2),
     "chop_table": ("Chop_table", "sfx", 1.0),
-    "chop_vege_1": ("Chop_vege_1", "sfx", 1.0),
-    "chop_vege_2": ("Chop_vege_2", "sfx", 1.0),
+    "chop_vege_1": ("Chop_vege_1", "sfx", 2.0),
+    "chop_vege_2": ("Chop_vege_2", "sfx", 1.8),
     "click_button": ("Click_Button_Wodden", "sfx", 1.0),
     "game_failed": ("Game_failed", "sfx", 1.0),
     "game_success": ("Game_success", "sfx", 1.0),

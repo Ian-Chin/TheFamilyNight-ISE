@@ -107,7 +107,7 @@ class BBQPrepView(StageView):
             # --- NEW: Check exact collision with the sprite instead of a hardcoded box ---
             if self.start_button.collides_with_point((canvas_x, canvas_y)):
                 from . import audio
-                audio.play("ui_click")
+                audio.play("click_button")
                 
                 # Switch back to the main BBQ scene, and tell it the chopping board is unlocked!
                 from .bbq_scene import BbqView
