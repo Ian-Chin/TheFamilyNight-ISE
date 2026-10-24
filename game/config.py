@@ -743,6 +743,18 @@ SOUND_FILES = {
     "feast_whoosh": ("feast-whoosh", "sound", 0.6),
     "feast_win": ("feast-win", "sound", 0.8),
     "feast_lose": ("feast-lose", "sound", 0.8),
+
+    "chop_meat": ("Chop_meat", "sfx", 1.0),
+    "chop_table": ("Chop_table", "sfx", 1.0),
+    "chop_vege_1": ("Chop_vege_1", "sfx", 1.0),
+    "chop_vege_2": ("Chop_vege_2", "sfx", 1.0),
+    "click_button": ("Click_Button_Wodden", "sfx", 1.0),
+    "game_failed": ("Game_failed", "sfx", 1.0),
+    "game_success": ("Game_success", "sfx", 1.0),
+    "grilling": ("Grilling_sound", "sfx", 1.0),
+    "hp_reduced": ("HP_reduced", "sfx", 1.0),
+    "locked": ("Locked_sound", "sfx", 1.0),
+    "unlocked": ("Unlocked_sound", "sfx", 1.0),
 }
 STEP_INTERVAL = 0.32   # seconds between footsteps while walking
 # surface -> (clip, how many of Terry's steps one play of that clip covers).
