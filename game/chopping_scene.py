@@ -194,7 +194,6 @@ class ChoppingView(StageView):
             self.typing_player = None
 
     def spawn_button(self):
-        # Safe zones avoiding UI and Food
         safe_zones = [
             (400, 900, 580, 660),   # Top Center
             (100, 300, 100, 550),   # Left Side
@@ -207,7 +206,6 @@ class ChoppingView(StageView):
             new_x = random.randint(zone[0], zone[1])
             new_y = random.randint(zone[2], zone[3])
             
-            # Ensure it does not spawn in the same spot
             dist = math.hypot(new_x - self.chop_button.center_x, new_y - self.chop_button.center_y)
             if dist > 200:
                 break
@@ -225,14 +223,11 @@ class ChoppingView(StageView):
         self.damage_alpha = 150  
         self.fail_reason = reason
         
-        # --- NEW: Play HP reduced sound whenever lives decrease ---
         audio.play("hp_reduced")
         
-        # --- NEW: Play chop_table sound if user misclicked outside the button ---
         if reason == "misclick":
             audio.play("chop_table")
         
-        # Knife targets the exact misclick OR hits the food again if spamming
         if reason == "misclick" and click_x is not None and click_y is not None:
             self.chop_anim_timer = 0.15
             self.knife_target_x = click_x
@@ -281,7 +276,6 @@ class ChoppingView(StageView):
         if self.damage_alpha > 0:
             self.damage_alpha = max(0, self.damage_alpha - (300 * delta_time))
             
-        # --- Timer to trigger successful chop dialogs safely ---
         if self.success_timer > 0:
             self.success_timer -= delta_time
             if self.success_timer <= 0:
@@ -322,6 +316,8 @@ class ChoppingView(StageView):
                         if self.lives <= 0:
                             self.stage_idx = 22 
                             self.set_emotion("Terry_sad")
+                            # --- NEW: Play game_failed sound when lives run out ---
+                            audio.play("game_failed")
                             self.trigger_dialog("I ruined too much food! I have to restart the whole prep...")
                         else:
                             self.set_emotion("Terry_shocked")
@@ -411,7 +407,6 @@ class ChoppingView(StageView):
                 if self.chop_button.collides_with_point((canvas_x, canvas_y)):
                     self.button_active = False
                     
-                    # --- NEW: Play specific sound depending on whether it's meat or vegetables ---
                     if self.stage_idx in (0, 1):
                         audio.play("chop_meat")
                     elif self.stage_idx in (4, 5, 8, 9, 12, 13, 16, 17, 18):
@@ -469,6 +464,8 @@ class ChoppingView(StageView):
                     
                 elif self.stage_idx in (19, 20):
                     self.stage_idx = 21
+                    # --- NEW: Play game_success sound when final food is successfully prepped ---
+                    audio.play("game_success")
                     self.trigger_dialog("All ingredients are prepped! Time to fire up the BBQ.")
                     
                 elif self.stage_idx == 21:
@@ -511,6 +508,8 @@ class ChoppingView(StageView):
                         self.trigger_dialog("Last but not least, the eggplant!")
                     elif self.stage_idx in (19, 20):
                         self.stage_idx = 21
+                        # --- NEW: Play game_success sound when final food is successfully prepped ---
+                        audio.play("game_success")
                         self.trigger_dialog("All ingredients are prepped! Time to fire up the BBQ.")
                     elif self.stage_idx == 21:
                         self.window.show_view(BbqView(chop_unlocked=True, grill_unlocked=True, grill_completed=False))
