@@ -12,6 +12,7 @@ from .config import (
 from .dialogue import DialogBox
 from .views import StageView
 from .bbq_scene import BbqView
+from .chao_widgets import Portraits
 
 def cover_rect(texture, rect):
     scale = max(rect.width / texture.width, rect.height / texture.height)
@@ -161,7 +162,15 @@ class GrillingView(StageView):
 
         # --- Scene State ---
         self.dialog = DialogBox()
-        self.widgets = [self.dialog]
+        
+        # --- NEW: Initialize Portraits using Terry-idle.png just like bbq_scene.py ---
+        try:
+            terry_tex = arcade.load_texture("assets/sprites/Terry-idle.png")
+        except Exception:
+            terry_tex = self.terry_portrait.texture
+        self.portraits = Portraits(terry_tex)
+        
+        self.widgets = [self.dialog, self.portraits]
         self.typing_player = None
         
         self.grilling_player = None
@@ -398,7 +407,9 @@ class GrillingView(StageView):
                 self.button_list.draw(pixelated=True)
             
         self.window.default_camera.use()
-        self.dialog.draw()
+        if self.dialog.visible:
+            self.portraits.draw(partner=None, speaking="left")
+            self.dialog.draw()
 
     def on_mouse_press(self, x, y, button, modifiers):
         if self.dialog.visible or self.game_over:
@@ -452,7 +463,7 @@ class GrillingView(StageView):
                     self.end_phase = 1
                     if self.burn_strikes <= 1:
                         self.set_emotion("Terry_excited")
-                        self.trigger_dialog("Absolute perfection! I should open a roadside stall after this, if i can't get a job after graduated.")
+                        self.trigger_dialog("Absolute perfection! I should open a roadside stall after this, if I can't get a job after graduated.")
                     else:
                         self.set_emotion("Terry_nervous")
                         self.trigger_dialog("Well, the food is burned a bit, but extra crunchy I guess?")

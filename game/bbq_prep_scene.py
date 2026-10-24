@@ -111,4 +111,4 @@ class BBQPrepView(StageView):
                 
                 # Switch back to the main BBQ scene, and tell it the chopping board is unlocked!
                 from .bbq_scene import BbqView
-                self.window.show_view(BbqView(chop_unlocked=True))
+                self.window.show_view(BbqView(chop_unlocked=True, play_chop_unlock=True))

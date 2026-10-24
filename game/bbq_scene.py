@@ -15,6 +15,7 @@ from .options import SettingsPanel
 from .pause import PauseMenu
 from .sprites import Terry
 from .views import StageView
+from .chao_dinner import ChaoDinnerView
 
 from .chao_widgets import QuestPanel, TitleCard, InteractPrompt, Portraits
 from .effects import WalkDust
@@ -83,12 +84,16 @@ class UnlockBanner:
 
 
 class BbqView(StageView):
-    def __init__(self, chop_unlocked=False, grill_unlocked=False, grill_completed=False):
+    def __init__(self, chop_unlocked=False, grill_unlocked=False, grill_completed=False, play_chop_unlock=False, play_grill_unlock=False):
         super().__init__()
         
         self.chop_unlocked = chop_unlocked
         self.grill_unlocked = grill_unlocked
         self.grill_completed = grill_completed
+        
+        # --- NEW: Flags for the ending sequence when BBQ is fully completed ---
+        self.ending_sequence_triggered = False
+        self.walking_to_top = False
         
         self.board_unlock_sound_played = False
         self.grill_unlock_sound_played = False
@@ -131,8 +136,10 @@ class BbqView(StageView):
             self.grill_lock.base_y = 340
             self.grill_lock.center_y = self.grill_lock.base_y
             
-            if self.grill_unlocked:
+            if play_grill_unlock:
                 self.grill_lock_timer = 5.0  
+            elif self.grill_unlocked:
+                self.grill_lock.alpha = 0
             
             self.indicators.append(self.grill_lock)
 
@@ -141,10 +148,13 @@ class BbqView(StageView):
         self.board_lock.base_y = 330
         self.board_lock.center_y = self.board_lock.base_y
         
-        if self.chop_unlocked and not self.grill_unlocked:
+        if play_chop_unlock:
             self.board_lock_timer = 5.0 
             self.indicators.append(self.board_lock)
-        elif not self.chop_unlocked:
+        elif self.chop_unlocked:
+            self.board_lock.alpha = 0
+            self.indicators.append(self.board_lock)
+        else:
             self.indicators.append(self.board_lock)
 
         self.footsteps = Footsteps(CHAO_STONE_AREAS)
@@ -171,12 +181,13 @@ class BbqView(StageView):
         self.grill_prompt = InteractPrompt("Start")
         
         self.active_notification = None
-        if self.chop_unlocked and not self.grill_unlocked:
+        if play_chop_unlock:
             self.active_notification = UnlockBanner("Chopping Area Unlocked!")
-        elif self.grill_unlocked and not self.grill_completed:
+        elif play_grill_unlock:
             self.active_notification = UnlockBanner("Grill Area Unlocked!")
         
         self.show_title_card = not self.chop_unlocked
+        self.title_delay = 0.5
         self.title_card = TitleCard(
             kicker="S C E N E   3",
             title="Backyard BBQ",
@@ -261,7 +272,7 @@ class BbqView(StageView):
         
         self.window.default_camera.use()    
 
-        if self.playing:
+        if self.playing and not self.walking_to_top:
             self.hint.draw()
             
             if self.near_table and not self.chop_unlocked:
@@ -304,7 +315,7 @@ class BbqView(StageView):
 
     @property
     def playing(self):
-        return not self.walking_in and not self.dialog.visible
+        return not self.walking_in and not self.dialog.visible and not self.walking_to_top
 
     def start_opening_dialog(self):
         audio.play("dialog_open")
@@ -324,7 +335,10 @@ class BbqView(StageView):
         self.grill_prompt.update(delta_time)
 
         if self.show_title_card:
-            self.title_card.update(delta_time)
+            if self.title_delay > 0:
+                self.title_delay -= delta_time
+            else:
+                self.title_card.update(delta_time)
 
         if self.pause_menu.visible or self.settings_panel.visible or self.panel:
             return
@@ -342,11 +356,38 @@ class BbqView(StageView):
             if self.active_notification.finished:
                 self.active_notification = None
 
+        # --- NEW: Handle Terry walking to the top after completing the game ---
+        if self.walking_to_top:
+            self.terry.update_movement(
+                delta_time, 0, 1, (0, WIDTH, 0, HEIGHT + 120), CHAO_OBSTACLES,
+            )
+            self.footsteps.update(
+                delta_time, True, self.terry.center_x, self.terry.ground_y,
+            )
+            self.update_dust(delta_time, True, 0, 1)
+            self.sort_by_depth()
+            
+            # Once Terry reaches the top of the screen, transition to next scene (e.g., MenuView or credits)
+            if self.terry.ground_y >= HEIGHT + 50:
+                self.window.show_view(ChaoDinnerView())
+            return
+
         if self.dialog.visible:
             self.update_dust(delta_time, False, 0, 0)
             self.dialog.update(delta_time)
             if not self.dialog.typing:
                 self.stop_typing_sound()
+            return
+
+        # --- NEW: Trigger first-person completion dialog once title card finishes if grill is completed ---
+        if self.grill_completed and not self.show_title_card and not self.ending_sequence_triggered:
+            self.ending_sequence_triggered = True
+            audio.play("dialog_open")
+            self.dialog.open(
+                "Terry", 
+                "Whew! I've finally completed and prepared the BBQ dinner. Now I'm just waiting for the family to come!"
+            )
+            self.typing_player = audio.play("dialog_type", loop=True)
             return
 
         if self.walking_in:
@@ -524,11 +565,13 @@ class BbqView(StageView):
                     self.window.show_view(GrillingView())
                     return
 
-        # --- UPDATE: Add SPACE to dialogue advancement ---
+        # --- UPDATED: When ending dialog is skipped/closed, start walking to the top ---
         if self.dialog.visible:
             if key in (arcade.key.ENTER, arcade.key.NUM_ENTER, arcade.key.SPACE):
                 self.stop_typing_sound()
                 self.dialog.advance()
+                if not self.dialog.visible and self.ending_sequence_triggered:
+                    self.walking_to_top = True
             return
 
         if self.walking_in:
@@ -569,7 +612,7 @@ class BbqView(StageView):
         if self.panel:
             self.panel = None
             return
-        if self.dialog.visible or self.walking_in:
+        if self.dialog.visible or self.walking_in or self.walking_to_top:
             return
 
     def run_action(self, action):

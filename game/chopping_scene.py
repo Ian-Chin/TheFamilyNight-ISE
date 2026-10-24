@@ -15,6 +15,7 @@ from .config import (
 from .dialogue import DialogBox
 from .views import StageView
 from .bbq_scene import BbqView
+from .chao_widgets import Portraits
 
 def cover_rect(texture, rect):
     scale = max(rect.width / texture.width, rect.height / texture.height)
@@ -151,7 +152,12 @@ class ChoppingView(StageView):
         self.slice_timer = 0.0
         
         self.dialog = DialogBox()
-        self.widgets = [self.dialog]
+        
+        # --- NEW: Initialize Portraits using Terry-idle.png just like bbq_scene.py ---
+        terry_tex = arcade.load_texture("assets/sprites/Terry-idle.png")
+        self.portraits = Portraits(terry_tex)
+        
+        self.widgets = [self.dialog, self.portraits]
         self.typing_player = None
 
         self.camera = arcade.camera.Camera2D(
@@ -316,7 +322,6 @@ class ChoppingView(StageView):
                         if self.lives <= 0:
                             self.stage_idx = 22 
                             self.set_emotion("Terry_sad")
-                            # --- NEW: Play game_failed sound when lives run out ---
                             audio.play("game_failed")
                             self.trigger_dialog("I ruined too much food! I have to restart the whole prep...")
                         else:
@@ -389,7 +394,9 @@ class ChoppingView(StageView):
             )
             
         self.window.default_camera.use()
-        self.dialog.draw()
+        if self.dialog.visible:
+            self.portraits.draw(partner=None, speaking="left")
+            self.dialog.draw()
         
     def on_mouse_press(self, x, y, button, modifiers):
         if self.dialog.visible:
@@ -464,7 +471,6 @@ class ChoppingView(StageView):
                     
                 elif self.stage_idx in (19, 20):
                     self.stage_idx = 21
-                    # --- NEW: Play game_success sound when final food is successfully prepped ---
                     audio.play("game_success")
                     self.trigger_dialog("All ingredients are prepped! Time to fire up the BBQ.")
                     
@@ -508,14 +514,13 @@ class ChoppingView(StageView):
                         self.trigger_dialog("Last but not least, the eggplant!")
                     elif self.stage_idx in (19, 20):
                         self.stage_idx = 21
-                        # --- NEW: Play game_success sound when final food is successfully prepped ---
                         audio.play("game_success")
                         self.trigger_dialog("All ingredients are prepped! Time to fire up the BBQ.")
                     elif self.stage_idx == 21:
-                        self.window.show_view(BbqView(chop_unlocked=True, grill_unlocked=True, grill_completed=False))
+                        self.window.show_view(BbqView(chop_unlocked=True, grill_unlocked=True, grill_completed=False, play_grill_unlock=True))
                     else:
                         if not self.button_active:
                             self.spawn_button()
 
         if key == arcade.key.ESCAPE:
-            self.window.show_view(BbqView(chop_unlocked=True))
+            self.window.show_view(BbqView(chop_unlocked=True, grill_unlocked=True, grill_completed=False))
