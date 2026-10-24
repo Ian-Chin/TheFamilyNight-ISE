@@ -131,7 +131,7 @@ class TitleCard:
         place(stage, self.kicker, mid_x, kicker_y)
         place(stage, self.title_shadow, mid_x + 3, y - 4)
         place(stage, self.title, mid_x, y)
-        place(stage, self.tagline, mid_x, y - 58)
+        place(stage, self.tagline, mid_x, y - 68)
 
         # Hairlines either side of the kicker, each ending in a small diamond.
         rule = with_alpha(TEXT_HOVER, alpha * 0.8)
