@@ -128,7 +128,7 @@ PLANK_PAD = 10   # room around a widget for its shadow
 
 # --- BBQ SCENE (CK) --------------------------------------
 BBQ_SCENE_BG = "bbq-scene-bg.jpeg"
-BBQ_PREP_SCENE_BG = "BBQ-Scene/First person view - Food on top table with Terry.jpg"
+BBQ_PREP_SCENE_BG = "BBQ-Scene/BBQ_Prep_BG.jpg"
 BBQ_SCENE_EMPTY_BG = "chao-dinner-bg.jpg"
 # Chopping Scene Stages
 CHOP_MEAT_BG_1 = "BBQ-Scene/Chopping_meat_begin.jpg"
@@ -208,7 +208,7 @@ CHAO_WALK_BOUNDS = (60, WIDTH - 60, 60, HEIGHT - 60)
 # canvas units. Terry's feet are blocked by these, so he walks around them.
 CHAO_OBSTACLES = (
     (160, 298, 278, 525),     # the dinner table; the stools are walked over
-    (825, 1115, 210, 415),    # barbecue and the stone counter
+    (825, 1115, 210, 370),    # barbecue and the stone counter
     (20, 258, 30, 150),       # pond
     (1025, 1220, 530, 720),   # woodpile and the hut
 )

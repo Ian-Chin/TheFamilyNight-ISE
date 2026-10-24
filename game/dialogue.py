@@ -149,7 +149,7 @@ class DialogBox:
             text.draw()
 
         self.hint_text.text = (
-            "Enter to skip" if self.typing else "Enter to continue"
+            "Enter or Space to skip" if self.typing else "Enter or Space to continue"
         )
         self.hint_text.draw()
         if not self.typing and self.blink % (2 * DIALOG_BLINK) < DIALOG_BLINK:

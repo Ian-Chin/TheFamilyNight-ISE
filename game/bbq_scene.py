@@ -16,27 +16,82 @@ from .pause import PauseMenu
 from .sprites import Terry
 from .views import StageView
 
-# --- Import the widgets your friend made ---
-from .chao_widgets import QuestPanel, TitleCard
+from .chao_widgets import QuestPanel, TitleCard, InteractPrompt, Portraits
+from .effects import WalkDust
+
 
 def cover_rect(texture, rect):
-    """Fill `rect` with `texture` without distorting it."""
     scale = max(rect.width / texture.width, rect.height / texture.height)
-    return arcade.XYWH(
-        rect.x, rect.y, texture.width * scale, texture.height * scale
-    )
+    return arcade.XYWH(rect.x, rect.y, texture.width * scale, texture.height * scale)
+
+
+class UnlockBanner:
+    def __init__(self, text):
+        self.text_string = text
+        self.clock = 0.0
+        self.fade_time = 0.4
+        self.hold_time = 1.8
+        self.length = self.fade_time * 2 + self.hold_time
+        self.stage = None
+        
+    def layout(self, stage):
+        self.stage = stage
+        self.text = stage.text(
+            self.text_string, 0, 0, (255, 220, 148), 32, bold=True, anchor_x="center", anchor_y="center"
+        )
+        self.shadow = stage.text(
+            self.text_string, 0, 0, (0, 0, 0), 32, bold=True, anchor_x="center", anchor_y="center"
+        )
+        
+    def update(self, delta_time):
+        self.clock += delta_time
+        
+    @property
+    def finished(self):
+        return self.clock >= self.length
+        
+    @property
+    def share(self):
+        if self.clock <= 0 or self.finished: return 0.0
+        if self.clock < self.fade_time: return self.clock / self.fade_time
+        if self.clock < self.fade_time + self.hold_time: return 1.0
+        return 1.0 - ((self.clock - self.fade_time - self.hold_time) / self.fade_time)
+        
+    def draw(self):
+        if self.share <= 0: return
+        alpha = int(255 * self.share)
+        
+        band_h = 100
+        band_y = HEIGHT / 2
+        
+        screen_rect = self.stage.rect(0, band_y - band_h / 2, WIDTH, band_h)
+        arcade.draw_rect_filled(screen_rect, (6, 8, 14, int(180 * self.share)))
+        
+        rule_color = (255, 220, 148, int(150 * self.share))
+        arcade.draw_rect_filled(self.stage.rect(0, band_y + band_h/2 - 2, WIDTH, 2), rule_color)
+        arcade.draw_rect_filled(self.stage.rect(0, band_y - band_h/2, WIDTH, 2), rule_color)
+        
+        mid_x = WIDTH / 2
+        self.shadow.x, self.shadow.y = self.stage.to_screen(mid_x + 2, band_y - 2)
+        self.text.x, self.text.y = self.stage.to_screen(mid_x, band_y)
+        
+        self.shadow.color = (*self.shadow.color[:3], int(alpha * 0.8))
+        self.text.color = (*self.text.color[:3], alpha)
+        
+        self.shadow.draw()
+        self.text.draw()
 
 
 class BbqView(StageView):
-    """Scripted entrance: fade up from black as Terry walks down the path."""
-
     def __init__(self, chop_unlocked=False, grill_unlocked=False, grill_completed=False):
         super().__init__()
         
-        # Track our two game states
         self.chop_unlocked = chop_unlocked
         self.grill_unlocked = grill_unlocked
         self.grill_completed = grill_completed
+        
+        self.board_unlock_sound_played = False
+        self.grill_unlock_sound_played = False
         
         if self.chop_unlocked:
             self.backdrop = Backdrop(BBQ_SCENE_EMPTY_BG)
@@ -58,7 +113,6 @@ class BbqView(StageView):
             self.fade_clock = 0.0
             self.walking_in = True
 
-        # --- Setup Floating Indicators ---
         self.indicators = arcade.SpriteList()
         self.time_elapsed = 0.0  
         
@@ -93,8 +147,8 @@ class BbqView(StageView):
         elif not self.chop_unlocked:
             self.indicators.append(self.board_lock)
 
-        # --- Base Scene State ---
         self.footsteps = Footsteps(CHAO_STONE_AREAS)
+        self.dust = WalkDust(CHAO_STONE_AREAS)
         self.typing_player = None
         self.held = set()
         self.near_table = False
@@ -106,7 +160,22 @@ class BbqView(StageView):
         self.pause_menu = PauseMenu()
         self.settings_panel = SettingsPanel()
         
-        # --- NEW: Setup the Title Card and Quest Panel ---
+        try:
+            terry_tex = arcade.load_texture("assets/sprites/Terry-idle.png")
+        except Exception:
+            terry_tex = self.terry.texture
+        self.portraits = Portraits(terry_tex)
+        
+        self.table_prompt = InteractPrompt("View")
+        self.board_prompt = InteractPrompt("Start")
+        self.grill_prompt = InteractPrompt("Start")
+        
+        self.active_notification = None
+        if self.chop_unlocked and not self.grill_unlocked:
+            self.active_notification = UnlockBanner("Chopping Area Unlocked!")
+        elif self.grill_unlocked and not self.grill_completed:
+            self.active_notification = UnlockBanner("Grill Area Unlocked!")
+        
         self.show_title_card = not self.chop_unlocked
         self.title_card = TitleCard(
             kicker="S C E N E   3",
@@ -128,7 +197,10 @@ class BbqView(StageView):
         if self.grill_completed:
             self.quest_panel.complete("grill")
 
-        self.widgets = [self.dialog, self.pause_menu, self.settings_panel, self.title_card, self.quest_panel]
+        self.widgets = [
+            self.dialog, self.pause_menu, self.settings_panel, self.title_card, 
+            self.quest_panel, self.portraits, self.table_prompt, self.board_prompt, self.grill_prompt
+        ]
 
         self.camera = arcade.camera.Camera2D(
             position=(WIDTH / 2, HEIGHT / 2),
@@ -151,6 +223,10 @@ class BbqView(StageView):
     def relayout(self):
         super().relayout()
         self.camera.viewport = self.stage.viewport()
+        
+        if self.active_notification:
+            self.active_notification.layout(self.stage)
+            
         self.hint = self.stage.text(
             "WASD to move    Space to jump    Esc to pause",
             WIDTH / 2, 26, (238, 240, 246), 14,
@@ -163,6 +239,10 @@ class BbqView(StageView):
             return 0
         return round(255 * (1 - self.fade_clock / CHAO_FADE_IN))
 
+    def update_dust(self, delta_time, moving, dx, dy):
+        feet_y = self.terry.ground_y - abs(self.terry.height) / 2
+        self.dust.update(delta_time, moving, self.terry.center_x, feet_y, dx, dy)
+
     def on_draw(self):
         self.clear()
         viewport = self.stage.viewport()
@@ -172,6 +252,8 @@ class BbqView(StageView):
         self.camera.use()
         for character in self.sprites:
             character.draw_shadow()
+            
+        self.dust.draw()
         self.sprites.draw(pixelated=True)
 
         if self.playing:
@@ -182,18 +264,19 @@ class BbqView(StageView):
         if self.playing:
             self.hint.draw()
             
-            # --- NEW: Responsive background plate mapped to the screen size ---
+            if self.near_table and not self.chop_unlocked:
+                self.table_prompt.draw(229, 450 + 40)
+            elif self.near_board and self.chop_unlocked and not self.grill_unlocked:
+                self.board_prompt.draw(1000, 330 + 40)
+            elif self.near_grill and self.grill_unlocked and not self.grill_completed:
+                self.grill_prompt.draw(880, 340 + 40)
+            
             plate_w = 360
             plate_h = 130
-            # Define it in standard canvas units (Left, Bottom, Width, Height)
             plate_left = WIDTH - 15 - plate_w
             plate_bottom = HEIGHT - 75 - plate_h
-
-            # Convert to physical screen coordinates so it stretches perfectly
             screen_rect = self.stage.rect(plate_left, plate_bottom, plate_w, plate_h)
-
             arcade.draw_rect_filled(screen_rect, (12, 10, 14, 215))
-            # Scale the outline thickness as well so it looks right on large screens
             arcade.draw_rect_outline(screen_rect, (180, 140, 90, 160), max(1, 2 * self.stage.scale))
             
             self.quest_panel.draw()
@@ -207,8 +290,14 @@ class BbqView(StageView):
 
         if self.show_title_card:
             self.title_card.draw()
+            
+        if self.active_notification:
+            self.active_notification.draw()
 
-        self.dialog.draw()
+        if self.dialog.visible:
+            self.portraits.draw(partner=None, speaking="left")
+            self.dialog.draw()
+            
         if not self.settings_panel.visible:
             self.pause_menu.draw()
         self.settings_panel.draw()
@@ -229,8 +318,11 @@ class BbqView(StageView):
     def on_update(self, delta_time):
         self.backdrop.update(delta_time)
         audio.ambience().update(delta_time)
+        
+        self.table_prompt.update(delta_time)
+        self.board_prompt.update(delta_time)
+        self.grill_prompt.update(delta_time)
 
-        # Animate the title card smoothly drifting up
         if self.show_title_card:
             self.title_card.update(delta_time)
 
@@ -240,13 +332,18 @@ class BbqView(StageView):
         delta_time = min(delta_time, 1 / 30)
         self.fade_clock += delta_time
 
-        # --- NEW: Block Terry from walking in until the title card finishes! ---
         if self.show_title_card:
             if self.title_card.finished:
                 self.show_title_card = False
             return
 
+        if self.active_notification:
+            self.active_notification.update(delta_time)
+            if self.active_notification.finished:
+                self.active_notification = None
+
         if self.dialog.visible:
+            self.update_dust(delta_time, False, 0, 0)
             self.dialog.update(delta_time)
             if not self.dialog.typing:
                 self.stop_typing_sound()
@@ -259,6 +356,8 @@ class BbqView(StageView):
             self.footsteps.update(
                 delta_time, True, self.terry.center_x, self.terry.ground_y,
             )
+            self.update_dust(delta_time, True, 0, -1)
+            
             if self.terry.ground_y <= CHAO_STOP_Y:
                 self.terry.ground_y = CHAO_STOP_Y
                 self.walking_in = False
@@ -271,10 +370,13 @@ class BbqView(StageView):
         self.terry.update_movement(
             delta_time, dx, dy, CHAO_WALK_BOUNDS, CHAO_OBSTACLES,
         )
+        
+        moving = bool(dx or dy) and not self.terry.jumping
         self.footsteps.update(
-            delta_time, bool(dx or dy) and not self.terry.jumping,
-            self.terry.center_x, self.terry.ground_y,
+            delta_time, moving, self.terry.center_x, self.terry.ground_y,
         )
+        self.update_dust(delta_time, moving, dx, dy)
+        
         if dy:
             self.sort_by_depth()
 
@@ -284,46 +386,57 @@ class BbqView(StageView):
             if not self.chop_unlocked:
                 bob_offset = math.sin(self.time_elapsed * 4.0) * 6.0 
                 self.table_marker.center_y = self.table_marker.base_y + bob_offset
-                
-            if hasattr(self, 'board_lock_timer') and self.board_lock_timer > 0:
-                self.board_lock_timer -= delta_time
-                if self.board_lock_timer <= 0:
-                    self.board_lock.alpha = 0  
-                elif self.board_lock_timer <= 2.0:
-                    self.board_lock.alpha = int(255 * (self.board_lock_timer / 2.0))
-                    self.board_lock.scale = 0.2
-                    self.board_lock.center_y = self.board_lock.base_y
-                elif self.board_lock_timer <= 4.0:
-                    self.board_lock.texture = textures.ui_image("Lock_unlocked.png")
-                    self.board_lock.alpha = 255
-                    self.board_lock.scale = 0.2
-                    self.board_lock.center_y = self.board_lock.base_y
-                else:
-                    self.board_lock.alpha = 255
-                    progress = 5.0 - self.board_lock_timer 
-                    pop_curve = math.sin(progress * math.pi)
-                    self.board_lock.scale = 0.2 + (pop_curve * 0.08)
-                    self.board_lock.center_y = self.board_lock.base_y + (pop_curve * 15.0)
-
-            if hasattr(self, 'grill_lock_timer') and self.grill_lock_timer > 0:
-                self.grill_lock_timer -= delta_time
-                if self.grill_lock_timer <= 0:
-                    self.grill_lock.alpha = 0  
-                elif self.grill_lock_timer <= 2.0:
-                    self.grill_lock.alpha = int(255 * (self.grill_lock_timer / 2.0))
-                    self.grill_lock.scale = 0.2
-                    self.grill_lock.center_y = self.grill_lock.base_y
-                elif self.grill_lock_timer <= 4.0:
-                    self.grill_lock.texture = textures.ui_image("Lock_unlocked.png")
-                    self.grill_lock.alpha = 255
-                    self.grill_lock.scale = 0.2
-                    self.grill_lock.center_y = self.grill_lock.base_y
-                else:
-                    self.grill_lock.alpha = 255
-                    progress = 5.0 - self.grill_lock_timer 
-                    pop_curve = math.sin(progress * math.pi)
-                    self.grill_lock.scale = 0.2 + (pop_curve * 0.08)
-                    self.grill_lock.center_y = self.grill_lock.base_y + (pop_curve * 15.0)
+            
+            if not self.active_notification:
+                if hasattr(self, 'board_lock_timer') and self.board_lock_timer > 0:
+                    self.board_lock_timer -= delta_time
+                    
+                    if self.board_lock_timer <= 4.0 and not self.board_unlock_sound_played:
+                        audio.play("unlocked")
+                        self.board_unlock_sound_played = True
+                    
+                    if self.board_lock_timer <= 0:
+                        self.board_lock.alpha = 0  
+                    elif self.board_lock_timer <= 2.0:
+                        self.board_lock.alpha = int(255 * (self.board_lock_timer / 2.0))
+                        self.board_lock.scale = 0.2
+                        self.board_lock.center_y = self.board_lock.base_y
+                    elif self.board_lock_timer <= 4.0:
+                        self.board_lock.texture = textures.ui_image("Lock_unlocked.png")
+                        self.board_lock.alpha = 255
+                        self.board_lock.scale = 0.2
+                        self.board_lock.center_y = self.board_lock.base_y
+                    else:
+                        self.board_lock.alpha = 255
+                        progress = 5.0 - self.board_lock_timer 
+                        pop_curve = math.sin(progress * math.pi)
+                        self.board_lock.scale = 0.2 + (pop_curve * 0.08)
+                        self.board_lock.center_y = self.board_lock.base_y + (pop_curve * 15.0)
+    
+                if hasattr(self, 'grill_lock_timer') and self.grill_lock_timer > 0:
+                    self.grill_lock_timer -= delta_time
+                    
+                    if self.grill_lock_timer <= 4.0 and not self.grill_unlock_sound_played:
+                        audio.play("unlocked")
+                        self.grill_unlock_sound_played = True
+                        
+                    if self.grill_lock_timer <= 0:
+                        self.grill_lock.alpha = 0  
+                    elif self.grill_lock_timer <= 2.0:
+                        self.grill_lock.alpha = int(255 * (self.grill_lock_timer / 2.0))
+                        self.grill_lock.scale = 0.2
+                        self.grill_lock.center_y = self.grill_lock.base_y
+                    elif self.grill_lock_timer <= 4.0:
+                        self.grill_lock.texture = textures.ui_image("Lock_unlocked.png")
+                        self.grill_lock.alpha = 255
+                        self.grill_lock.scale = 0.2
+                        self.grill_lock.center_y = self.grill_lock.base_y
+                    else:
+                        self.grill_lock.alpha = 255
+                        progress = 5.0 - self.grill_lock_timer 
+                        pop_curve = math.sin(progress * math.pi)
+                        self.grill_lock.scale = 0.2 + (pop_curve * 0.08)
+                        self.grill_lock.center_y = self.grill_lock.base_y + (pop_curve * 15.0)
 
             in_table_x = 90 <= self.terry.center_x <= 368
             in_table_y = 208 <= self.terry.ground_y <= 595
@@ -337,24 +450,23 @@ class BbqView(StageView):
             in_board_y = 180 <= self.terry.ground_y <= 450
             self.near_board = in_board_x and in_board_y
             
-            if self.near_table:
-                if not self.chop_unlocked:
-                    self.hint.text = "Press Enter to prepare food"
-                    self.table_marker.alpha = 0  
-                else:
-                    self.hint.text = "The food has been prepped!"
+            if self.near_table and not self.chop_unlocked:
+                self.hint.text = "" 
+                self.table_marker.alpha = 255  
+            elif self.near_table and self.chop_unlocked:
+                self.hint.text = "The food has been prepped!"
             elif self.near_grill:
                 if not self.grill_unlocked:
                     self.hint.text = "This section hasn't unlocked yet..."
                 elif not self.grill_completed:
-                    self.hint.text = "Press Enter to start grilling!"
+                    self.hint.text = ""
                 else:
                     self.hint.text = "The BBQ is completely finished!"
             elif self.near_board:
                 if not self.chop_unlocked:
                     self.hint.text = "This section hasn't unlocked yet..."
                 elif not self.grill_unlocked:
-                    self.hint.text = "Press Enter to start chopping"
+                    self.hint.text = ""
                 else:
                     self.hint.text = "The chopping is completely finished!"
             else:
@@ -383,30 +495,38 @@ class BbqView(StageView):
         if self.panel:
             return
 
-        if key == arcade.key.ENTER and self.near_table and self.playing and not self.chop_unlocked:
-            self.held.clear() 
-            from .bbq_prep_scene import BBQPrepView
-            self.window.show_view(BBQPrepView())
-            return
+        if key in (arcade.key.ENTER, arcade.key.NUM_ENTER, arcade.key.RETURN) and self.playing:
             
-        if key in (arcade.key.ENTER, arcade.key.NUM_ENTER, arcade.key.RETURN) and self.near_board and self.playing and self.chop_unlocked and not self.grill_unlocked:
-            self.held.clear()
-            from . import audio
-            audio.play("ui_click")
-            from .chopping_scene import ChoppingView
-            self.window.show_view(ChoppingView())
-            return
+            if self.near_table:
+                if not self.chop_unlocked:
+                    self.held.clear() 
+                    from .bbq_prep_scene import BBQPrepView
+                    self.window.show_view(BBQPrepView())
+                    return
+            
+            elif self.near_board:
+                if not self.chop_unlocked:
+                    audio.play("locked")
+                elif not self.grill_unlocked:
+                    self.held.clear()
+                    audio.play("ui_click")
+                    from .chopping_scene import ChoppingView
+                    self.window.show_view(ChoppingView())
+                    return
+                    
+            elif self.near_grill:
+                if not self.grill_unlocked:
+                    audio.play("locked")
+                elif not self.grill_completed:
+                    self.held.clear()
+                    audio.play("ui_click")
+                    from .grilling_scene import GrillingView
+                    self.window.show_view(GrillingView())
+                    return
 
-        if key in (arcade.key.ENTER, arcade.key.NUM_ENTER, arcade.key.RETURN) and self.near_grill and self.playing and self.grill_unlocked and not self.grill_completed:
-            self.held.clear()
-            from . import audio
-            audio.play("ui_click")
-            from .grilling_scene import GrillingView
-            self.window.show_view(GrillingView())
-            return
-
+        # --- UPDATE: Add SPACE to dialogue advancement ---
         if self.dialog.visible:
-            if key in (arcade.key.ENTER, arcade.key.NUM_ENTER):
+            if key in (arcade.key.ENTER, arcade.key.NUM_ENTER, arcade.key.SPACE):
                 self.stop_typing_sound()
                 self.dialog.advance()
             return
