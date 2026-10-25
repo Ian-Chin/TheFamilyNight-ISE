@@ -15,14 +15,15 @@ with a few hops before his opening lines.
 Once the kids are dealt with, the clock skips on half an hour. The family
 are full and head off, leaving Terry alone with a table of food; he gets up,
 and the table now offers the leftover feast typing game (feast_typing.py),
-which the player can start straight away or after a wander.
+which the player can start straight away or after a wander. The quest panel
+is only up until the dinner game starts.
 
 Setting up the dinner at the table first asks whether to start the mini game.
 Going ahead fades the food onto the table, dips to black and comes back up
 with the whole family sat on the stools round it, tucking in. A little table
 talk later, Jess and Tom run off, and the player has to keep catching them
 and sending them back to their seats until the clock runs out
-(see chao_kids.py).
+(see chao_kids.py). Each round opens on a 3, 2, 1 count.
 """
 
 import math
@@ -39,9 +40,10 @@ from .chao_widgets import (
     InteractPrompt, KidsHud, Portraits, QuestPanel, TitleCard,
 )
 from .config import (
-    CHAO_AFTER_GAME_DIALOG, CHAO_ALONE_DIALOG, CHAO_ALONE_SPOT,
+    AMBIENCE_NIGHT, CHAO_AFTER_GAME_DIALOG, CHAO_COUNT_GO, CHAO_COUNT_SIZE,
+    CHAO_COUNTDOWN, CHAO_ALONE_DIALOG, CHAO_ALONE_SPOT,
     CHAO_FEAST_ITEMS, CHAO_FEAST_MESSAGE, CHAO_FEAST_PROMPT, CHAO_FEAST_TITLE,
-    CHAO_FULL_DIALOG, CHAO_LEAVE_FADE, CHAO_LEFTOVER_QUESTS, CHAO_SKIP_FADE,
+    CHAO_FULL_DIALOG, CHAO_LEAVE_FADE, CHAO_SKIP_FADE,
     CHAO_SKIP_HOLD, CHAO_SKIP_TEXT, CHAO_DINNER_BG, CHAO_DINNER_SERVED_BG,
     CHAO_ENTRY_Y, CHAO_FADE_IN, CHAO_MARK_BOB, CHAO_MARK_BOB_TIME,
     CHAO_NPC_DIALOG, CHAO_NPCS, CHAO_OBSTACLES, CHAO_PATH_X, CHAO_SEAT_FADE,
@@ -52,7 +54,7 @@ from .config import (
     CHAO_TABLE_MARK_POS, CHAO_TABLE_PROMPT, CHAO_TABLE_RANGE, CHAO_TABLE_TALK,
     CHAO_TALK_RANGE, CHAO_TITLE_BLUR, CHAO_WALK_BOUNDS, HEIGHT,
     KIDS_GOOD_SHARE, KIDS_LOSE_ITEMS, KIDS_LOSE_TITLE, KIDS_RESULT_MESSAGE,
-    KIDS_RETRY_MESSAGE, KIDS_WIN_ITEMS, KIDS_WIN_TITLE, TERRY_HEIGHT,
+    KIDS_RETRY_MESSAGE, KIDS_WIN_ITEMS, KIDS_WIN_TITLE, QUEST_DONE, TERRY_HEIGHT,
     TEXT_BRIGHT, TEXT_HOVER, TEXT_SHADOW, WIDTH,
 )
 from .dialogue import DialogBox
@@ -131,6 +133,8 @@ class ChaoDinnerView(StageView):
         self.diners = None   # the family at the table, once they are seated
         self.diner_by_name = {}
         self.kids = None     # the mini game, once the family is seated
+        # Seconds into the 3, 2, 1 before the kids game, or None.
+        self.count_clock = None
         self.game_over = False
         # Called once the current run of dialogue lines is finished.
         self.after_script = None
@@ -206,13 +210,13 @@ class ChaoDinnerView(StageView):
         self.relayout()
 
     def on_show_view(self):
-        audio.ambience().start()
+        audio.ambience(AMBIENCE_NIGHT).start()
 
     def on_hide_view(self):
         self.backdrop.stop()
         self.served.stop()
-        # The garden is the only place with birds, so they leave with it.
-        audio.ambience().stop()
+        # The night garden's crickets leave with it.
+        audio.ambience(AMBIENCE_NIGHT).stop()
         self.stop_typing_sound()
 
     def sort_by_depth(self):
@@ -233,6 +237,12 @@ class ChaoDinnerView(StageView):
                 shade, 30, anchor_x="center", anchor_y="center", italic=True,
             )
             for offset, shade in ((2, TEXT_SHADOW), (0, TEXT_BRIGHT))
+        ]
+        self.count_texts = [
+            self.stage.text("", WIDTH / 2 + offset, HEIGHT / 2 + 40 - offset, shade,
+                            CHAO_COUNT_SIZE, anchor_x="center", anchor_y="center",
+                            bold=True)
+            for offset, shade in ((5, TEXT_SHADOW), (0, TEXT_HOVER))
         ]
 
     def zoom_in(self):
@@ -394,12 +404,16 @@ class ChaoDinnerView(StageView):
                 alpha=round(235 * blur),
             )
 
-        if self.entrance_over and not self.game_running:
+        # The quests only guide Terry to the table; once the dinner game has
+        # started, the rest of the scene runs without them.
+        if self.entrance_over and not self.dinner_started and not self.leftovers:
             self.quests.draw()
         if self.game_running:
             self.kids_hud.draw(
                 self.kids.time_left, self.kids.seated, len(self.kids.runners),
             )
+        if self.count_clock is not None:
+            self.draw_countdown()
         if self.playing and not self.card_open:
             self.hint.draw()
             if self.target is not None:
@@ -433,6 +447,24 @@ class ChaoDinnerView(StageView):
         if not self.settings_panel.visible:
             self.pause_menu.draw()
         self.settings_panel.draw()
+
+    def draw_countdown(self):
+        """3, 2, 1, each popping in and fading, then "GO!" as the game starts."""
+        clock = self.count_clock
+        step = min(int(clock), CHAO_COUNTDOWN)
+        part = clock - step
+        label = "GO!" if step >= CHAO_COUNTDOWN else str(CHAO_COUNTDOWN - step)
+        span = CHAO_COUNT_GO if step >= CHAO_COUNTDOWN else 1.0
+        pop = 1 + 0.45 * max(0.0, 1 - part / 0.2)
+        alpha = round(255 * min(1.0, part / 0.08, max(0.0, (span - part) / (0.35 * span))))
+        size = CHAO_COUNT_SIZE * pop * self.stage.scale
+        for text, color in zip(self.count_texts, (TEXT_SHADOW, QUEST_DONE if label == "GO!" else TEXT_HOVER)):
+            if text.text != label:
+                text.text = label
+            if text.font_size != size:
+                text.font_size = size
+            text.color = (*color, alpha)
+            text.draw()
 
     def draw_time_skip(self, alpha):
         """A clock face with its hands spinning round, over the black."""
@@ -588,7 +620,23 @@ class ChaoDinnerView(StageView):
         return self.kids is not None and self.kids.active
 
     def start_kids_game(self):
-        self.kids.start()
+        """Count 3, 2, 1 first; update_countdown lets the kids go after it."""
+        self.count_clock = 0.0
+        audio.play("feast_count")
+
+    def update_countdown(self, delta_time):
+        before = int(self.count_clock)
+        self.count_clock += delta_time
+        step = int(self.count_clock)
+        if step == before:
+            pass
+        elif step < CHAO_COUNTDOWN:
+            audio.play("feast_count")
+        elif before < CHAO_COUNTDOWN:
+            audio.play("feast_go")
+            self.kids.start()
+        if self.count_clock >= CHAO_COUNTDOWN + CHAO_COUNT_GO:
+            self.count_clock = None
 
     def end_kids_game(self):
         """Time is up: everyone sits back down and the results come up."""
@@ -681,10 +729,8 @@ class ChaoDinnerView(StageView):
         self.dinner_started = False
         self.leftovers = True
         self.table_prompt = InteractPrompt(CHAO_FEAST_PROMPT)
-        self.quests = QuestPanel(CHAO_LEFTOVER_QUESTS)
-        self.widgets += [self.table_prompt, self.quests]
+        self.widgets.append(self.table_prompt)
         self.table_prompt.layout(self.stage)
-        self.quests.layout(self.stage)
 
     def start_feast(self):
         from .feast_typing import TypingFeastView
@@ -717,7 +763,7 @@ class ChaoDinnerView(StageView):
             self.served.update(delta_time)
         # Ahead of the pause check: the birds keep coming up under an overlay
         # opened during the opening seconds, rather than freezing part-faded.
-        audio.ambience().update(delta_time)
+        audio.ambience(AMBIENCE_NIGHT).update(delta_time)
 
         if (self.pause_menu.visible or self.settings_panel.visible or self.panel
                 or self.card_open):
@@ -758,6 +804,10 @@ class ChaoDinnerView(StageView):
 
         if self.diners is not None:
             # Everyone is sat down; only the kids get up to anything.
+            if self.count_clock is not None:
+                self.update_countdown(delta_time)
+                if not self.game_running:
+                    return
             if self.kids is not None:
                 self.kids.update(delta_time)
                 if self.kids.pointer_moved:
@@ -942,7 +992,7 @@ class ChaoDinnerView(StageView):
         elif action == "retry":
             self.win_card.close()
             self.lose_card.close()
-            self.kids.start()
+            self.start_kids_game()
         elif action == "continue":
             self.win_card.close()
             self.game_over = True

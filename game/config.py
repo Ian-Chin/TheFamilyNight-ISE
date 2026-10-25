@@ -545,6 +545,11 @@ BACKGROUND_VIDEOS = {
 }
 GRAPHICS_MODES = ("quality", "performance")
 VIDEO_QUEUE = 4   # decoded frames held ahead of the one on screen
+# The closing cut scene, played once after the leftover feast. Baked by
+# tools/make_ending.py. Without PyAV the title fades over black for
+# ENDING_FALLBACK seconds instead.
+ENDING_VIDEO = "ending.mp4"
+ENDING_FALLBACK = 5.0
 
 # --- Settings screen, in canvas units ----------------------------------------
 SETTINGS_TITLE = "Settings"
@@ -627,6 +632,11 @@ CHAO_SETUP_ITEMS = [
     ("Set up", "setup", "play"),
     ("Wait", "wait", "book"),
 ]
+# The count in before each round of the kids game: seconds of 3, 2, 1, then
+# how long "GO!" stays up once they are off.
+CHAO_COUNTDOWN = 3
+CHAO_COUNT_GO = 0.6
+CHAO_COUNT_SIZE = 110
 # Table talk once everyone is seated, ending with the kids running off.
 CHAO_TABLE_TALK = (
     ("Terry", "Dinner is served, everyone! Dig in before the food gets cold."),
@@ -671,9 +681,6 @@ CHAO_ALONE_DIALOG = (
 )
 # Where Terry stands once he gets up from the table, beside its right end.
 CHAO_ALONE_SPOT = (420, 392)
-CHAO_LEFTOVER_QUESTS = (
-    ("leftovers", "Finish the leftovers", "Head back to the dinner table", False),
-)
 CHAO_FEAST_PROMPT = "Eat"
 CHAO_FEAST_TITLE = "Leftover Feast"
 CHAO_FEAST_MESSAGE = "You are about to enter a typing mini game."
@@ -719,6 +726,9 @@ SOUND_FILES = {
     "ui_hover": ("ui-hover", "sound", 0.5),
     "ui_click": ("ui-click", "sound", 0.6),
     "ambience_day": ("ambience-day", "music", 0.6),
+    "ambience_night": ("ambience-night", "music", 0.6),
+    # The ending cut scene's burp, chimes and whooshes, timed to its video.
+    "ending_sfx": ("ending-sfx", "sound", 1.0),
 
     #market dash scene
     "phone_ring": ("phone-ring", "sound", 0.75),
@@ -764,6 +774,8 @@ FOOTSTEP_CLIPS = {
     "stone": ("step_stone", 1),
 }
 AMBIENCE = "ambience_day"
+# Scene 4 and everything after it happens after dark.
+AMBIENCE_NIGHT = "ambience_night"
 # The garden fades up out of black over CHAO_FADE_IN; the birds come up the
 # same way, a little slower, so the scene does not arrive with a bang.
 AMBIENCE_FADE = 3.0

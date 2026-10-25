@@ -25,7 +25,7 @@ import pyglet
 from . import audio, textures
 from .backdrop import Backdrop
 from .config import (
-    FEAST_CARET, FEAST_COMBO_EVERY, FEAST_CORRECT, FEAST_COUNT_STEP,
+    AMBIENCE_NIGHT, FEAST_CARET, FEAST_COMBO_EVERY, FEAST_CORRECT, FEAST_COUNT_STEP,
     FEAST_CROP, FEAST_EXTRA, FEAST_FLOOR, FEAST_FONT, FEAST_GOAL_WORDS,
     FEAST_HURRY, FEAST_KEY_EDGE, FEAST_KEY_FACE, FEAST_KEY_GAP, FEAST_KEY_GLOW, FEAST_KEY_H, FEAST_KEY_HIT,
     FEAST_KEY_ROWS, FEAST_KEY_TOP, FEAST_KEY_W, FEAST_MAX_EXTRA, FEAST_OUT_TIME,
@@ -161,17 +161,19 @@ class TypingFeastView(StageView):
         self.top_fade = gradient_texture((4, 6, 10), "top")
         self.faces = {
             "win": emotion("Terry_smile_excited"),
-            "lose": emotion("Terry_sad"),
             "intro": emotion("Terry_excited"),
         }
         self.pause_menu = PauseMenu()
         self.settings_panel = SettingsPanel()
         button_y = RESULT_BOTTOM + 34
+        # Continue carries the story on to the ending; Enter takes it too.
         self.result_buttons = [
+            MenuButton("Continue", "continue", "award",
+                       WIDTH / 2 - 405 - 18, button_y, 270, 56),
             MenuButton("Play again", "retry", "play",
-                       WIDTH / 2 - 260 - 10, button_y, 260, 56),
+                       WIDTH / 2 - 135, button_y, 270, 56),
             MenuButton("Main Menu", "menu", "book",
-                       WIDTH / 2 + 10, button_y, 260, 56),
+                       WIDTH / 2 + 135 + 18, button_y, 270, 56),
         ]
         self.widgets = [*self.result_buttons, self.pause_menu, self.settings_panel]
         self.clock = 0.0
@@ -668,7 +670,7 @@ class TypingFeastView(StageView):
             return
         if self.mode == "results":
             if self.mode_clock > 1.0 and key in (arcade.key.ENTER, arcade.key.NUM_ENTER):
-                self.run_action("retry")
+                self.run_action("continue")
             return
         if self.mode == "play" and key == arcade.key.BACKSPACE:
             self.backspace(bool(modifiers & (arcade.key.MOD_CTRL | arcade.key.MOD_ALT)))
@@ -709,6 +711,9 @@ class TypingFeastView(StageView):
             self.settings_panel.open()
         elif action == "retry":
             self.restart()
+        elif action == "continue":
+            from .ending import EndingView
+            self.window.show_view(EndingView())
         elif action == "menu":
             from .views import MenuView
             self.window.show_view(MenuView())
@@ -747,7 +752,7 @@ class TypingFeastView(StageView):
             for _ in range(6):
                 self.burst(random.uniform(200, 1080), random.uniform(340, 640), 16, spark=True)
         else:
-            self.show_banner("Time's up!", FEAST_WRONG)
+            self.show_banner("Time's up!", TEXT_HOVER)
         audio.play("feast_whoosh")
 
     def show_results(self):
@@ -789,15 +794,13 @@ class TypingFeastView(StageView):
         stage = self.stage
         self.result_card = flat_panel(stage.px(RESULT_W), stage.px(RESULT_H), stage.px(PLANK_PAD),
                                       fill=GLASS_FILL_PANEL)
-        won = r["won"]
-        title = "Clean Plates!" if won else "Too Much Food..."
+        # Just the numbers: the story carries on whatever the score.
         eaten = round(100 * r["eaten"])
-        note = ("Terry finished every last bite. Mom would be proud."
-                if won else f"Terry only got through {eaten}% of the leftovers. The fridge is full again.")
-        self.res_title = self.shadowed(title, left + 200, top - 52, QUEST_DONE if won else FEAST_WRONG,
+        self.res_title = self.shadowed("Your Stats", left + 200, top - 52, TEXT_HOVER,
                                        32, drop=2.5, bold=True, anchor_y="center")
-        self.res_note = self.text(note, left + 200, top - 88, TEXT_DIM, 14, anchor_y="center")
-        self.res_face = self.faces["win" if won else "lose"]
+        self.res_note = self.text(f"Leftovers eaten: {eaten}%", left + 200, top - 88,
+                                  TEXT_DIM, 14, anchor_y="center")
+        self.res_face = self.faces["win"]
         col = left + 46
         self.res_labels = [
             self.text("wpm", col, top - 172, TEXT_DIM, 16, anchor_y="center"),
@@ -842,12 +845,6 @@ class TypingFeastView(StageView):
                                            anchor_x="center", anchor_y="center"))
         self.graph_labels.append(self.text(f"{round(span)}s", gl + gw, gb - 14, TEXT_DIM, 10,
                                            anchor_x="center", anchor_y="center"))
-        self.stamp = [
-            self.text("ALL EATEN" if won else "LEFTOVERS", left + RESULT_W - 150 + o,
-                      top - 56 - o, shade, 26, bold=True, anchor_x="center",
-                      anchor_y="center", rotation=-12)
-            for o, shade in ((2, TEXT_SHADOW), (0, QUEST_DONE if won else FEAST_WRONG))
-        ]
 
     def draw_results(self):
         stage = self.stage
@@ -881,24 +878,9 @@ class TypingFeastView(StageView):
         self.draw_graph(ease_out((t - 0.5) / 1.4))
         for button in self.result_buttons:
             button.draw()
-        if t > 1.5:
-            if not self.stamped:
-                self.stamped = True
-                audio.play("feast_win" if r["won"] else "feast_lose")
-                if r["won"]:
-                    for _ in range(8):
-                        self.burst(random.uniform(200, 1080), random.uniform(200, 600), 18,
-                                   spark=True, spread=1.4)
-            pop = back_out((t - 1.5) / 0.35)
-            for text in self.stamp:
-                text.color = with_alpha(text.color, 255 * min(1.0, (t - 1.5) / 0.15))
-                text.draw()
-            x, y = stage.to_screen(left + RESULT_W - 150, top - 56)
-            color = QUEST_DONE if r["won"] else FEAST_WRONG
-            arcade.draw_rect_outline(
-                arcade.XYWH(x, y, 220 * stage.scale * (2 - pop), 58 * stage.scale * (2 - pop)),
-                with_alpha(color, 230), 3 * stage.scale, tilt_angle=-12,
-            )
+        if t > 1.5 and not self.stamped:
+            self.stamped = True
+            audio.play("feast_win")
 
     def draw_graph(self, reveal):
         stage = self.stage
@@ -943,15 +925,15 @@ class TypingFeastView(StageView):
     # --- update -------------------------------------------------------------
 
     def on_show_view(self):
-        audio.ambience().start()
+        audio.ambience(AMBIENCE_NIGHT).start()
 
     def on_hide_view(self):
         for course in self.courses:
             course.stop()
-        audio.ambience().stop()
+        audio.ambience(AMBIENCE_NIGHT).stop()
 
     def on_update(self, delta_time):
-        audio.ambience().update(delta_time)
+        audio.ambience(AMBIENCE_NIGHT).update(delta_time)
         self.courses[self.course].update(delta_time)
         fading = self.old_course is not None and self.course_clock < FEAST_STAGE_FADE
         for index, course in enumerate(self.courses):

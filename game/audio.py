@@ -131,20 +131,19 @@ class Ambience:
             self.player.volume = bank().volume(self.name) * self.fade_level
 
 
-_ambience = None
+_ambiences = {}
 
 
-def ambience():
-    """The one background loop.
+def ambience(name=AMBIENCE):
+    """The background loop called `name`: the day garden unless told otherwise.
 
-    Shared rather than one per view, so a view built and dropped for its side
-    effects, as the startup warm-up does, cannot leave a second loop or a
-    stale mixer listener behind.
+    One per clip, shared rather than one per view, so a view built and
+    dropped for its side effects, as the startup warm-up does, cannot leave a
+    second loop or a stale mixer listener behind.
     """
-    global _ambience
-    if _ambience is None:
-        _ambience = Ambience()
-    return _ambience
+    if name not in _ambiences:
+        _ambiences[name] = Ambience(name)
+    return _ambiences[name]
 
 
 class Footsteps:
