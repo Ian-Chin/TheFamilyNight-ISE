@@ -6,6 +6,7 @@ from .dialogue import DialogBox
 from .views import StageView
 from .bbq_scene import BbqView
 from .chao_widgets import Portraits
+from .backdrop import Backdrop
 
 def cover_rect(texture, rect):
     scale = max(rect.width / texture.width, rect.height / texture.height)
@@ -15,7 +16,7 @@ def cover_rect(texture, rect):
 class BBQPrepView(StageView):
     def __init__(self):
         super().__init__()
-        self.background = textures.background(BBQ_PREP_SCENE_BG)
+        self.backdrop = Backdrop(BBQ_PREP_SCENE_BG)
         
         # --- Setup the Start Button Sprite at virtual canvas coordinates ---
         self.button_list = arcade.SpriteList()
@@ -50,9 +51,14 @@ class BBQPrepView(StageView):
             self.camera.viewport = self.stage.viewport()
 
     def on_show_view(self):
+        audio.ambience().start()
         audio.play("dialog_open")
         self.dialog.open("Terry", "Hmm, there is a lot of food. I need to chop it first...")
         self.typing_player = audio.play("dialog_type", loop=True)
+
+    def on_hide_view(self):
+        self.backdrop.stop()  # --- Stops video decoding when leaving the scene ---
+        self.stop_typing_sound()
 
     def stop_typing_sound(self):
         if self.typing_player:
@@ -60,6 +66,7 @@ class BBQPrepView(StageView):
             self.typing_player = None
 
     def on_update(self, delta_time):
+        self.backdrop.update(delta_time)
         if self.dialog.visible:
             self.dialog.update(delta_time)
             if not self.dialog.typing:
@@ -70,9 +77,10 @@ class BBQPrepView(StageView):
         
         # 1. Draw Background
         self.window.default_camera.use()
+        background = self.backdrop.texture
         arcade.draw_texture_rect(
-            self.background, 
-            cover_rect(self.background, self.stage.viewport())
+            background, 
+            cover_rect(background, self.stage.viewport())
         )
         
         # 2. Use stage camera so the button scales and locks to the corner responsively

@@ -153,7 +153,6 @@ class ChoppingView(StageView):
         
         self.dialog = DialogBox()
         
-        # --- NEW: Initialize Portraits using Terry-idle.png just like bbq_scene.py ---
         terry_tex = arcade.load_texture("assets/sprites/Terry-idle.png")
         self.portraits = Portraits(terry_tex)
         
@@ -202,9 +201,9 @@ class ChoppingView(StageView):
     def spawn_button(self):
         safe_zones = [
             (400, 900, 580, 660),   # Top Center
-            (100, 300, 100, 550),   # Left Side
-            (350, 900, 80, 180),    # Bottom Center
-            (950, 1180, 80, 300),   # Bottom Right
+            (150, 350, 150, 500),   # Left Side (adjusted away from edge)
+            (350, 900, 150, 220),   # Bottom Center (adjusted away from edge)
+            (900, 1100, 150, 350),  # Bottom Right (adjusted away from edge)
         ]
         
         for _ in range(15):
@@ -216,6 +215,11 @@ class ChoppingView(StageView):
             if dist > 200:
                 break
                 
+        # --- Bound clamping to guarantee the button never goes out of screen ---
+        button_radius = 90
+        new_x = max(button_radius, min(WIDTH - button_radius, new_x))
+        new_y = max(button_radius, min(HEIGHT - button_radius, new_y))
+
         self.chop_button.center_x = new_x
         self.chop_button.center_y = new_y
         self.button_active = True
@@ -475,7 +479,7 @@ class ChoppingView(StageView):
                     self.trigger_dialog("All ingredients are prepped! Time to fire up the BBQ.")
                     
                 elif self.stage_idx == 21:
-                    self.window.show_view(BbqView(chop_unlocked=True, grill_unlocked=True, grill_completed=False))
+                    self.window.show_view(BbqView(chop_unlocked=True, grill_unlocked=True, grill_completed=False, play_grill_unlock=True))
 
                 else:
                     if not self.button_active:
@@ -483,7 +487,7 @@ class ChoppingView(StageView):
             return
             
         if self.dialog.visible:
-            if key in (arcade.key.ENTER, arcade.key.NUM_ENTER, arcade.key.RETURN, arcade.key.SPACE):
+            if key in (arcade.key.ENTER, arcade.key.NUM_ENTER, arcade.key.SPACE):
                 self.stop_typing_sound()
                 self.dialog.advance()
                 
