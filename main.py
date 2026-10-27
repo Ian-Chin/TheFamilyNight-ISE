@@ -48,12 +48,9 @@ def main():
     if "--market" in sys.argv:
         from game.market_dash import MarketDashView
         window.show_view(MarketDashView())
-    elif "--bus" in sys.argv or "--bus-ride" in sys.argv:
+    elif "--bus" in sys.argv:
         from game.bumpy_bus import BumpyBusView
-        view = BumpyBusView()
-        if "--bus-ride" in sys.argv:
-            view.engine.mode = 'ride'
-        window.show_view(view)
+        window.show_view(BumpyBusView())
     elif "--feast" in sys.argv:
         from game.feast_typing import TypingFeastView
         window.show_view(TypingFeastView())

@@ -8,8 +8,6 @@ import arcade
 from PIL import Image, ImageDraw
 from .game_audio import GameAudio
 from .pixel_text import GLYPHS
-from .target_rings import RIDE_DURATION, TrackingRing
-from .ring_renderer import RingRenderer
 from ..sprites import Terry
 
 W, H = 1280, 720
