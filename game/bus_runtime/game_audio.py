@@ -17,6 +17,11 @@ class GameAudio:
         self.meta = json.loads((folder / 'manifest.json').read_text())
         self.sounds = {key: arcade.Sound(str(folder / item['file']))
                        for key, item in self.meta['assets'].items()}
+        ring_folder = root / 'audio/bus-scene/target-rings'
+        for name, gain in (('cannon', .7), ('charge', .5), ('warp', .6)):
+            key = 'ring-' + name
+            self.meta['assets'][key] = {'gain': gain}
+            self.sounds[key] = arcade.Sound(str(ring_folder / (name + '.wav')))
 
     def play(self, name, gain=1):
         if not self.enabled or name not in self.sounds:

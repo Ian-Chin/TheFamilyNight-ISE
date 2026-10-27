@@ -7,8 +7,10 @@ import numpy
 import PIL.Image
 
 from ..config import (
-    CARRY_DIR, CARRY_IDLE_FILES, CARRY_JUMP_FILES, CARRY_WALK_FILES, IDLE_FILES, JUMP_ROW, MOVEMENT_SHEET, SHEET_COLS, SHEET_ROWS, SOLID_ALPHA,
-    SPRITE_DIR, WALK_ROWS,
+    CARRY_DIR, CARRY_IDLE_FILES, CARRY_JUMP_FILES, CARRY_WALK_FILES, IDLE_SHEET, IDLE_SHEET_COLS, IDLE_SHEET_FRAMES,
+    IDLE_SHEETS, JUMP_ROW, MOVEMENT_SHEET, SHEET_COLS, SHEET_ROWS, SOLID_ALPHA,
+    KID_CAUGHT_FRAMES, KID_RUN_FRAMES, KID_SHEET_COLS, KID_SHEET_ROWS,
+    KID_SHEETS, SPRITE_DIR, WALK_ROWS,
 )
 from .keying import add_rim, key_out_white, to_art_height, trim
 
@@ -81,12 +83,45 @@ def align_frames(groups):
     return tuple([place(cell) for cell in group] for group in groups)
 
 
+def terry_idle_cells():
+    """Terry's idle drawings at full size, cut off their sheet and trimmed."""
+    sheet = key_out_white(PIL.Image.open(SPRITE_DIR / IDLE_SHEET))
+    cells = slice_sheet(sheet, IDLE_SHEET_COLS, 1)
+    return [cells[(0, col)] for col in range(IDLE_SHEET_COLS)]
+
+
+def load_idle_frames(art, glow=True):
+    """A family member's breathing frames, aligned and rimmed."""
+    sheet = key_out_white(PIL.Image.open(SPRITE_DIR / IDLE_SHEETS[art]))
+    cells = slice_sheet(sheet, IDLE_SHEET_FRAMES, 1)
+    small = to_art_height([cells[(0, col)] for col in range(IDLE_SHEET_FRAMES)])
+    frames, = align_frames(([add_rim(cell, glow) for cell in small],))
+    return frames
+
+
+def load_kid_frames(name):
+    """(run, caught) frame lists for one of the kids, aligned and rimmed.
+
+    The sheet reads left to right, top to bottom: running frames first, then
+    the tantrum frames.
+    """
+    sheet = key_out_white(PIL.Image.open(SPRITE_DIR / KID_SHEETS[name]))
+    cells = slice_sheet(sheet, KID_SHEET_COLS, KID_SHEET_ROWS)
+    ordered = [cells[(row, col)] for row in range(KID_SHEET_ROWS)
+               for col in range(KID_SHEET_COLS)]
+    run = ordered[:KID_RUN_FRAMES]
+    caught = ordered[KID_RUN_FRAMES:KID_RUN_FRAMES + KID_CAUGHT_FRAMES]
+    small = to_art_height(run + caught)
+    rimmed = [add_rim(cell, glow=False) for cell in small]
+    return align_frames((rimmed[:len(run)], rimmed[len(run):]))
+
+
 def group_sizes():
     """How many frames `load_terry_frames` returns in each group."""
-    return (len(WALK_ROWS) * SHEET_COLS, SHEET_COLS, len(IDLE_FILES))
+    return (len(WALK_ROWS) * SHEET_COLS, SHEET_COLS, IDLE_SHEET_COLS)
 
 
-def load_terry_frames():
+def load_terry_frames(glow=True):
     """Return (walk, jump, idle) frame lists as aligned PIL images."""
     sheet = key_out_white(PIL.Image.open(SPRITE_DIR / MOVEMENT_SHEET))
     cells = slice_sheet(sheet, SHEET_COLS, SHEET_ROWS)
@@ -98,8 +133,7 @@ def load_terry_frames():
     # the walk frames before anything is measured against them.
     reference_h = sum(cell.height for cell in walk) / len(walk)
     idle = []
-    for name in IDLE_FILES:
-        cell = trim(key_out_white(PIL.Image.open(SPRITE_DIR / name)))
+    for cell in terry_idle_cells():
         ratio = reference_h / cell.height
         idle.append(cell.resize(
             (max(1, round(cell.width * ratio)), max(1, round(cell.height * ratio))),
@@ -113,7 +147,7 @@ def load_terry_frames():
     small = to_art_height([cell for group in groups for cell in group])
     rimmed, start = [], 0
     for count in sizes:
-        rimmed.append([add_rim(cell) for cell in small[start:start + count]])
+        rimmed.append([add_rim(cell, glow) for cell in small[start:start + count]])
         start += count
     return align_frames(tuple(rimmed))
 

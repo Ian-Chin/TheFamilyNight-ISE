@@ -18,7 +18,8 @@ import PIL.ImageFilter
 
 from ..config import (
     GLASS_EDGE, GLASS_EDGE_HOVER, GLASS_FILL, GLASS_FILL_HOVER,
-    GLASS_FILL_PANEL, GLASS_SHADOW, GLASS_SHEEN,
+    GLASS_FILL_PANEL, GLASS_SHADOW, GLASS_SHEEN, KEYCAP_EDGE, KEYCAP_FACE,
+    KEYCAP_LIP, TITLE_BAND_ALPHA, TITLE_BAND_COLOR,
 )
 
 SUPERSAMPLE = 4  # drawn large, then shrunk, for clean edges
@@ -151,3 +152,31 @@ def draw_dialog_box(width, height, pad):
     panel = glass_panel(size, shape, False, edge_width=1, fill=GLASS_FILL_PANEL)
     panel = add_inner_frame(panel, box, radius, 10 * SUPERSAMPLE)
     return finish(panel, shape, width, height, pad, blur=3.0, drop=3.0)
+
+
+def draw_keycap(width, height, pad):
+    """A pale keyboard key with a darker lip along its bottom edge."""
+    size, box = geometry(width, height, pad)
+    radius = round(height * SUPERSAMPLE * 0.22)
+    lip = round(height * SUPERSAMPLE * 0.14)
+    shape = rounded(box, radius)
+    base = layer(size, shape, fill=KEYCAP_LIP)
+    top = layer(
+        size, rounded((box[0], box[1], box[2], box[3] - lip), radius),
+        fill=KEYCAP_FACE,
+    )
+    edge = layer(size, shape, outline=KEYCAP_EDGE, width=SUPERSAMPLE)
+    art = PIL.Image.alpha_composite(PIL.Image.alpha_composite(base, top), edge)
+    return finish(art, shape, width, height, pad)
+
+
+def draw_title_band(width, height):
+    """A dark band that is solid through the middle and fades top and bottom."""
+    band = PIL.Image.new("L", (1, height))
+    for y in range(height):
+        # 0 at both edges, 1 through the middle third.
+        share = min(y, height - 1 - y) / (height / 3)
+        band.putpixel((0, y), round(TITLE_BAND_ALPHA * min(1.0, share)))
+    art = PIL.Image.new("RGBA", (width, height), (*TITLE_BAND_COLOR, 0))
+    art.putalpha(band.resize((width, height)))
+    return art

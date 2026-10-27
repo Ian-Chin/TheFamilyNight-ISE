@@ -1,0 +1,27 @@
+{
+  "canvas": 640,
+  "pivot": [
+    320,
+    320
+  ],
+  "pirate": {
+    "file": "pirate.png",
+    "inner_radius": 137,
+    "muzzle": [
+      568,
+      258
+    ]
+  },
+  "tesla": {
+    "file": "tesla.png",
+    "inner_radius": 132
+  },
+  "fire": {
+    "file": "fire.png",
+    "columns": 4,
+    "frames": 8,
+    "frame_size": 128,
+    "fps": 12
+  },
+  "source": "User-supplied pirate, Tesla coil and fire references; cleaned and aligned for runtime animation."
+}

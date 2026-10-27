@@ -2,7 +2,13 @@
 
 import sys
 
-import arcade
+import pyglet
+
+# pyglet checks for an OpenGL error after every single GL call when this is
+# on, which costs more than the drawing itself. Set before arcade loads.
+pyglet.options.debug_gl = False
+
+import arcade  # noqa: E402
 
 from game.config import HEIGHT, TITLE, WIDTH
 from game.views import MenuView
@@ -18,14 +24,16 @@ def warm_up():
     cut-outs are baked to assets/.cache as well, so this only costs real time
     on the first run after the art changes.
     """
-    # Start BBQ Scene (CK)
-    from game.bbq_scene import BbqView
+    # 1. Market Dash Scene (Scene 1)
+    from game.market_dash import MarketDashView
+    MarketDashView()
 
+    # 2. BBQ Scene (Scene 3)
+    from game.bbq_scene import BbqView
     BbqView()
 
-    # Imported here so the window exists before any texture is uploaded. (Ian)
+    # 3. Chao Dinner Scene (Scene 4 - Work in progress by teammate)
     # from game.chao_dinner import ChaoDinnerView
-
     # ChaoDinnerView()
 
 
@@ -35,13 +43,25 @@ def main():
         WIDTH, HEIGHT, TITLE, fullscreen=not windowed, resizable=True,
     )
     warm_up()
-    if "--bus" in sys.argv:
+
+    # CLI shortcuts for rapid scene testing
+    if "--market" in sys.argv:
+        from game.market_dash import MarketDashView
+        window.show_view(MarketDashView())
+    elif "--bus" in sys.argv or "--bus-ride" in sys.argv:
         from game.bumpy_bus import BumpyBusView
-        window.show_view(BumpyBusView())
-    elif "--after-bus" in sys.argv:
+        view = BumpyBusView()
+        if "--bus-ride" in sys.argv:
+            view.engine.mode = 'ride'
+        window.show_view(view)
+    elif "--feast" in sys.argv:
+        from game.feast_typing import TypingFeastView
+        window.show_view(TypingFeastView())
+    elif "--bbq" in sys.argv or "--after-bus" in sys.argv:
         from game.bbq_scene import BbqView
         from game.config import CHAO_FADE_IN
-        view=BbqView();view.fade_clock=CHAO_FADE_IN
+        view = BbqView()
+        view.fade_clock = CHAO_FADE_IN
         window.show_view(view)
     else:
         window.show_view(MenuView())

@@ -8,7 +8,7 @@ An Arcade (Python) story game with a bus shopping trip and cooking scenes.
 
 ## Run the Game
 
-Use Python 3.12 with Arcade, Pillow and NumPy installed.
+Use Python 3.12 with Arcade, Pillow, NumPy and SciPy installed.
 PyAV enables animated backgrounds; without it the game uses still art.
 
 Run the game from this folder:
@@ -94,3 +94,33 @@ Names shown in the in-game credits card live in `CREDITS_NAMES` in
 `game/config.py`.
 
 Bus UI ingredients: eggs, meat, cabbage and eggplant. The bread health bar has three segments.
+
+## Bus tracking rings
+
+The bus ride lasts 90 seconds. The mouse target alternates between a pirate
+rag-doll ring and a metallic Tesla coil every 10–13 seconds, using a blue-white
+light ripple and crossfade. Both rings are two-thirds of their original size.
+Keep the mouse inside the glowing inner guide:
+
+- The pirate gives a short cannon warning, fires a cannonball, then spins and
+  recoils about 260–340 canvas pixels to a new position (at least 240 near edges).
+  The ball is a visual recoil cue; health still depends
+  on keeping the mouse inside the ring.
+- The Tesla coil marks its destination, charges, stretches out of sight, and
+  reappears along an electric trail with a landing pulse and a fading afterimage.
+  The outside timer pauses during the part where the ring cannot be tracked.
+- Outside the ring, the red guide breathes and asks you to move the mouse inside.
+  Inside, the guide immediately becomes steady green. There is no periodic fire.
+- Five continuous seconds outside a visible ring costs one bread segment.
+  Pause/menu freezes movement, light effects, projectiles, and damage together.
+
+Start directly in the bus ride for testing:
+
+```powershell
+py -3.12 main.py --bus-ride --windowed
+```
+
+Artwork is in `assets/ui/bus-scene/target-rings/`. The preparation script
+`tools/prepare_bus_rings.py` accepts the original pirate, coil and flame images;
+runtime animation uses fixed sprites and procedural movement/effects so that
+the hit area stays aligned with the art. No additional dependencies are needed.

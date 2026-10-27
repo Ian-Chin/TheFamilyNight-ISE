@@ -32,15 +32,25 @@ class _Decoder(threading.Thread):
 
     def __init__(self, path):
         super().__init__(daemon=True)
-        self.container = av.open(str(path))
-        self.stream = self.container.streams.video[0]
-        self.stream.thread_type = "AUTO"
-        rate = self.stream.average_rate
-        self.period = 1 / float(rate) if rate else 1 / 15
+        self.path = path
+        # Opening the file is left to the thread too: it takes long enough
+        # to be felt as a hitch when a scene swaps videos mid-play.
+        self.period = 1 / 15
+        self.failed = False
         self.frames = queue.Queue(VIDEO_QUEUE)
         self.stopped = threading.Event()
 
     def run(self):
+        try:
+            self.container = av.open(str(self.path))
+            self.stream = self.container.streams.video[0]
+        except (OSError, av.FFmpegError, IndexError):
+            self.failed = True
+            return
+        self.stream.thread_type = "AUTO"
+        rate = self.stream.average_rate
+        if rate:
+            self.period = 1 / float(rate)
         try:
             while not self.stopped.is_set():
                 for frame in self.container.decode(self.stream):
@@ -76,6 +86,30 @@ class Backdrop:
         self.frame = None   # the atlas texture each decoded frame is copied into
         self.failed = False
         self.clock = 0.0
+        self.reserved = None   # an atlas slot made ahead by `reserve`
+
+    def reserve(self):
+        """Put the still and a frame-sized slot for the video in the atlas now.
+
+        A texture's first trip into the atlas can make it grow, which is slow
+        enough to drop frames. A scene that swaps backdrops mid-play calls
+        this while loading, so the swap itself costs nothing.
+        """
+        atlas = arcade.get_window().ctx.default_atlas
+        atlas.add(self.still)
+        if self.video is None or self.reserved is not None:
+            return
+        try:
+            with av.open(str(self.video)) as container:
+                stream = container.streams.video[0]
+                size = (stream.width, stream.height)
+        except (OSError, av.FFmpegError, IndexError):
+            return
+        self.reserved = arcade.Texture(
+            PIL.Image.new("RGBA", size), hash=f"video:{self.video.name}",
+            hit_box_algorithm=arcade.hitbox.algo_bounding_box,
+        )
+        atlas.add(self.reserved)
 
     @property
     def texture(self):
@@ -92,6 +126,10 @@ class Backdrop:
             if self.decoder is None:
                 return
 
+        if self.decoder.failed:
+            self.failed = True
+            self.stop()
+            return
         self.clock -= delta_time
         if self.frame is not None and self.clock > 0:
             return
@@ -105,11 +143,7 @@ class Backdrop:
         self.clock = max(0.0, self.clock + self.decoder.period)
 
     def start(self):
-        try:
-            self.decoder = _Decoder(self.video)
-        except (OSError, av.FFmpegError, IndexError):
-            self.failed = True
-            return
+        self.decoder = _Decoder(self.video)
         self.decoder.start()
 
     def stop(self):
@@ -119,7 +153,11 @@ class Backdrop:
 
     def show(self, image):
         atlas = arcade.get_window().ctx.default_atlas
-        if self.frame is None or self.frame.image.size != image.size:
+        if (self.frame is None and self.reserved is not None
+                and self.reserved.image.size == image.size):
+            self.frame = self.reserved
+            self.frame.image = image
+        elif self.frame is None or self.frame.image.size != image.size:
             # Named after the video, so every Backdrop of one video shares a
             # single region in the atlas.
             self.frame = arcade.Texture(

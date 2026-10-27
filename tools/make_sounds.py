@@ -9,7 +9,8 @@ The footsteps and the garden ambience are real recordings and are deliberately
 not generated here, so that re-running this does not throw them away. The
 footsteps are cut down by `tools/cut_footsteps.py`; the ambience is used whole.
 
-    python tools/make_sounds.py
+    python tools/make_sounds.py            # every clip
+    python tools/make_sounds.py feast-     # only the typing game's clips
 """
 
 import sys
@@ -114,17 +115,160 @@ def ui_click():
     return numpy.concatenate(parts)
 
 
+# --- Leftover feast typing game ---------------------------------------------
+
+
+def tone(frequency, length, harmonics=((1, 1.0),), attack=300, power=3.0):
+    step = seconds(length)
+    wave_form = sum(level * numpy.sin(2 * numpy.pi * frequency * mult * step)
+                    for mult, level in harmonics)
+    return wave_form * numpy.minimum(1.0, step * attack) * decay(length, power)
+
+
+def sweep(start, end, length, power=2.5):
+    """A sine gliding from `start` to `end` Hz."""
+    step = seconds(length)
+    frequency = numpy.linspace(start, end, len(step))
+    phase = 2 * numpy.pi * numpy.cumsum(frequency) / RATE
+    return numpy.sin(phase) * numpy.minimum(1.0, step * 400) * decay(length, power)
+
+
+def place(track, clip, at):
+    start = int(RATE * at)
+    end = min(len(track), start + len(clip))
+    track[start:end] += clip[:end - start]
+    return track
+
+
+def feast_key():
+    """A soft mechanical thock: a dull body under a short bright click."""
+    length = 0.07
+    body = tone(210, length, ((1, 1.0), (2.1, 0.3)), attack=900, power=9.0)
+    click = smooth(noise(length, 41), 3) * decay(length, 26.0)
+    return body * 0.42 + click * 0.32
+
+
+def feast_error():
+    """A low, buzzy bump for a wrong key."""
+    length = 0.14
+    step = seconds(length)
+    buzz = numpy.sign(numpy.sin(2 * numpy.pi * 118 * step)) * 0.5
+    buzz += numpy.sin(2 * numpy.pi * 59 * step)
+    return smooth(buzz, 6) * numpy.minimum(1.0, step * 500) * decay(length, 2.2) * 0.3
+
+
+def feast_word():
+    """A round little pop, one per word finished."""
+    return sweep(480, 920, 0.09, power=2.0) * 0.32
+
+
+def feast_chomp():
+    """Three crunchy bites."""
+    track = numpy.zeros(int(RATE * 0.5))
+    for index, at in enumerate((0.0, 0.15, 0.3)):
+        length = 0.11
+        crunch = smooth(noise(length, 60 + index), 2 + index) * decay(length, 3.0)
+        thud = tone(140 - index * 12, length, attack=800, power=5.0)
+        place(track, crunch * 0.55 + thud * 0.4, at)
+    return track
+
+
+def feast_stage():
+    """A bright rising arpeggio for a course cleared."""
+    track = numpy.zeros(int(RATE * 0.7))
+    for index, frequency in enumerate((523, 659, 784, 1047)):
+        note = tone(frequency, 0.32, ((1, 1.0), (2, 0.25), (3, 0.1)), power=2.6)
+        place(track, note * 0.24, index * 0.075)
+    return track
+
+
+def feast_combo():
+    """A quick shimmer for a streak of clean words."""
+    track = numpy.zeros(int(RATE * 0.45))
+    for index, frequency in enumerate((1568, 1976, 2349, 2637, 3136)):
+        place(track, tone(frequency, 0.18, power=3.5) * 0.12, index * 0.045)
+    return track
+
+
+def feast_count():
+    """One beep of the count in."""
+    return tone(660, 0.16, ((1, 1.0), (2, 0.2)), power=2.0) * 0.35
+
+
+def feast_go():
+    """The beep that starts the clock: higher, longer, with a fifth on top."""
+    return (tone(990, 0.42, ((1, 1.0), (1.5, 0.5), (2, 0.2)), power=1.8)) * 0.3
+
+
+def feast_tick():
+    """A woody tick for each of the last seconds."""
+    length = 0.05
+    return (tone(1300, length, attack=2000, power=10.0) * 0.4
+            + smooth(noise(length, 77), 4) * decay(length, 20.0) * 0.2)
+
+
+def feast_whoosh():
+    """Filtered noise rising and falling, for a panel sliding in."""
+    length = 0.42
+    swell = numpy.sin(numpy.linspace(0, numpy.pi, int(RATE * length))) ** 2
+    return smooth(noise(length, 90), 14) * swell * 0.5
+
+
+def feast_win():
+    """A short fanfare: two chords, then the octave held."""
+    track = numpy.zeros(int(RATE * 1.4))
+    chords = ((0.0, (523, 659, 784), 0.22), (0.2, (587, 740, 880), 0.22),
+              (0.42, (784, 988, 1175, 1568), 0.9))
+    for at, notes, length in chords:
+        for frequency in notes:
+            place(track, tone(frequency, length, ((1, 1.0), (2, 0.3), (3, 0.12)),
+                              power=1.6) * 0.14, at)
+    return track
+
+
+def feast_lose():
+    """A deflating wah-wah, falling a semitone at a time."""
+    track = numpy.zeros(int(RATE * 1.5))
+    for index, (start, end) in enumerate(((392, 370), (370, 349), (349, 330),
+                                          (330, 262))):
+        length = 0.62 if index == 3 else 0.3
+        step = seconds(length)
+        frequency = numpy.linspace(start, end, len(step))
+        wobble = 1 + 0.02 * numpy.sin(2 * numpy.pi * 6 * step) * (index == 3)
+        phase = 2 * numpy.pi * numpy.cumsum(frequency * wobble) / RATE
+        wave_form = numpy.sin(phase) + 0.5 * numpy.sin(2 * phase) + 0.25 * numpy.sin(3 * phase)
+        envelope = numpy.minimum(1.0, step * 60) * decay(length, 1.2)
+        place(track, smooth(wave_form, 8) * envelope * 0.22, index * 0.32)
+    return track
+
+
 CLIPS = {
     "dialog-type": typing_loop,
     "dialog-open": popup,
     "ui-hover": ui_hover,
     "ui-click": ui_click,
+    "feast-key": feast_key,
+    "feast-error": feast_error,
+    "feast-word": feast_word,
+    "feast-chomp": feast_chomp,
+    "feast-stage": feast_stage,
+    "feast-combo": feast_combo,
+    "feast-count": feast_count,
+    "feast-go": feast_go,
+    "feast-tick": feast_tick,
+    "feast-whoosh": feast_whoosh,
+    "feast-win": feast_win,
+    "feast-lose": feast_lose,
 }
 
 
 def main():
+    """Bake every clip, or only the ones named on the command line."""
     AUDIO_DIR.mkdir(parents=True, exist_ok=True)
+    wanted = sys.argv[1:]
     for name, build in CLIPS.items():
+        if wanted and not any(name.startswith(prefix) for prefix in wanted):
+            continue
         path = AUDIO_DIR / f"{name}.wav"
         write_wav(path, build())
         print(f"wrote {path.relative_to(ROOT)}  ({path.stat().st_size // 1024} KB)")

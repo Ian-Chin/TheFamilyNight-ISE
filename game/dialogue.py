@@ -40,6 +40,7 @@ class DialogBox:
         self.visible = False
         self.stage = None
         self.speaker = ""
+        self.side = "left"   # which end of the box the speaker's name sits at
         self.lines = []
         self.revealed = 0
         self.total = 0
@@ -53,9 +54,10 @@ class DialogBox:
     def typing(self):
         return self.revealed < self.total
 
-    def open(self, speaker, text):
+    def open(self, speaker, text, side="left"):
         self.visible = True
         self.speaker = speaker
+        self.side = side
         self.lines = wrap(text)
         self.total = sum(len(line) for line in self.lines)
         self.revealed = 0
@@ -85,9 +87,14 @@ class DialogBox:
         )
         # The speaker's name floats on the panel itself, with no plate of its
         # own; the box is dark enough for it to read.
+        if self.side == "right":
+            name_x, anchor = self.left + DIALOG_W - DIALOG_PAD, "right"
+        else:
+            name_x, anchor = self.left + DIALOG_PAD, "left"
         self.name_text = stage.text(
-            self.speaker, self.left + DIALOG_PAD, self.top - DIALOG_NAME_DROP,
-            TEXT_HOVER, DIALOG_NAME_SIZE, anchor_y="center", bold=True,
+            self.speaker, name_x, self.top - DIALOG_NAME_DROP,
+            TEXT_HOVER, DIALOG_NAME_SIZE, anchor_x=anchor, anchor_y="center",
+            bold=True,
         )
 
         # One Text object per line, refilled as characters are revealed.
@@ -142,7 +149,7 @@ class DialogBox:
             text.draw()
 
         self.hint_text.text = (
-            "Enter to skip" if self.typing else "Enter to continue"
+            "Enter or Space to skip" if self.typing else "Enter or Space to continue"
         )
         self.hint_text.draw()
         if not self.typing and self.blink % (2 * DIALOG_BLINK) < DIALOG_BLINK:
