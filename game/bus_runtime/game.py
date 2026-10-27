@@ -35,9 +35,9 @@ class Painter:
         self.stage = stage
         self.text_cache = {}
 
-    def image(self, texture, x, y, width, height, alpha=255):
+    def image(self, texture, x, y, width, height, alpha=255, angle=0):
         arcade.draw_texture_rect(texture, self.stage.rect(x, H-y-height, width, height),
-                                 pixelated=True, alpha=alpha)
+                                 pixelated=True, alpha=alpha, angle=angle)
 
     def fitted(self, texture, x, y, width, height, alpha=255):
         factor = min(width/texture.width,height/texture.height)
@@ -120,8 +120,8 @@ class Game:
         self.bread_states = self.make_bread_states()
         self.station_hero = Terry(0,0)
         self.mirrored_heroes = {}
-        self.target_textures = {name: self.load('ui/bus-scene/pixel-circle-'+name+'.png',trim=True)
-                                for name in ('green','red')}
+        self.ring_target = TrackingRing(self.rng)
+        self.ring_renderer = RingRenderer(self.root)
         scene_root = self.root/'backgrounds/bus-scene/animations'
         self.manifest = json.loads((scene_root/'manifest.json').read_text())
         self.scenes = {s['id']: s for s in self.manifest['scenes']}
@@ -192,6 +192,7 @@ class Game:
         self.step_side = 0
         self.outside_elapsed = 0.
         self.outside_active = False
+        self.ring_target.reset()
         self.set_paused(False)
 
     def set_paused(self, value):
@@ -255,7 +256,8 @@ class Game:
                 self.next_event = self.elapsed+self.rng.uniform(*SOLVED_EVENT_DELAY)
 
     def target(self):
-        return 640+math.sin(self.elapsed*.95)*95, 550+math.cos(self.elapsed*.8)*15, 92-14*min(self.elapsed/60,1)
+        pose = self.ring_target.pose()
+        return pose.x, pose.y, self.ring_target.radius
 
     def damaged_food_name(self, index):
         return INGREDIENTS[index]
@@ -325,9 +327,14 @@ class Game:
         if self.mode != 'ride':
             return
         self.elapsed += dt
-        x, y, radius = self.target()
-        self.outside_active = math.hypot(pointer[0]-x, pointer[1]-y) > radius
-        self.outside_elapsed = self.outside_elapsed+dt if self.outside_active else 0.
+        for sound in self.ring_target.update(dt):
+            self.audio.play(sound)
+        if self.ring_target.tracking_active:
+            self.outside_active = not self.ring_target.contains(pointer)
+            self.outside_elapsed = self.outside_elapsed+dt if self.outside_active else 0.
+        else:
+            # Freeze the clock while a teleport has no visible, usable target.
+            self.outside_active = False
         while self.outside_elapsed+1e-9 >= 5:
             self.outside_elapsed = max(0., self.outside_elapsed-5)
             self.balance = max(0, self.balance-1)
@@ -342,7 +349,7 @@ class Game:
             if self.scene_reaction_time >= duration:
                 self.scene_reaction = None
                 self.next_event = self.elapsed+self.rng.uniform(*REACTION_EVENT_DELAY)
-        if self.event is None and self.scene_reaction is None and self.elapsed >= self.next_event and self.elapsed < 54:
+        if self.event is None and self.scene_reaction is None and self.elapsed >= self.next_event and self.elapsed < RIDE_DURATION - 6:
             self.start_event()
         if self.event is not None:
             self.event_left -= dt
@@ -356,7 +363,7 @@ class Game:
                 if self.food == 0:
                     self.finish(False)
                     return
-        if self.elapsed >= 60:
+        if self.elapsed >= RIDE_DURATION:
             self.finish(True)
 
     def scene_frame(self):
@@ -430,7 +437,7 @@ class Game:
             if self.event == i:
                 p.rounded(40+i*56,73,48,4,GOLD,2)
         stage = 0 if self.mode == 'stop' else 2 if self.mode in ('arrival','home') else 1
-        progress = .06 if stage == 0 else 1 if stage == 2 else .5+.5*min(1,self.elapsed/60)
+        progress = .06 if stage == 0 else 1 if stage == 2 else .5+.5*min(1,self.elapsed/RIDE_DURATION)
         p.rounded(414, 12, 416, 28, INK, 14)
         p.rounded(418, 16, 408, 20, (68,93,100), 10)
         p.rounded(418, 16, max(20, 408*progress), 20, GOLD, 10)
@@ -536,15 +543,12 @@ class Game:
         else:
             self.draw_scene()
             if self.mode == 'ride':
-                x,y,radius = self.target()
-                inside = math.dist(pointer,(x,y)) <= radius
-                p.fitted(self.target_textures['green' if inside else 'red'],
-                         x-radius,y-radius,radius*2,radius*2,alpha=100)
+                self.ring_renderer.draw(p, self.ring_target, pointer)
                 if self.outside_active:
-                    p.plaque(410,614,460,70)
-                    p.text('PLEASE MOVE BACK',580,649,2,WHITE)
-                    p.rounded(762,622,98,54,INK,12)
-                    p.text(str(max(1,math.ceil(5-self.outside_elapsed)))+'S',811,649,5,WHITE)
+                    p.plaque(410,646,460,62)
+                    p.text('PLEASE MOVE BACK',580,677,2,WHITE)
+                    p.rounded(762,652,98,50,INK,12)
+                    p.text(str(max(1,math.ceil(5-self.outside_elapsed)))+'S',811,677,5,WHITE)
             elif self.mode == 'failed':
                 p.rect(0,0,W,H,(4,12,20,160))
                 failed = self.ui['failed']
