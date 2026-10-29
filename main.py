@@ -11,7 +11,7 @@ pyglet.options.debug_gl = False
 import arcade  # noqa: E402
 
 from game.config import HEIGHT, TITLE, WIDTH
-from game.views import MenuView
+from game.scenes.menu import MenuView
 
 
 def warm_up():
@@ -25,15 +25,15 @@ def warm_up():
     on the first run after the art changes.
     """
     # 1. Market Dash Scene (Scene 1)
-    from game.market_dash import MarketDashView
+    from game.scenes.market_dash import MarketDashView
     MarketDashView()
 
     # 2. BBQ Scene (Scene 3)
-    from game.bbq_scene import BbqView
+    from game.scenes.bbq import BbqView
     BbqView()
 
     # 3. Chao Dinner Scene (Scene 4 - Work in progress by teammate)
-    # from game.chao_dinner import ChaoDinnerView
+    # from game.scenes.chao_dinner import ChaoDinnerView
     # ChaoDinnerView()
 
 
@@ -46,16 +46,16 @@ def main():
 
     # CLI shortcuts for rapid scene testing
     if "--market" in sys.argv:
-        from game.market_dash import MarketDashView
+        from game.scenes.market_dash import MarketDashView
         window.show_view(MarketDashView())
     elif "--bus" in sys.argv:
-        from game.bumpy_bus import BumpyBusView
+        from game.scenes.bumpy_bus import BumpyBusView
         window.show_view(BumpyBusView())
     elif "--feast" in sys.argv:
-        from game.feast_typing import TypingFeastView
+        from game.scenes.chao_dinner import TypingFeastView
         window.show_view(TypingFeastView())
     elif "--bbq" in sys.argv or "--after-bus" in sys.argv:
-        from game.bbq_scene import BbqView
+        from game.scenes.bbq import BbqView
         from game.config import CHAO_FADE_IN
         view = BbqView()
         view.fade_clock = CHAO_FADE_IN

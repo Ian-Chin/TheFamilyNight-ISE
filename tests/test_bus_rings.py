@@ -3,7 +3,7 @@ import math
 import random
 import unittest
 
-from game.bus_runtime.target_rings import (
+from game.scenes.bumpy_bus.target_rings import (
     BOUNDS, PIRATE_WINDUP, RIDE_DURATION, RING_SCALE, TrackingRing,
 )
 

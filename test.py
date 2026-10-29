@@ -16,15 +16,15 @@ import traceback
 import arcade
 
 from game.config import HEIGHT, TITLE, WIDTH
-from game import views
-from game.views import StageView
+from game.scenes.menu import view as menu_view
+from game.core.stage import StageView
 
 # (label, module, class name, constructor kwargs).
 SCENES = [
-    ("Scene 1: Market Dash", "game.market_dash", "MarketDashView", {}),
-    ("Scene 2: Bumpy Bus", "game.bumpy_bus", "BumpyBusView", {}),
-    ("Scene 3: Backyard BBQ", "game.bbq_scene", "BbqView", {}),
-    ("Scene 4: Chaos Dinner", "game.chao_dinner", "ChaoDinnerView", {}),
+    ("Scene 1: Market Dash", "game.scenes.market_dash", "MarketDashView", {}),
+    ("Scene 2: Bumpy Bus", "game.scenes.bumpy_bus", "BumpyBusView", {}),
+    ("Scene 3: Backyard BBQ", "game.scenes.bbq", "BbqView", {}),
+    ("Scene 4: Chaos Dinner", "game.scenes.chao_dinner", "ChaoDinnerView", {}),
 ]
 
 ROW_H = 52
@@ -155,9 +155,9 @@ class TestMenuView(StageView):
 
 
 def main():
-    # Scenes send "Main Menu" to game.views.MenuView (imported when pressed),
+    # Scenes send "Main Menu" to game.scenes.menu.view.MenuView (imported when pressed),
     # so pointing that name here brings devs back to this menu instead.
-    views.MenuView = TestMenuView
+    menu_view.MenuView = TestMenuView
 
     fullscreen = "--fullscreen" in sys.argv
     window = arcade.Window(
