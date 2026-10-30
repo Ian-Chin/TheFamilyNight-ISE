@@ -206,7 +206,7 @@ FEAST_WORDS = (
 # said with the shocked face.
 CHAO_SHOCK_DIALOG = (
     ("Terry", "Whoa! Everyone's here already? That was fast!"),
-    ("Terry", "Okay, okay. Lights are up, family's here. Time to set up dinner at the table."),
+    ("Terry", "Okay, okay. Lights are up, family's here. Time to set up dinner at the table.", "happy"),
 )
 # The table prompt, and the card that asks before the mini game starts.
 CHAO_TABLE_PROMPT = "Set up"
@@ -223,7 +223,7 @@ CHAO_COUNT_GO = 0.6
 CHAO_COUNT_SIZE = 110
 # Table talk once everyone is seated, ending with the kids running off.
 CHAO_TABLE_TALK = (
-    ("Terry", "Dinner is served, everyone! Dig in before the food gets cold."),
+    ("Terry", "Dinner is served, everyone! Dig in before the food gets cold.", "happy"),
     ("Marcus", "Now this is a proper feast. Well done, son."),
     ("Christine", "Kids, vegetables first, then the chicken."),
     ("Jess", "Psst, Tom. Want to run around?"),
@@ -243,7 +243,7 @@ KIDS_LOSE_ITEMS = [
 ]
 # Terry once the mini game is over and he carries on.
 CHAO_AFTER_GAME_DIALOG = (
-    ("Terry", "Phew. Finally, a quiet dinner with the whole family."),
+    ("Terry", "Phew. Finally, a quiet dinner with the whole family.", "happy"),
 )
 # A while later: the screen dips to black over a clock, and the family are
 # full. They head off one by one and leave Terry with the rest of the food.
@@ -261,7 +261,7 @@ CHAO_LEAVE_FADE = 0.55   # seconds down to black while the family leave
 # Terry alone at the table, the first line with the shocked face.
 CHAO_ALONE_DIALOG = (
     ("Terry", "Wait... everyone's gone? But there's still SO much food left!"),
-    ("Terry", "I'm not letting a single bite go to waste. Time to finish this feast."),
+    ("Terry", "I'm not letting a single bite go to waste. Time to finish this feast.", "hungry"),
 )
 # Where Terry stands once he gets up from the table, beside its right end.
 CHAO_ALONE_SPOT = (420, 392)
@@ -277,18 +277,67 @@ CHAO_FEAST_ITEMS = [
 CHAO_NPC_DIALOG = {
     "Marcus": (
         ("Marcus", "Smells good, son. Your steak has a reputation to live up to tonight, you know."),
-        ("Terry", "No pressure then, Dad. I got the best cuts the market had left."),
+        ("Terry", "No pressure then, Dad. I got the best cuts the market had left.", "nervous"),
     ),
     "Christine": (
         ("Christine", "Look at all these lights! Come, sit down. You must be starving after all that running around."),
-        ("Terry", "Starving and a little sunburnt, Mom. Worth it though."),
+        ("Terry", "Starving and a little sunburnt, Mom. Worth it though.", "hungry"),
     ),
     "Jess": (
         ("Jess", "Did you really survive the market this morning? I heard it was a total war zone."),
-        ("Terry", "Barely. I had to wrestle a stranger for the last fish."),
+        ("Terry", "Barely. I had to wrestle a stranger for the last fish.", "nervous"),
     ),
     "Tom": (
         ("Tom", "Is the food ready yet? I have been smelling that grill for an hour!"),
-        ("Terry", "Almost, Tom. Hold on just a little longer."),
+        ("Terry", "Almost, Tom. Hold on just a little longer.", "unimpressed"),
     ),
 }
+
+
+# --- Night lighting and screen effects ---------------------------------------
+# Drawn through game/core/postfx.py, so quality mode only; performance mode
+# keeps the plain picture and the plain fades to black.
+CHAO_AMBIENT = (0.72, 0.78, 1.0)   # the whole garden, cooled toward moonlight
+# Warm pools added on top: (x, y, radius, strength, (r, g, b), flicker), with
+# x, y and radius in canvas units. Strength is how far over the ambient the
+# middle of the pool goes; flicker is how much it wobbles, for flames.
+CHAO_LIGHTS = (
+    (230, 395, 300, 1.0, (0.55, 0.36, 0.14), 0.06),   # over the dinner table
+    (878, 370, 230, 1.2, (0.80, 0.30, 0.06), 0.22),   # the grill's embers
+    (140, 72, 170, 0.7, (0.10, 0.26, 0.50), 0.0),     # the pond
+    (150, 708, 210, 0.6, (0.50, 0.38, 0.18), 0.10),   # string lights, top
+    (470, 708, 210, 0.6, (0.50, 0.38, 0.18), 0.10),
+    (790, 708, 210, 0.6, (0.50, 0.38, 0.18), 0.10),
+    (1110, 708, 210, 0.6, (0.50, 0.38, 0.18), 0.10),
+    (330, 66, 190, 0.5, (0.50, 0.38, 0.18), 0.10),    # string lights, bottom
+    (720, 66, 190, 0.5, (0.50, 0.38, 0.18), 0.10),
+    (1100, 66, 190, 0.5, (0.50, 0.38, 0.18), 0.10),
+)
+CHAO_VIGNETTE = 0.5
+CHAO_GRAIN = 0.035
+
+# Depth of field: once the camera closes on the table the garden behind
+# softens, so the family stays the sharp thing in frame.
+CHAO_FOCUS_BLUR = 5.0    # blur radius in canvas units, fully pulled
+CHAO_FOCUS_TIME = 1.4    # seconds to pull focus
+# The table stays in focus: (x, y, sharp within, fully soft past), canvas units.
+CHAO_FOCUS_SPOT = (230, 400, 190, 420)
+
+# Shocked moments: the world drains to grey but for a circle round Terry,
+# speed lines burst in, and the camera punches in.
+CHAO_SHOCK_FOCUS = 120   # canvas radius kept in colour
+CHAO_SHOCK_FADE = 0.22   # seconds for the grey to come and go
+CHAO_SPEED_LINES = 44
+CHAO_PUNCH = 0.09        # extra zoom at the height of the punch
+CHAO_PUNCH_TIME = 0.5    # seconds for the punch to settle
+
+# The kids game: a kid wriggling free shakes the screen and flushes its
+# edges red.
+CHAO_ESCAPE_SHAKE = 9.0  # canvas units
+CHAO_ESCAPE_DECAY = 2.6  # how fast the shake and the red die away, per second
+CHAO_SKIP_SPEED = 5.0    # the family eats this many times faster during "30 minutes later"
+
+KID_TRAIL = 6            # afterimages behind a carried kid
+KID_TRAIL_EVERY = 0.035  # seconds between them
+KID_LIFT = 20            # canvas units a carried kid's shadow sits below them
+KID_SPARKLES = 22        # bits thrown up when a kid is put back in their seat

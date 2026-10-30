@@ -22,7 +22,7 @@ import PIL.Image
 import PIL.ImageDraw
 import pyglet
 
-from ...core import audio, textures
+from ...core import achievements, audio, textures
 from ...core.backdrop import Backdrop
 from ...config import (
     AMBIENCE_NIGHT, FEAST_STAGES, GLASS_EDGE, GLASS_EDGE_HOVER, GLASS_FILL,
@@ -772,9 +772,24 @@ class TypingFeastView(StageView):
             "streak": self.best_streak,
             "words": self.correct_words,
         }
+        self.award(self.results)
         self.stamped = False
         self.build_results()
         audio.play("feast_whoosh")
+
+    @staticmethod
+    def award(r):
+        achievements.unlock("dinner_done")
+        if r["won"]:
+            achievements.unlock("feast_clear")
+            if r["acc"] >= 100:
+                achievements.unlock("feast_flawless")
+        if r["wpm"] >= 60 and r["words"] >= 10:
+            achievements.unlock("feast_speed")
+        if r["streak"] >= 20:
+            achievements.unlock("feast_streak")
+        if r["words"] == 0 and r["time"] > 0:
+            achievements.unlock("egg_fast")
 
     def record_second(self, final=False):
         """Note this second's speed and errors for the results graph."""

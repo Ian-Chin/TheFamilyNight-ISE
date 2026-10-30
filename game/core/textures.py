@@ -10,7 +10,7 @@ import arcade
 import PIL.Image
 import PIL.ImageFilter
 
-from .art.keying import add_rim, key_out_white, solid_bbox, to_art_height, trim
+from .art.keying import add_rim, key_out_paper, key_out_white, solid_bbox, to_art_height, trim
 from .art.parts import face_frames, morsel, pale_edge, split_parts
 from .art.spritesheet import (
     carry_group_sizes, group_sizes, load_carry_frames, load_idle_frames,
@@ -25,7 +25,7 @@ from ..config import (
     BACKGROUND_DIR, CARRY_DIR, CARRY_IDLE_FILES, CARRY_JUMP_FILES, CARRY_WALK_FILES,
     CHAO_FACES, CHARACTER_DIR, DAYCYCLE_SHEET, DAY_BADGE_BOXES, ICON_DIR, IDLE_SHEET,
     IDLE_SHEETS, KID_CAUGHT_FRAMES, KID_RUN_FRAMES, KID_SHEETS, MOVEMENT_SHEET,
-    SPRITE_DIR, TERRY_SHOCKED, UI_DIR,
+    SPRITE_DIR, TERRY_FACES, TERRY_SHOCKED, UI_DIR,
 )
 
 
@@ -93,16 +93,48 @@ def idle_frames(art, glow=True):
 
 
 @functools.lru_cache(maxsize=None)
-def terry_shocked():
-    """Terry wide-eyed and sweating, cut out like the family's art."""
-    source = SPRITE_DIR / TERRY_SHOCKED
+def _terry_face(filename, name):
+    """One of Terry's expressions, cut out like the family's art."""
+    source = SPRITE_DIR / filename
 
     def build():
-        image = PIL.Image.open(source).convert("RGBA")
-        small, = to_art_height([trim(image)])
+        image = PIL.Image.open(source)
+        # An alpha channel that is opaque everywhere is still white paper.
+        if image.mode != "RGBA" or image.getchannel("A").getextrema()[0] > 128:
+            # Drawn on white paper rather than saved with transparency.
+            image = key_out_paper(image)
+        small, = to_art_height([trim(image.convert("RGBA"))])
         return add_rim(small, glow=False)
 
-    return _texture(baked("terry-shocked", [source], build))
+    return _texture(baked(name, [source], build))
+
+
+def terry_shocked():
+    """Terry wide-eyed and sweating."""
+    return _terry_face(TERRY_SHOCKED, "terry-shocked")
+
+
+@functools.lru_cache(maxsize=None)
+def terry_faces():
+    """Every expression in TERRY_FACES, by name, each on the same canvas
+    as the idle portrait so it shows at exactly the same size."""
+    idle = terry_frames(glow=False)[2][0].image
+    left, top, right, bottom = solid_bbox(idle)
+    middle = (left + right) / 2
+    faces = {}
+    for name, filename in TERRY_FACES.items():
+        face = _terry_face(filename, f"terry-face-{name}").image
+        face = face.crop(solid_bbox(face))
+        height = bottom - top
+        face = face.resize((round(face.width * height / face.height), height),
+                           PIL.Image.LANCZOS)
+        # Wide enough for the face, still centred where idle Terry stands.
+        width = max(idle.width, face.width + 2 * left)
+        canvas = PIL.Image.new("RGBA", (width, idle.height))
+        shift = (width - idle.width) / 2
+        canvas.paste(face, (round(shift + middle - face.width / 2), top), face)
+        faces[name] = _texture(canvas)
+    return faces
 
 
 def _grouped(frames, counts):
@@ -257,6 +289,21 @@ def blurred_background(name, radius):
     """A background still, softened, to sit behind a title card."""
     image = PIL.Image.open(BACKGROUND_DIR / name).convert("RGBA")
     return _texture(image.filter(PIL.ImageFilter.GaussianBlur(radius)))
+
+
+@functools.lru_cache(maxsize=32)
+def preview(name, width):
+    """A background still cropped to 16:9 and shrunk to `width`, for thumbnails."""
+    image = PIL.Image.open(BACKGROUND_DIR / name).convert("RGBA")
+    w, h = image.size
+    if w * 9 > h * 16:
+        crop_w = h * 16 // 9
+        box = ((w - crop_w) // 2, 0, (w + crop_w) // 2, h)
+    else:
+        crop_h = w * 9 // 16
+        box = (0, (h - crop_h) // 2, w, (h + crop_h) // 2)
+    size = (width, max(1, round(width * 9 / 16)))
+    return _texture(image.crop(box).resize(size, PIL.Image.LANCZOS))
 
 
 @functools.lru_cache(maxsize=16)

@@ -11,6 +11,7 @@ pyglet.options.debug_gl = False
 import arcade  # noqa: E402
 
 from game.config import HEIGHT, TITLE, WIDTH
+from game.core import achievements
 from game.scenes.menu import MenuView
 
 
@@ -42,6 +43,8 @@ def main():
     window = arcade.Window(
         WIDTH, HEIGHT, TITLE, fullscreen=not windowed, resizable=True,
     )
+    # Before any view is shown, so unlock popups draw on top of every view.
+    achievements.attach(window)
     warm_up()
 
     # CLI shortcuts for rapid scene testing

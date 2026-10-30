@@ -2,7 +2,9 @@
 
 import PIL.Image
 import PIL.ImageChops
+import PIL.ImageDraw
 import PIL.ImageFilter
+import PIL.ImageOps
 
 from ...config import (
     CHARACTER_ART_HEIGHT, CLEAR_ABOVE, OPAQUE_BELOW, RIM_DARK, RIM_DARK_COLOR,
@@ -23,6 +25,28 @@ def key_out_white(image):
     )
     image.putalpha(alpha)
     return image
+
+
+def key_out_paper(image):
+    """Like key_out_white, but only the paper around the figure goes.
+
+    White inside the outline (eyes, a sweat drop, a shine on the hair) is
+    part of the drawing. The paper is the pale area that reaches the edge of
+    the image, so it is found by flood-filling the near-white pixels from the
+    border; everything that fill cannot reach stays fully opaque.
+    """
+    keyed = key_out_white(image)
+    red, green, blue, _ = keyed.split()
+    darkest = PIL.ImageChops.darker(PIL.ImageChops.darker(red, green), blue)
+    pale = darkest.point(lambda v: 255 if v > OPAQUE_BELOW else 0)
+    # A pale frame round the outside joins every bit of border paper into
+    # one region, so a single fill from the corner finds all of it.
+    pale = PIL.ImageOps.expand(pale, 1, fill=255)
+    PIL.ImageDraw.floodfill(pale, (0, 0), 128)
+    pale = pale.crop((1, 1, pale.width - 1, pale.height - 1))
+    enclosed = pale.point(lambda v: 0 if v == 128 else 255)
+    keyed.putalpha(PIL.ImageChops.lighter(keyed.getchannel("A"), enclosed))
+    return keyed
 
 
 def solid_bbox(image):

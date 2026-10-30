@@ -130,6 +130,12 @@ class MenuView(StageView):
         if item.action == "play":
             from ..market_dash import MarketDashView
             self.window.show_view(MarketDashView())
+        elif item.action == "story":
+            from .story import StoryView
+            self.window.show_view(StoryView())
+        elif item.action == "achievement":
+            from .achievements import AchievementsView
+            self.window.show_view(AchievementsView())
         elif item.action == "settings":
             self.settings_panel.open()
         elif item.action == "quit":

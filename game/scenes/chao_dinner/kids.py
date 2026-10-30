@@ -14,6 +14,7 @@ Positions are canvas units throughout, feet first: a runner's `x, y` is the
 point between their shoes.
 """
 
+import collections
 import functools
 import heapq
 import math
@@ -21,7 +22,7 @@ import random
 
 import arcade
 
-from ...core import audio, textures
+from ...core import achievements, audio, textures
 from ...config import (
     CHAO_OBSTACLES, CHAO_STONE_AREAS, PLANK_PAD, TEXT_BRIGHT, TEXT_DIM, TEXT_HOVER,
     TEXT_SHADOW, WIDTH,
@@ -33,6 +34,7 @@ from .config import (
     KID_ESCAPE_TIME, KID_GRID, KID_HEIGHT, KID_HIT_PAD, KID_RUN_AREA, KID_RUN_FRAME,
     KID_RUN_SPEED, KID_SEATED_MAX, KID_SEATED_MIN, KID_SEAT_BOX, KID_SEAT_BOX_RISE,
     KID_SEAT_COLOR, KID_SEAT_READY, KID_SHAKE, KID_TUG, KID_TUG_EVERY, KID_TUG_TIME,
+    KID_LIFT, KID_SPARKLES, KID_TRAIL, KID_TRAIL_EVERY,
 )
 from ...core.effects import WalkDust
 
@@ -43,6 +45,12 @@ def _inside(x, y, box, pad=0):
 
 def _mix(a, b, t):
     return tuple(round(a[i] + (b[i] - a[i]) * t) for i in range(3))
+
+
+def _spring(clock, amount):
+    """A wobble that starts at `amount` and rings down to 0, for squash
+    and stretch."""
+    return amount * math.exp(-clock * 7) * math.cos(clock * 24)
 
 
 # --- finding a way round the scenery ----------------------------------------
@@ -198,6 +206,18 @@ class Runner:
         self.seated_for = 0.0
         self.escape = 0.0      # seconds carried; they get free at KID_ESCAPE_TIME
         self.cooldown = 0.0    # seconds until they can be grabbed again
+        # Squash and stretch: seconds since the last jolt, and how big it was
+        # (+ stretches tall, - squashes flat).
+        self.jolt_clock = 9.0
+        self.jolt = 0.0
+        # Afterimages left behind while carried: (x, y, texture, facing).
+        self.trail = collections.deque(maxlen=KID_TRAIL)
+        self.trail_clock = 0.0
+        self.ghosts = arcade.SpriteList()
+        for _ in range(KID_TRAIL):
+            ghost = arcade.Sprite(texture, scale=self.scale)
+            ghost.color = (150, 190, 255)
+            self.ghosts.append(ghost)
 
     @property
     def ground_y(self):
@@ -233,12 +253,18 @@ class Runner:
     def pick_up(self):
         self.state = "carried"
         self.escape = 0.0
+        self.jolt, self.jolt_clock = 0.22, 0.0
+
+    def land(self):
+        """Back on their feet: a squash, for the jolt of landing."""
+        self.jolt, self.jolt_clock = -0.25, 0.0
 
     def break_free(self):
         """Wriggled out of the player's grip, or dropped short of the seat."""
         self.state = "running"
         self.cooldown = KID_ESCAPE_COOLDOWN
         self.path = find_path((self.x, self.y), random_spot())
+        self.land()
 
     def contains(self, x, y):
         half_w = abs(self.sprite.width) / 2 + KID_HIT_PAD
@@ -279,6 +305,16 @@ class Runner:
                 self.path = find_path((self.x, self.y), random_spot())
         elif self.state == "carried":
             self.escape += delta_time
+        self.jolt_clock += delta_time
+        # While carried, drop an afterimage every so often; once let go the
+        # trail runs out one image at a time.
+        self.trail_clock += delta_time
+        if self.trail_clock >= KID_TRAIL_EVERY:
+            self.trail_clock = 0.0
+            if self.state == "carried":
+                self.trail.append((self.x, self.y, self.sprite.texture, self.facing))
+            elif self.trail:
+                self.trail.popleft()
         # Dust kicked up behind their feet while they run, as with Terry.
         running = self.state == "running"
         self.dust.update(delta_time, running, self.x, self.y, *self.heading)
@@ -292,18 +328,49 @@ class Runner:
             frames, frame_time = self.run_frames, KID_RUN_FRAME
         else:
             frames, frame_time = self.caught_frames, KID_CAUGHT_FRAME
+        self.draw_shadow()
+        self.draw_trail()
         sprite = self.sprite
         sprite.texture = frames[int(self.frame_clock / frame_time) % len(frames)]
-        sprite.scale_x = self.scale * self.facing
-        sprite.scale_y = self.scale
+        # Stretched tall when grabbed, squashed flat on landing; the area
+        # stays about the same, and the feet stay put.
+        stretch = _spring(self.jolt_clock, self.jolt)
+        sprite.scale_x = self.scale * self.facing * (1 - stretch * 0.6)
+        sprite.scale_y = self.scale * (1 + stretch)
         shake = 0.0
         if self.state == "carried":
             shake = KID_SHAKE * math.sin(self.frame_clock * 60)
         sprite.center_x = self.x + shake
-        sprite.center_y = self.y + KID_HEIGHT / 2
+        sprite.center_y = self.y + KID_HEIGHT * (1 + stretch) / 2
         self.sprites.draw(pixelated=True)
         if self.state == "carried":
             self.draw_bar()
+
+    def draw_shadow(self):
+        """A soft oval on the ground: under the feet while running, and
+        smaller, fainter and further down while held up off it."""
+        carried = self.state == "carried"
+        lift = KID_LIFT + 4 * math.sin(self.frame_clock * 9) if carried else 0
+        width = KID_HEIGHT * (0.42 if carried else 0.55)
+        alpha = 60 if carried else 95
+        arcade.draw_ellipse_filled(self.x, self.y - lift, width, width * 0.32,
+                                   (0, 0, 0, alpha))
+
+    def draw_trail(self):
+        """Fading, blue-tinted copies along the path the kid was dragged."""
+        count = len(self.trail)
+        for index, ghost in enumerate(self.ghosts):
+            if index >= count:
+                ghost.visible = False
+                continue
+            x, y, texture, facing = self.trail[index]
+            ghost.visible = True
+            ghost.texture = texture
+            ghost.scale_x = self.scale * facing
+            ghost.scale_y = self.scale
+            ghost.center_x, ghost.center_y = x, y + KID_HEIGHT / 2
+            ghost.alpha = round(110 * (index + 1) / (count + 1))
+        self.ghosts.draw(pixelated=True)
 
     def draw_bar(self):
         """How close the kid is to wriggling free, over their head."""
@@ -353,6 +420,8 @@ class KidsGame:
         """`diners` maps "Tom" and "Jess" to their Diner at the table."""
         self.runners = [Runner(name, diners[name]) for name in ("Jess", "Tom")]
         self.clock = 0.0
+        self.sparkles = []   # [x, y, vx, vy, age, life, color, size]
+        self.events = []     # "escape" and "seated", for the view to react to
         self.reset()
 
     def reset(self):
@@ -366,6 +435,7 @@ class KidsGame:
         self.pointer_moved = False
         self.tug_in = 0.0
         self.tug = None             # (dx, dy, seconds left) of a tug under way
+        self.escapes = 0            # wriggled free this round, for Wriggle Room
         for runner in self.runners:
             runner.sit(0.0)
 
@@ -403,6 +473,42 @@ class KidsGame:
             runner.update(delta_time, self.active)
         if self.carried is not None:
             self.struggle(delta_time)
+        for bit in self.sparkles:
+            bit[0] += bit[2] * delta_time
+            bit[1] += bit[3] * delta_time
+            bit[3] -= 520 * delta_time
+            bit[4] += delta_time
+        self.sparkles = [bit for bit in self.sparkles if bit[4] < bit[5]]
+
+    def take_events(self):
+        events, self.events = self.events, []
+        return events
+
+    def sparkle(self, x, y):
+        """A fountain of gold and white bits off the stool, and a ring."""
+        y += KID_HEIGHT * 0.6
+        for _ in range(KID_SPARKLES):
+            angle = random.uniform(0.15, math.pi - 0.15)
+            speed = random.uniform(140, 320)
+            color = random.choice(((255, 222, 120), (255, 246, 214), (255, 190, 90)))
+            self.sparkles.append([x, y, math.cos(angle) * speed, math.sin(angle) * speed,
+                                  0.0, random.uniform(0.45, 0.8), color,
+                                  random.choice((3, 4, 5))])
+        self.sparkles.append([x, y, 0.0, 0.0, 0.0, 0.45, None, 0])   # the ring
+
+    def draw_effects(self):
+        """The sparkles from a kid put back in their seat."""
+        for x, y, _, _, age, life, color, size in self.sparkles:
+            t = age / life
+            if color is None:
+                arcade.draw_circle_outline(
+                    x, y, 10 + 70 * t, (255, 230, 150, round(220 * (1 - t))),
+                    max(1, 5 * (1 - t)))
+                continue
+            half = size * (1 - 0.5 * t) / 2
+            arcade.draw_lrbt_rectangle_filled(
+                x - half, x + half, y - half, y + half,
+                (*color, round(255 * (1 - t * t))))
 
     def struggle(self, delta_time):
         """The carried kid yanks the cursor about and may get free."""
@@ -411,6 +517,10 @@ class KidsGame:
             self.carried = None
             kid.break_free()
             audio.play("get_snatched")
+            self.escapes += 1
+            self.events.append("escape")
+            if self.escapes >= 3:
+                achievements.unlock("egg_escape")
             return
         self.tug_in -= delta_time
         if self.tug is None and self.tug_in <= 0:
@@ -475,6 +585,8 @@ class KidsGame:
         if kid.over_seat:
             kid.sit(random.uniform(KID_SEATED_MIN, KID_SEATED_MAX))
             audio.play("ingredient_get")
+            self.events.append("seated")
+            self.sparkle(*kid.seat)
         else:
             kid.break_free()
 

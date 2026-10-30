@@ -172,6 +172,15 @@ CHAO_FACES = {
 # Terry's face when he arrives and the whole family is already there. It
 # replaces his sprite with a few hops, then the opening lines start.
 TERRY_SHOCKED = "terry-shocked.png"
+# Terry's other expressions for the dialogue portrait, under assets/sprites.
+# A dialogue line picks one by name as its optional third item, e.g.
+# ("Terry", "Phew.", "happy").
+TERRY_FACES = {
+    "happy": "terry-faces/terry-happy.jpg",
+    "nervous": "terry-faces/terry-nervous.jpg",
+    "hungry": "terry-faces/terry-hungry.jpg",
+    "unimpressed": "terry-faces/terry-unimpressed.png",
+}
 
 # --- Kids at the table mini game --------------------------------------------
 # Jess and Tom keep getting up to run around the garden. The player clicks a
@@ -275,11 +284,11 @@ DAY_BADGE_BOXES = (
 # Everyone has gone and Terry is left with the food. The table empties a
 # course at a time as words are typed: (still, its looping video), full first.
 FEAST_STAGES = (
-    ("chao-dinner-keyword-game/Gemini_Generated_Image_5npgt25npgt25npg.jpg", "env-stage2.mp4"),
-    ("chao-dinner-keyword-game/Gemini_Generated_Image_aqqpzraqqpzraqqp.jpg", "env-stage3.mp4"),
-    ("chao-dinner-keyword-game/Gemini_Generated_Image_tupohwtupohwtupo.jpg", "env-stage5.mp4"),
-    ("chao-dinner-keyword-game/Gemini_Generated_Image_1u1t7m1u1t7m1u1t.jpg", "env-stage1.mp4"),
-    ("chao-dinner-keyword-game/Gemini_Generated_Image_rpphyjrpphyjrpph.jpg", "env-stage4.mp4"),
+    ("chao-dinner-keyword-game/feast-1-full.jpg", "env-stage2.mp4"),
+    ("chao-dinner-keyword-game/feast-2-started.jpg", "env-stage3.mp4"),
+    ("chao-dinner-keyword-game/feast-3-half-eaten.jpg", "env-stage5.mp4"),
+    ("chao-dinner-keyword-game/feast-4-nearly-done.jpg", "env-stage1.mp4"),
+    ("chao-dinner-keyword-game/feast-5-cleared.jpg", "env-stage4.mp4"),
 )
 
 # --- Animated backgrounds ----------------------------------------------------
@@ -381,6 +390,7 @@ SOUND_FILES = {
     "dialog_open": ("dialog-open", "sound", 0.7),
     "ui_hover": ("ui-hover", "sound", 0.5),
     "ui_click": ("ui-click", "sound", 0.6),
+    "achievement": ("achievement-unlock", "sound", 0.8),
     "ambience_day": ("ambience-day", "music", 0.6),
     "ambience_night": ("ambience-night", "music", 0.6),
     # The ending cut scene's burp, chimes and whooshes, timed to its video.
@@ -469,3 +479,36 @@ KEYCAP_EDGE = (40, 34, 30, 160)
 KEYCAP_TEXT = (36, 30, 26)
 TITLE_BAND_COLOR = (6, 8, 14)
 TITLE_BAND_ALPHA = 170
+
+# --- Achievements ------------------------------------------------------------
+# Scenes in story order; each shows as a tab on the achievements page, even
+# before it has any achievements of its own.
+ACHIEVEMENT_SCENES = ("Market Dash", "Bumpy Bus", "Backyard BBQ", "Chaos Dinner")
+# (key, scene, title, how to get it, hidden). A hidden one shows as "???"
+# until it is unlocked. Unlocks are saved under "achievements" in settings.json.
+ACHIEVEMENTS = (
+    ("dinner_family", "Chaos Dinner", "Family Reunion",
+     "Talk to everyone in the garden before dinner.", False),
+    ("dinner_seated", "Chaos Dinner", "Seat Patrol",
+     "Keep Tom and Jess seated long enough to pass.", False),
+    ("dinner_perfect", "Chaos Dinner", "Glued to Their Seats",
+     "Keep the kids seated 95% of the time.", False),
+    ("dinner_done", "Chaos Dinner", "Chaos Dinner",
+     "Finish the leftover feast to close the scene.", False),
+    ("feast_clear", "Chaos Dinner", "Table Cleared",
+     "Eat every leftover before the clock runs out.", False),
+    ("feast_speed", "Chaos Dinner", "Speed Eater",
+     "Reach 60 WPM in the leftover feast.", False),
+    ("feast_flawless", "Chaos Dinner", "Clean Plate",
+     "Clear the table with 100% accuracy.", False),
+    ("feast_streak", "Chaos Dinner", "On a Roll",
+     "Type 20 words in a row without a mistake.", False),
+    ("egg_chatter", "Chaos Dinner", "Chatterbox",
+     "Talk to the same relative five times.", True),
+    ("egg_escape", "Chaos Dinner", "Wriggle Room",
+     "Let the kids wriggle free three times in one round.", True),
+    ("egg_fast", "Chaos Dinner", "Not Hungry",
+     "Let the feast clock run out without eating a word.", True),
+)
+ACHIEVEMENT_SOUND = "achievement"
+ACHIEVEMENT_TOAST_TIME = 3.4   # seconds each unlock popup stays up

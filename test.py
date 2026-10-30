@@ -16,6 +16,7 @@ import traceback
 import arcade
 
 from game.config import HEIGHT, TITLE, WIDTH
+from game.core import achievements
 from game.scenes.menu import view as menu_view
 from game.core.stage import StageView
 
@@ -163,6 +164,7 @@ def main():
     window = arcade.Window(
         WIDTH, HEIGHT, f"{TITLE} [TEST]", fullscreen=fullscreen, resizable=True,
     )
+    achievements.attach(window)
     window.show_view(TestMenuView())
     arcade.run()
 
