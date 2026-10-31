@@ -94,7 +94,7 @@ class MarketStageView(StageView):
             self.terry_portrait = self.terry.texture
 
         try:
-            self.shopper_portrait = textures.character("Marcus(dad).png")
+            self.shopper_portrait = textures.character("Dave.png")
         except Exception:
             self.shopper_portrait = None
 

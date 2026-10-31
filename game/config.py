@@ -63,8 +63,8 @@ RIM_GLOW_COLOR = (255, 250, 232, 150)
 # frames left to right, baked from their art.
 # Art file -> sheet; art without a sheet just stands still.
 IDLE_SHEETS = {
-    "Marcus(dad).png": "marcus-idle-sheet.png",
-    "Christine(mom).png": "christine-idle-sheet.png",
+    "Dave.png": "dave-idle-sheet.png",
+    "Christine.png": "christine-idle-sheet.png",
     "jess.png": "jess-idle-sheet.png",
     "tom.png": "tom-idle-sheet.png",
 }
@@ -163,8 +163,8 @@ CHAO_FEET_SWING_TIME = 1.7
 # pixels of the cut-out at CHARACTER_ART_HEIGHT, measured off the art. Blinks
 # and chewing are painted over these.
 CHAO_FACES = {
-    "Marcus(dad).png": (((77, 140, 108, 164), (157, 140, 189, 164)), (101, 184, 171, 220)),
-    "Christine(mom).png": (((76, 147, 115, 168), (162, 147, 201, 168)), (114, 190, 164, 213)),
+    "Dave.png": (((77, 140, 108, 164), (157, 140, 189, 164)), (101, 184, 171, 220)),
+    "Christine.png": (((76, 147, 115, 168), (162, 147, 201, 168)), (114, 190, 164, 213)),
     "jess.png": (((112, 120, 155, 146), (204, 120, 248, 146)), (152, 166, 207, 195)),
     "tom.png": (((79, 145, 111, 170), (164, 145, 196, 170)), (112, 183, 165, 213)),
     "Terry": (((99, 154, 108, 203), (156, 154, 164, 203)), (116, 216, 146, 232)),

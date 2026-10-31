@@ -8,11 +8,11 @@ from ...config import HEIGHT, WIDTH
 CHAO_DINNER_BG = "chao-dinner-night.png"
 CHAO_TITLE_BLUR = 8      # blur radius on the background, in source pixels
 
-# Family standing around the garden, as (name, art file, x, y, height).
+# Cousin Dave's family standing around the garden, as (name, art file, x, y, height).
 CHAO_NPCS = (
-    ("Marcus", "Marcus(dad).png", 790, 318, 126),
+    ("Dave", "Dave.png", 790, 318, 126),
     # Down in the bottom left corner, on the grass between the pond and path.
-    ("Christine", "Christine(mom).png", 360, 205, 122),
+    ("Christine", "Christine.png", 360, 205, 122),
     ("Jess", "jess.png", 640, 356, 100),
     # Out from under the quest panel in the top right.
     ("Tom", "tom.png", 720, 560, 108),
@@ -38,7 +38,7 @@ CHAO_SEATED_HOLD = 1.2   # seconds of the family at the table before Terry speak
 # the six round seats either side of the table; the bottom right one is left
 # free. Height is the whole figure, head to shoes, as if standing.
 CHAO_SEATS = (
-    ("Marcus", 121, 462, 88, True),
+    ("Dave", 121, 462, 88, True),
     ("Christine", 121, 399, 84, False),
     ("Tom", 121, 336, 82, True),
     ("Jess", 332, 462, 78, False),
@@ -206,7 +206,7 @@ FEAST_WORDS = (
 # said with the shocked face.
 CHAO_SHOCK_DIALOG = (
     ("Terry", "Whoa! Everyone's here already? That was fast!"),
-    ("Terry", "Okay, okay. Lights are up, family's here. Time to set up dinner at the table.", "happy"),
+    ("Terry", "Okay, okay. Lights are up, Dave and the family are here. Time to set up dinner at the table.", "happy"),
 )
 # The table prompt, and the card that asks before the mini game starts.
 CHAO_TABLE_PROMPT = "Set up"
@@ -224,7 +224,7 @@ CHAO_COUNT_SIZE = 110
 # Table talk once everyone is seated, ending with the kids running off.
 CHAO_TABLE_TALK = (
     ("Terry", "Dinner is served, everyone! Dig in before the food gets cold.", "happy"),
-    ("Marcus", "Now this is a proper feast. Well done, son."),
+    ("Dave", "Now this is a proper feast. You really outdid yourself, cousin."),
     ("Christine", "Kids, vegetables first, then the chicken."),
     ("Jess", "Psst, Tom. Want to run around?"),
     ("Tom", "Yes! Race you to the grill!"),
@@ -251,9 +251,9 @@ CHAO_SKIP_TEXT = "30 minutes later..."
 CHAO_SKIP_FADE = 0.6     # seconds down to black, and again back up
 CHAO_SKIP_HOLD = 2.4     # seconds the clock spins on the black
 CHAO_FULL_DIALOG = (
-    ("Marcus", "Ahh, I'm stuffed. I couldn't eat another bite if I tried."),
-    ("Christine", "Me too. I'll go put my feet up and catch my drama. Lovely dinner, Terry!"),
-    ("Marcus", "Good job tonight, son. I'm off to watch the match."),
+    ("Dave", "Ahh, I'm stuffed. I couldn't eat another bite if I tried."),
+    ("Christine", "Me too. Thank you for having us, Terry. Lovely dinner!"),
+    ("Dave", "Good job tonight, cousin. I'll go warm up the car."),
     ("Jess", "Can we go play now? Come on, Tom!"),
     ("Tom", "Yay! Bye Terry! Thanks for the food!"),
 )
@@ -272,23 +272,22 @@ CHAO_FEAST_ITEMS = [
     ("Start", "feast", "play"),
     ("Wait", "wait", "book"),
 ]
-# Sample lines, one per family member, said when Terry talks to them.
 # A short exchange with each family member: their line, then Terry's reply.
 CHAO_NPC_DIALOG = {
-    "Marcus": (
-        ("Marcus", "Smells good, son. Your steak has a reputation to live up to tonight, you know."),
-        ("Terry", "No pressure then, Dad. I got the best cuts the market had left.", "nervous"),
+    "Dave": (
+        ("Dave", "Smells good, cousin. I told the whole family your steak was legendary, so no pressure."),
+        ("Terry", "Thanks for that, Dave. I got the best cuts the market had left.", "nervous"),
     ),
     "Christine": (
         ("Christine", "Look at all these lights! Come, sit down. You must be starving after all that running around."),
-        ("Terry", "Starving and a little sunburnt, Mom. Worth it though.", "hungry"),
+        ("Terry", "Starving and a little sunburnt, Christine. Worth it though.", "hungry"),
     ),
     "Jess": (
         ("Jess", "Did you really survive the market this morning? I heard it was a total war zone."),
         ("Terry", "Barely. I had to wrestle a stranger for the last fish.", "nervous"),
     ),
     "Tom": (
-        ("Tom", "Is the food ready yet? I have been smelling that grill for an hour!"),
+        ("Tom", "Is the food ready yet? I have been smelling that grill since we got out of the car!"),
         ("Terry", "Almost, Tom. Hold on just a little longer.", "unimpressed"),
     ),
 }
