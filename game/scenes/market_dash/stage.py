@@ -15,7 +15,6 @@ from .common import (
     MARKET_WALK_BOUNDS, MARKET_OBSTACLES,
     MARKET_STONE_AREAS
 )
-from ...core.effects import WalkDust
 from ...core.widgets import TitleCard, QuestPanel, Portraits
 
 
@@ -37,7 +36,6 @@ class MarketStageView(StageView):
         )
 
         self.footsteps = Footsteps(MARKET_STONE_AREAS)
-        self.dust = WalkDust(MARKET_STONE_AREAS)
         self.dialog = DialogBox()
         self.pause_menu = PauseMenu()
         self.settings_panel = SettingsPanel()
@@ -287,8 +285,6 @@ class MarketStageView(StageView):
             delta_time, moving, self.terry.center_x, self.terry.ground_y
         )
 
-        feet_y = self.terry.ground_y - abs(self.terry.height) / 2
-        self.dust.update(delta_time, moving, self.terry.center_x, feet_y, dx, dy)
 
         if dy:
             self.sort_by_depth()
@@ -350,7 +346,6 @@ class MarketStageView(StageView):
             for character in self.sprites:
                 character.draw_shadow()
             
-            self.dust.draw()
             self.sprites.draw(pixelated=True)
             self.indicators.draw(pixelated=True)
 
