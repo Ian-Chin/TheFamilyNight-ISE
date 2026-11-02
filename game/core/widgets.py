@@ -53,6 +53,15 @@ class TitleCard:
     def finished(self):
         return self.clock >= self.length
 
+    @property
+    def leaving(self):
+        """The card has had its hold and is fading out, or is gone."""
+        return self.clock >= CHAO_TITLE_DELAY + CHAO_TITLE_FADE + CHAO_TITLE_HOLD
+
+    def hold(self):
+        """Keep the card fully up, at the end of its hold, until let go."""
+        self.clock = min(self.clock, CHAO_TITLE_DELAY + CHAO_TITLE_FADE + CHAO_TITLE_HOLD)
+
     def skip(self):
         self.clock = self.length
 

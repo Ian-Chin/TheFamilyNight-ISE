@@ -28,13 +28,13 @@ from ...config import (
     TEXT_SHADOW, WIDTH,
 )
 from .config import (
-    KIDS_GAME_TIME, KIDS_HINT, KIDS_HUD_H, KIDS_HUD_NOTE_SIZE, KIDS_HUD_TOP,
+    KIDS_GAME_TIME, KIDS_HINT, KIDS_HURRY, KIDS_HUD_H, KIDS_HUD_NOTE_SIZE, KIDS_HUD_TOP,
     KIDS_HUD_W, KIDS_TIMER_SIZE, KID_BAR_DANGER, KID_BAR_GAP, KID_BAR_H, KID_BAR_SAFE,
     KID_BAR_W, KID_BOUNDS, KID_CAUGHT_FRAME, KID_CLEARANCE, KID_ESCAPE_COOLDOWN,
     KID_ESCAPE_TIME, KID_GRID, KID_HEIGHT, KID_HIT_PAD, KID_RUN_AREA, KID_RUN_FRAME,
     KID_RUN_SPEED, KID_SEATED_MAX, KID_SEATED_MIN, KID_SEAT_BOX, KID_SEAT_BOX_RISE,
     KID_SEAT_COLOR, KID_SEAT_READY, KID_SHAKE, KID_TUG, KID_TUG_EVERY, KID_TUG_TIME,
-    KID_LIFT, KID_SPARKLES, KID_TRAIL, KID_TRAIL_EVERY,
+    KID_SPARKLES, KID_TRAIL, KID_TRAIL_EVERY,
 )
 from ...core.effects import WalkDust
 
@@ -300,6 +300,8 @@ class Runner:
                 self.seated_for -= delta_time
                 if self.seated_for <= 0:
                     self.run_off()
+                    audio.play(random.choice(("chao_laugh", "chao_laugh_b")),
+                               speed=random.uniform(0.95, 1.1))
         elif self.state == "running":
             if self.walk(delta_time, KID_RUN_SPEED):
                 self.path = find_path((self.x, self.y), random_spot())
@@ -328,7 +330,6 @@ class Runner:
             frames, frame_time = self.run_frames, KID_RUN_FRAME
         else:
             frames, frame_time = self.caught_frames, KID_CAUGHT_FRAME
-        self.draw_shadow()
         self.draw_trail()
         sprite = self.sprite
         sprite.texture = frames[int(self.frame_clock / frame_time) % len(frames)]
@@ -345,16 +346,6 @@ class Runner:
         self.sprites.draw(pixelated=True)
         if self.state == "carried":
             self.draw_bar()
-
-    def draw_shadow(self):
-        """A soft oval on the ground: under the feet while running, and
-        smaller, fainter and further down while held up off it."""
-        carried = self.state == "carried"
-        lift = KID_LIFT + 4 * math.sin(self.frame_clock * 9) if carried else 0
-        width = KID_HEIGHT * (0.42 if carried else 0.55)
-        alpha = 60 if carried else 95
-        arcade.draw_ellipse_filled(self.x, self.y - lift, width, width * 0.32,
-                                   (0, 0, 0, alpha))
 
     def draw_trail(self):
         """Fading, blue-tinted copies along the path the kid was dragged."""
@@ -466,7 +457,11 @@ class KidsGame:
         self.pointer_moved = False
         if self.active:
             step = min(delta_time, self.time_left)
+            shown = math.ceil(self.time_left)
             self.time_left -= step
+            # The last ten seconds tick down out loud, tock pitched lower.
+            if 0 < math.ceil(self.time_left) < shown <= KIDS_HURRY + 1:
+                audio.play("chao_tick", speed=1.0 if shown % 2 else 0.8)
             self.elapsed += step
             self.seated_time += step * self.seated / len(self.runners)
         for runner in self.runners:
@@ -568,7 +563,7 @@ class KidsGame:
                 self.pointer = (x, y)
                 self.tug = None
                 self.tug_in = random.uniform(*KID_TUG_EVERY)
-                audio.play("ui_click")
+                audio.play("chao_grab")
                 return True
         return False
 
@@ -584,11 +579,12 @@ class KidsGame:
             return
         if kid.over_seat:
             kid.sit(random.uniform(KID_SEATED_MIN, KID_SEATED_MAX))
-            audio.play("ingredient_get")
+            audio.play("chao_seated")
             self.events.append("seated")
             self.sparkle(*kid.seat)
         else:
             kid.break_free()
+            audio.play("chao_whoops")
 
     def draw_targets(self):
         """The drop box for the kid being carried, under everyone."""
@@ -639,7 +635,7 @@ class KidsHud:
             for text in self.timer:
                 text.text = clock
             self.note.text = f"Kids in their seats: {seated}/{total}"
-        hurry = seconds <= 10
+        hurry = seconds <= KIDS_HURRY
         arcade.draw_texture_rect(
             self.plank_hurry if hurry else self.plank,
             stage.rect(WIDTH / 2 - KIDS_HUD_W / 2 - PLANK_PAD,

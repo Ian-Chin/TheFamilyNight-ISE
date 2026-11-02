@@ -420,6 +420,25 @@ SOUND_FILES = {
     "feast_win": ("feast-win", "sound", 0.8),
     "feast_lose": ("feast-lose", "sound", 0.8),
 
+    # chao dinner
+    "chao_title": ("chao-title", "sound", 0.8),
+    "chao_descend": ("chao-descend", "sound", 0.6),
+    "chao_shock": ("chao-shock", "sound", 0.8),
+    "chao_popup": ("chao-popup", "sound", 0.6),
+    "chao_win": ("chao-win", "sound", 0.75),
+    "chao_lose": ("chao-lose", "sound", 0.7),
+    # trimmed from the ending's kids_laugh recordings
+    "chao_laugh": ("chao-laugh", "sound", 0.55),
+    "chao_laugh_b": ("chao-laugh-b", "sound", 0.55),
+    "chao_whoops": ("chao-whoops", "sound", 0.6),
+    "chao_grab": ("chao-grab", "sound", 0.5),
+    "chao_seated": ("chao-seated", "sound", 0.6),
+    "chao_tick": ("chao-tick", "sound", 0.55),
+    "chao_whistle": ("chao-whistle", "sound", 0.6),
+    "chao_serve": ("chao-serve", "sound", 0.65),
+    "chao_clock": ("chao-clock", "sound", 0.6),
+    "chao_swoosh": ("chao-swoosh", "sound", 0.6),
+
     "chop_meat": ("Chop_meat", "sfx", 1.2),
     "chop_table": ("Chop_table", "sfx", 1.0),
     "chop_vege_1": ("Chop_vege_1", "sfx", 2.2),

@@ -39,9 +39,10 @@ from ...core.art.keying import solid_bbox
 from .kids import KidsGame
 from ...core.widgets import InteractPrompt, Portraits, QuestPanel, TitleCard
 from .kids import KidsHud
+from .result import ResultCard
 from ...config import (
     AMBIENCE_NIGHT, CHAO_ENTRY_Y, CHAO_FADE_IN, CHAO_OBSTACLES, CHAO_PATH_X,
-    CHAO_STONE_AREAS, CHAO_STOP_Y, CHAO_WALK_BOUNDS, HEIGHT, QUEST_DONE, TERRY_HEIGHT,
+    CHAO_STONE_AREAS, CHAO_STOP_Y, CHAO_TITLE_DELAY, CHAO_WALK_BOUNDS, HEIGHT, QUEST_DONE, TERRY_HEIGHT,
     TEXT_BRIGHT, TEXT_HOVER, TEXT_SHADOW, WIDTH,
 )
 from .config import (
@@ -52,7 +53,7 @@ from .config import (
     CHAO_NPC_DIALOG, CHAO_SEATED_HOLD, CHAO_SEATS, CHAO_SEAT_FADE, CHAO_SERVE_FADE,
     CHAO_SERVE_HOLD, CHAO_SETUP_ITEMS, CHAO_SETUP_MESSAGE, CHAO_SETUP_TITLE,
     CHAO_SHOCK_DIALOG, CHAO_SHOCK_HOP, CHAO_SHOCK_HOPS, CHAO_SHOCK_HOP_TIME,
-    CHAO_SHOCK_LEAD, CHAO_SKIP_FADE, CHAO_SKIP_HOLD, CHAO_SKIP_TEXT, CHAO_TABLE_MARK,
+    CHAO_SHOCK_LEAD, CHAO_SKIP_FADE, CHAO_SKY_BG, CHAO_SKY_HOLD, CHAO_SKY_PAN, CHAO_SKIP_HOLD, CHAO_SKIP_TEXT, CHAO_TABLE_MARK,
     CHAO_TABLE_MARK_H, CHAO_TABLE_MARK_POS, CHAO_TABLE_PROMPT, CHAO_TABLE_RANGE,
     CHAO_TABLE_TALK, CHAO_TALK_RANGE, CHAO_TITLE_BLUR, CHAO_ZOOM, CHAO_ZOOM_ORIGIN,
     CHAO_AMBIENT, CHAO_ESCAPE_DECAY, CHAO_ESCAPE_SHAKE, CHAO_FOCUS_BLUR,
@@ -107,11 +108,15 @@ class ChaoDinnerView(StageView):
         for name, *_ in CHAO_SEATS:
             textures.diner_parts(seated_art.get(name, name))
         self.blurred = textures.blurred_background(CHAO_DINNER_BG, CHAO_TITLE_BLUR)
+        self.sky = textures.background(CHAO_SKY_BG)
+        self.sky_blurred = textures.blurred_background(CHAO_SKY_BG, CHAO_TITLE_BLUR)
         self.table_mark = textures.ui_cutout(CHAO_TABLE_MARK)
 
         # The night garden is dark enough that the pale halo around the
         # characters reads as a glow, so this scene draws them without it.
         self.terry = Terry(CHAO_PATH_X, CHAO_ENTRY_Y, glow=False)
+        # Kept out of the sky; he appears once the camera is on the garden.
+        self.terry.visible = False
         self.npcs = [NPC(*entry, glow=False) for entry in CHAO_NPCS]
         self.sprites = arcade.SpriteList()
         for character in (self.terry, *self.npcs):
@@ -126,6 +131,9 @@ class ChaoDinnerView(StageView):
 
         self.clock = 0.0
         self.fade_clock = 0.0
+        # Seconds since the title card finished, for the tilt down from the
+        # sky; None once the camera is on the garden.
+        self.sky_clock = 0.0
         self.walking_in = True
         self.opening_pending = False   # Terry is in place, the title is not done
         # What Enter would interact with: ("table", None), ("npc", npc) or None.
@@ -181,13 +189,13 @@ class ChaoDinnerView(StageView):
         )
         # Seated enough of the time, the scene carries on; short of
         # KIDS_GOOD_SHARE, the only way is to try the mini game again.
-        self.win_card = PauseMenu(
+        self.win_card = ResultCard(
             KIDS_WIN_ITEMS, KIDS_WIN_TITLE,
-            KIDS_RESULT_MESSAGE.format(share=100), width=460,
+            KIDS_RESULT_MESSAGE.format(share=100), 460, "win",
         )
-        self.lose_card = PauseMenu(
+        self.lose_card = ResultCard(
             KIDS_LOSE_ITEMS, KIDS_LOSE_TITLE,
-            KIDS_RETRY_MESSAGE.format(share=100, need=100), width=700,
+            KIDS_RETRY_MESSAGE.format(share=100, need=100), 700, "lose",
         )
         self.feast_card = PauseMenu(
             CHAO_FEAST_ITEMS, CHAO_FEAST_TITLE, CHAO_FEAST_MESSAGE, width=480,
@@ -293,6 +301,14 @@ class ChaoDinnerView(StageView):
         return round(255 * (1 - self.fade_clock / CHAO_FADE_IN))
 
     @property
+    def sky_lift(self):
+        """1 with the camera on the sky, easing to 0 as it tilts down."""
+        if self.sky_clock is None:
+            return 0.0
+        t = min(max((self.sky_clock - CHAO_SKY_HOLD) / CHAO_SKY_PAN, 0.0), 1.0)
+        return 1 - t * t * (3 - 2 * t)
+
+    @property
     def serve_share(self):
         """How far the food has faded onto the table, 0 to 1."""
         if self.diners is not None:
@@ -371,7 +387,7 @@ class ChaoDinnerView(StageView):
             arcade.draw_texture_rect(background, cover_rect(background, canvas))
         else:
             self.window.default_camera.use()
-            arcade.draw_texture_rect(background, cover_rect(background, viewport))
+            self.draw_with_sky(background, self.sky)
         # Until the family sits down, the table with the food on it is a
         # second backdrop faded in over the bare one.
         served = self.serve_share
@@ -380,6 +396,23 @@ class ChaoDinnerView(StageView):
             arcade.draw_texture_rect(
                 food, cover_rect(food, viewport), alpha=round(255 * served),
             )
+
+    def draw_with_sky(self, garden, sky, alpha=255):
+        """The garden filling the stage, with the sky stacked on top of it,
+        both slid down by however far the camera is still up in the sky."""
+        viewport = self.stage.viewport()
+        rect = cover_rect(garden, viewport)
+        lift = self.sky_lift
+        if lift <= 0:
+            arcade.draw_texture_rect(garden, rect, alpha=alpha)
+            return
+        drop = lift * viewport.height
+        arcade.draw_texture_rect(
+            garden, arcade.LBWH(rect.left, rect.bottom - drop, rect.width, rect.height),
+            alpha=alpha)
+        arcade.draw_texture_rect(
+            sky, arcade.LBWH(rect.left, rect.top - drop, rect.width, rect.height),
+            alpha=alpha, pixelated=True)
 
     def aim_camera(self):
         """The camera at rest, or pulled toward Terry by a punch-in."""
@@ -390,6 +423,8 @@ class ChaoDinnerView(StageView):
             tx, ty = self.shock_point()
             x, y = x + (tx - x) * 0.2 * k, y + (ty - y) * 0.2 * k
             zoom *= 1 + CHAO_PUNCH * k
+        # Up in the sky at the start, with the garden below the stage.
+        y += self.sky_lift * HEIGHT
         self.camera.position, self.camera.zoom = (x, y), zoom
 
     def shock_point(self):
@@ -493,8 +528,6 @@ class ChaoDinnerView(StageView):
             if self.kids is not None:
                 self.kids.draw_effects()
         else:
-            for character in self.sprites:
-                character.draw_shadow()
             # Kicked up behind the feet, so the legs are drawn over it.
             self.dust.draw()
             self.sprites.draw(pixelated=True)
@@ -517,12 +550,12 @@ class ChaoDinnerView(StageView):
         # The garden, characters and all, softens behind the title card. The
         # blurred still is not quite opaque, so the family show faintly
         # through it, under the words.
+        # The blur clears as the camera tilts, so the way down stays sharp.
         blur = self.title_card.share
+        if self.sky_clock is not None:
+            blur *= self.sky_lift
         if blur > 0:
-            arcade.draw_texture_rect(
-                self.blurred, cover_rect(self.blurred, self.stage.viewport()),
-                alpha=round(235 * blur),
-            )
+            self.draw_with_sky(self.blurred, self.sky_blurred, round(235 * blur))
 
         # The quests only guide Terry to the table; once the dinner game has
         # started, the rest of the scene runs without them.
@@ -640,7 +673,7 @@ class ChaoDinnerView(StageView):
         self.punch = 1.0
         self.terry.visible = False
         self.portraits.terry = self.shocked_face
-        audio.play("dialog_open")
+        audio.play("chao_shock")
 
     def end_shock(self):
         self.shocked = False
@@ -696,9 +729,14 @@ class ChaoDinnerView(StageView):
         self.held.clear()
         self.target = None
         if kind == "table":
-            (self.feast_card if self.leftovers else self.setup_card).open()
+            self.open_card(self.feast_card if self.leftovers else self.setup_card)
         else:
             self.talk_to(npc)
+
+    @staticmethod
+    def open_card(card):
+        audio.play("chao_popup")
+        card.open()
 
     def talk_to(self, npc):
         self.talked.add(npc.name)
@@ -734,6 +772,7 @@ class ChaoDinnerView(StageView):
         self.dinner_started = True
         self.quests.complete("dinner")
         self.serve_clock = 0.0
+        audio.play("chao_serve")
 
     def seat_family(self):
         """Swap the people standing about for the family sat at the table."""
@@ -778,6 +817,10 @@ class ChaoDinnerView(StageView):
         share = round(100 * self.kids.share)
         passed = self.kids.share >= KIDS_GOOD_SHARE
         self.kids.stop()
+        audio.play("chao_whistle")
+        # The result sting comes in once the whistle has had its say.
+        arcade.schedule_once(
+            lambda _: audio.play("chao_win" if passed else "chao_lose"), 0.9)
         if passed:
             achievements.unlock("dinner_seated")
         if self.kids.share >= 0.95:
@@ -818,6 +861,10 @@ class ChaoDinnerView(StageView):
         self.target = None
         self.dip = {"clock": 0.0, "fade": fade, "hold": hold, "at_black": at_black,
                     "after": after, "time_skip": time_skip, "iris": iris}
+        if time_skip:
+            audio.play("chao_clock")
+        elif iris:
+            audio.play("chao_swoosh")
 
     def update_dip(self, delta_time):
         dip = self.dip
@@ -850,10 +897,11 @@ class ChaoDinnerView(StageView):
         self.shock_clock = 0.0
         self.punch = 1.0
         self.portraits.terry = self.shocked_face
+        audio.play("chao_shock")
 
     def get_up(self):
         self.start_dip(CHAO_LEAVE_FADE, 0.3, at_black=self.stand_alone, iris=True,
-                       after=self.feast_card.open)
+                       after=lambda: self.open_card(self.feast_card))
 
     def stand_alone(self):
         """Under the black: Terry stands by the table, free to walk again."""
@@ -891,6 +939,8 @@ class ChaoDinnerView(StageView):
 
     def skip_entrance(self):
         self.title_card.skip()
+        self.sky_clock = None
+        self.terry.visible = True
         self.fade_clock = CHAO_FADE_IN
         self.terry.ground_y = self.terry.center_y = CHAO_STOP_Y
         self.walking_in = False
@@ -917,7 +967,13 @@ class ChaoDinnerView(StageView):
         delta_time = min(delta_time, 1 / 30)
         self.clock += delta_time
         self.fade_clock += delta_time
+        title_clock = self.title_card.clock
         self.title_card.update(delta_time)
+        if self.sky_clock is not None and self.title_card.leaving:
+            # Held up through the tilt; it fades once Terry walks in.
+            self.title_card.hold()
+        if title_clock < CHAO_TITLE_DELAY <= self.title_card.clock:
+            audio.play("chao_title")
         self.prompt.update(delta_time)
         self.update_effects(delta_time)
         if self.diners is not None:
@@ -975,6 +1031,18 @@ class ChaoDinnerView(StageView):
             elif self.shock_clock >= CHAO_SHOCK_LEAD:
                 self.opening_pending = False
                 self.play_script(CHAO_SHOCK_DIALOG)
+            return
+
+        if self.sky_clock is not None:
+            # The title holds over the sky and on through the tilt down.
+            if self.title_card.leaving:
+                before = self.sky_clock
+                self.sky_clock += delta_time
+                if before < CHAO_SKY_HOLD <= self.sky_clock:
+                    audio.play("chao_descend")
+                if self.sky_clock >= CHAO_SKY_HOLD + CHAO_SKY_PAN:
+                    self.sky_clock = None
+                    self.terry.visible = True
             return
 
         if self.walking_in:

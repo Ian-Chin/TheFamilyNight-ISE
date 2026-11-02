@@ -7,6 +7,12 @@ from ...config import HEIGHT, WIDTH
 # Same garden as the BBQ scene, after dark; the layout below still lines up.
 CHAO_DINNER_BG = "chao-dinner-night.png"
 CHAO_TITLE_BLUR = 8      # blur radius on the background, in source pixels
+# The scene opens on the night sky stacked above the garden; once the title
+# card starts to fade the camera tilts down onto the garden, taking the
+# title away with it, and Terry walks in.
+CHAO_SKY_BG = "chao-dinner-sky.png"
+CHAO_SKY_HOLD = 0.0      # seconds after the title starts fading, before the tilt
+CHAO_SKY_PAN = 3.0       # seconds the tilt down takes
 
 # Cousin Dave's family standing around the garden, as (name, art file, x, y, height).
 CHAO_NPCS = (
@@ -101,6 +107,7 @@ KID_SEAT_BOX_RISE = 22       # stool middle to the middle of the box
 KID_SEAT_COLOR = (255, 214, 138)
 KID_SEAT_READY = (126, 214, 150)   # once the kid is over it
 KIDS_GAME_TIME = 40.0    # seconds the mini game lasts
+KIDS_HURRY = 10          # seconds left when the clock turns red and ticks
 KIDS_GOOD_SHARE = 0.75   # share of the time seated needed to move on
 # The timer plank at the top middle of the screen.
 KIDS_HUD_TOP = HEIGHT - 26
@@ -313,6 +320,14 @@ CHAO_LIGHTS = (
     (1100, 66, 190, 0.5, (0.50, 0.38, 0.18), 0.10),
 )
 CHAO_VIGNETTE = 0.5
+
+# The kids game result card (see result.py).
+RESULT_STYLES = {
+    "win": {"wash": (12, 60, 30, 150), "accent": (76, 186, 110), "title": (150, 236, 168)},
+    "lose": {"wash": (70, 12, 16, 150), "accent": (214, 72, 72), "title": (250, 150, 146)},
+}
+RESULT_STRIPE_H = 6
+RESULT_BADGE_R = 26
 CHAO_GRAIN = 0.035
 
 # Depth of field: once the camera closes on the table the garden behind
@@ -338,5 +353,4 @@ CHAO_SKIP_SPEED = 5.0    # the family eats this many times faster during "30 min
 
 KID_TRAIL = 6            # afterimages behind a carried kid
 KID_TRAIL_EVERY = 0.035  # seconds between them
-KID_LIFT = 20            # canvas units a carried kid's shadow sits below them
 KID_SPARKLES = 22        # bits thrown up when a kid is put back in their seat
