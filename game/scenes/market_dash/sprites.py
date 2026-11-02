@@ -53,12 +53,13 @@ class SnatcherSprite(arcade.Sprite):
         self.spin_vel = 38.0 if self.change_x > 0 else -38.0
 
     def update_behavior(self, delta_time, player_y, player_x, is_wave_3):
+        step = delta_time * 60.0
         if self.knocked_out:
             # Gravity and rapid spin
-            self.angle += self.spin_vel
-            self.change_y -= 18.0 * delta_time
-            self.center_x += self.change_x
-            self.center_y += self.change_y
+            self.angle += self.spin_vel * step
+            self.change_y -= 0.45 * step
+            self.center_x += self.change_x * step
+            self.center_y += self.change_y * step
             return
 
         # Wave 3 tracking behavior: home horizontally towards Terry
@@ -71,8 +72,8 @@ class SnatcherSprite(arcade.Sprite):
         else:
             self.change_x = 0
 
-        self.center_x += self.change_x
-        self.center_y += self.change_y
+        self.center_x += self.change_x * step
+        self.center_y += self.change_y * step
 
         # Proximity for grab pose
         self.frame_timer += delta_time

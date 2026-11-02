@@ -55,6 +55,11 @@ class MarketEndingView(StageView):
             projection=arcade.LRBT(-WIDTH / 2, WIDTH / 2, -HEIGHT / 2, HEIGHT / 2),
             viewport=self.stage.viewport()
         )
+        self.ui_camera = arcade.camera.Camera2D(
+            position=(WIDTH / 2, HEIGHT / 2),
+            projection=arcade.LRBT(-WIDTH / 2, WIDTH / 2, -HEIGHT / 2, HEIGHT / 2),
+            viewport=self.stage.viewport()
+        )
         self.relayout()
 
     def on_show_view(self):
@@ -70,6 +75,8 @@ class MarketEndingView(StageView):
         super().relayout()
         if hasattr(self, "camera"):
             self.camera.viewport = self.stage.viewport()
+        if hasattr(self, "ui_camera"):
+            self.ui_camera.viewport = self.stage.viewport()
 
     def advance_dialogue(self):
         if self.dialogue_queue:
@@ -121,12 +128,12 @@ class MarketEndingView(StageView):
         if self.dialog.visible:
             self.dialog.draw()
 
-        # # 3. Dialogue Controls (Auto, Skip, Log buttons)
-        # self.camera.use()
-        # if self.dialog.visible:
-        #     self.dialog_ctrl.draw()
+        # 3. Canvas UI layer: Option buttons (LOG, AUTO, SKIP) & History log panel
+        self.ui_camera.use()
+        if self.in_wave_dialogue:
+            self.dialog_ctrl.draw(show_controls=True)
 
-        # 3. Modals / Pause Menus
+        # 4. Modals / Pause Menus
         self.window.default_camera.use()
         if not self.settings_panel.visible:
             self.pause_menu.draw()
@@ -141,7 +148,15 @@ class MarketEndingView(StageView):
             self.run_action(self.pause_menu.on_key_press(key))
             return
         if key == arcade.key.ESCAPE:
+            if self.dialog_ctrl.history_panel.visible:
+                self.dialog_ctrl.history_panel.toggle()
+                return
             self.pause_menu.open()
+            return
+
+        if self.dialog_ctrl.history_panel.visible:
+            if key in (arcade.key.ENTER, arcade.key.SPACE, arcade.key.NUM_ENTER):
+                self.dialog_ctrl.history_panel.toggle()
             return
 
         if self.in_wave_dialogue and key in (arcade.key.ENTER, arcade.key.SPACE, arcade.key.NUM_ENTER):
@@ -159,11 +174,18 @@ class MarketEndingView(StageView):
             self.run_action(self.pause_menu.on_mouse_press(canvas_x, canvas_y, button))
             return
 
+        # UI controls (LOG, AUTO, SKIP)
+        if self.dialog_ctrl.handle_mouse_press(canvas_x, canvas_y):
+            return
+
         if self.in_wave_dialogue and button == arcade.MOUSE_BUTTON_LEFT:
             if self.dialog.typing:
                 self.dialog.advance()
             else:
                 self.advance_dialogue()
+
+    def on_mouse_scroll(self, x, y, scroll_x, scroll_y):
+        self.dialog_ctrl.history_panel.on_mouse_scroll(scroll_y)
 
                 
     def run_action(self, action):

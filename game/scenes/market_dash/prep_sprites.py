@@ -59,8 +59,15 @@ def process_folder(folder_path: Path):
                 print(f"[ERROR] Could not process {file}: {err}")
 
 
+_prep_done = False
+
+
 # At the bottom of prep_sprites.py
-def run_prep():
+def run_prep(force: bool = False):
+    global _prep_done
+    if _prep_done and not force:
+        return
+
     process_folder(TERRY_DIR) 
     process_folder(INGREDIENTS_DIR)
 
@@ -93,6 +100,7 @@ def run_prep():
                                 box = (left, frame_h, right, 2 * frame_h)
                                 sheet.crop(box).save(sub / f"grab_{i}.png")
                         print(f"[SLICED] {sub.name} animation frames")
+    _prep_done = True
     print("All asset folders processed and updated.")
 
 if __name__ == "__main__":

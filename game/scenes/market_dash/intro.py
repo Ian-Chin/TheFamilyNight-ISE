@@ -24,7 +24,11 @@ class StorySlideView(StageView):
         self.pause_menu = PauseMenu()
         self.settings_panel = SettingsPanel()
         self.skip_modal = SkipConfirmModal()
-        self.title_card = TitleCard()
+        self.title_card = TitleCard(
+            kicker = "S C E N E 0",
+            title = "Calm Before the Chaos",
+            tagline ="A Saturday Morning Story"
+        )
         self.title_card_active = True
 
         # Include title_card so relayout() initializes self.band!
@@ -193,7 +197,7 @@ class StorySlideView(StageView):
 
         if index == 7:  # Terry picks up phone
             audio.play("phone_pickup")
-        elif index == len(self.slides) - 1:  # Door slams on exit
+        elif index == 20:  # Door slams on exit
             audio.play("door_slam")
 
         if img_target:
