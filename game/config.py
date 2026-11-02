@@ -405,6 +405,11 @@ SOUND_FILES = {
     "ingredient_get": ("ingredient-get", "sound", 0.75),
     "swing_sword": ("swing-sword", "sound", 0.75),
     "block": ("block", "sound", 0.75),
+    "hp_reduced": ("HP_reduced", "sound", 0.8),
+    "game_failed": ("Game_failed", "sound", 0.85),
+    "game_success": ("Game_success", "sound", 0.85),
+    "locked_sound": ("Locked_sound", "sound", 0.75),
+    "unlocked_sound": ("Unlocked_sound", "sound", 0.75),
 
     # leftover feast typing game
     "feast_key": ("feast-key", "sound", 0.55),

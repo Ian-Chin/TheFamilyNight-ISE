@@ -151,11 +151,7 @@ class MarketStageView(StageView):
         """Starts looping market_ambience if not already playing."""
         if getattr(self, "ambience_player", None) is None:
             try:
-                if hasattr(audio, "play_music"):
-                    audio.play_music("market_ambience", loop=True)
-                    self.ambience_player = "market_ambience"
-                else:
-                    self.ambience_player = audio.play("market_ambience", loop=True)
+                self.ambience_player = audio.play("market_ambience", loop=True)
             except Exception:
                 self.ambience_player = None
 
@@ -199,7 +195,7 @@ class MarketStageView(StageView):
 
             # Highlight Terry when he speaks, dim him when the shopper shouts
             self.current_speaker = "left" if speaker == "Terry" else "right"
-            self.current_partner = None
+            self.current_partner = self.shopper_portrait
 
             self.dialog.open(speaker, text)
         else:
@@ -430,12 +426,16 @@ class MarketStageView(StageView):
                 self.window.show_view(MarketCatchView(mode="veg", veg_done=self.veg_done, meat_done=self.meat_done))
                 return
 
-            if self.near_defend and self.defend_unlocked:
-                self.held.clear()
-                audio.play("ui_click")
-                self.lock_animating = True
-                self.lock_anim_timer = 3.0
-                return
+            if self.near_defend:
+                if not self.defend_unlocked:
+                    audio.play("locked_sound")
+                    return
+                else:
+                    self.held.clear()
+                    audio.play("unlocked_sound")
+                    self.lock_animating = True
+                    self.lock_anim_timer = 3.0
+                    return
 
         if key == arcade.key.SPACE:
             self.terry.start_jump()
@@ -484,11 +484,10 @@ class MarketStageView(StageView):
             self.window.close()
 
     def stop_ambience(self):
-        try:
-            if hasattr(audio, "stop_music"):
-                audio.stop_music()
-            elif getattr(self, "ambience_player", None) is not None:
+        """Stops the market_ambience loop."""
+        if getattr(self, "ambience_player", None) is not None:
+            try:
                 audio.stop(self.ambience_player)
-        except Exception:
-            pass
-        self.ambience_player = None
+            except Exception:
+                pass
+            self.ambience_player = None

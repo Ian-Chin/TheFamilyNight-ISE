@@ -80,6 +80,11 @@ def play(name, loop=False, speed=1.0):
     return bank().play(name, loop=loop, speed=speed)
 
 
+def stop(player):
+    """Stop and release a sound player returned by play()."""
+    bank().stop(player)
+
+
 class Ambience:
     """The looping background bed, faded up and kept in step with the mixer.
 

@@ -230,21 +230,25 @@ class RetryModal:
     def close(self):
         self.visible = False
 
-    def draw(self):
+    def draw(self, ui_camera=None):
         if not self.visible:
             return
 
         window = arcade.get_window()
 
-        # 1. Full-screen dimmer overlay
+        # 1. Full-screen dimmer overlay (covers entire window)
+        window.default_camera.use()
         arcade.draw_rect_filled(
             arcade.XYWH(window.width / 2, window.height / 2, window.width, window.height),
             (0, 0, 0, 185)
         )
 
-        # 2. Centered Modal Box in Window/Screen coordinates
-        cx = window.width / 2
-        cy = window.height / 2
+        # 2. Centered Modal Box in canvas coordinates
+        if ui_camera is not None:
+            ui_camera.use()
+
+        cx = WIDTH / 2
+        cy = HEIGHT / 2
         box_w = 480
         box_h = 240
 
@@ -285,37 +289,30 @@ class RetryModal:
         if not self.visible:
             return False
 
-        window = arcade.get_window()
         btn_w, btn_h = 130, 38
+        cx = WIDTH / 2
+        cy = HEIGHT / 2
+        btn_y = cy - 45
+        retry_x = cx - 80
+        giveup_x = cx + 80
 
-        # Test both Screen Coordinates AND Virtual Canvas Coordinates:
-        test_centers = [
-            (window.width / 2, window.height / 2),
-            (WIDTH / 2, HEIGHT / 2)
-        ]
+        # Hit test for "TRY AGAIN"
+        if (retry_x - btn_w / 2 <= mouse_x <= retry_x + btn_w / 2) and \
+           (btn_y - btn_h / 2 <= mouse_y <= btn_y + btn_h / 2):
+            callback = self.on_retry
+            self.close()
+            if callback:
+                callback()
+            return True
 
-        for cx, cy in test_centers:
-            btn_y = cy - 45
-            retry_x = cx - 80
-            giveup_x = cx + 80
-
-            # Hit test for "TRY AGAIN"
-            if (retry_x - btn_w / 2 <= mouse_x <= retry_x + btn_w / 2) and \
-               (btn_y - btn_h / 2 <= mouse_y <= btn_y + btn_h / 2):
-                callback = self.on_retry
-                self.close()
-                if callback:
-                    callback()
-                return True
-
-            # Hit test for "GIVE UP"
-            if (giveup_x - btn_w / 2 <= mouse_x <= giveup_x + btn_w / 2) and \
-               (btn_y - btn_h / 2 <= mouse_y <= btn_y + btn_h / 2):
-                callback = self.on_give_up
-                self.close()
-                if callback:
-                    callback()
-                return True
+        # Hit test for "GIVE UP"
+        if (giveup_x - btn_w / 2 <= mouse_x <= giveup_x + btn_w / 2) and \
+           (btn_y - btn_h / 2 <= mouse_y <= btn_y + btn_h / 2):
+            callback = self.on_give_up
+            self.close()
+            if callback:
+                callback()
+            return True
 
         # Absorb the click so it doesn't trigger game actions behind the modal
         return True
@@ -350,23 +347,27 @@ class SkipConfirmModal:
     def close(self):
         self.visible = False
 
-    def draw(self):
+    def draw(self, ui_camera=None):
         if not self.visible:
             return
 
-        # Use virtual canvas center so it aligns with stage canvas coordinates
-        cx = (WIDTH / 2) + 200
-        cy = (HEIGHT / 2) + 120
+        window = arcade.get_window()
 
-        # 1. Full-screen dimmer overlay
+        # 1. Full-screen dimmer overlay (covers 100% of entire physical window)
+        window.default_camera.use()
         arcade.draw_rect_filled(
-            arcade.XYWH(cx, cy, WIDTH, HEIGHT),
-            (0, 0, 0, 180)
+            arcade.XYWH(window.width / 2, window.height / 2, window.width, window.height),
+            (0, 0, 0, 185)
         )
 
-        # 2. Centered Modal Box
-        box_w = 580
-        box_h = 300
+        # 2. Centered Modal Box in canvas coordinates
+        if ui_camera is not None:
+            ui_camera.use()
+
+        cx = WIDTH / 2
+        cy = HEIGHT / 2
+        box_w = 640
+        box_h = 320
 
         # Outer border & dark wooden frame
         arcade.draw_rect_filled(arcade.XYWH(cx, cy, box_w, box_h), (50, 30, 20, 245))
@@ -375,21 +376,21 @@ class SkipConfirmModal:
 
         # Title
         arcade.draw_text(
-            self.title, cx, cy + 115, (255, 235, 185), 14, bold=True,
+            self.title, cx, cy + 120, (255, 235, 185), 15, bold=True,
             anchor_x="center", anchor_y="center"
         )
 
         # Body text / synopsis
         arcade.draw_text(
-            self.message, cx - (box_w / 2) + 24, cy + 70, (235, 225, 210), 10,
-            width=box_w - 48, multiline=True
+            self.message, cx - (box_w / 2) + 32, cy + 80, (235, 225, 210), 11,
+            width=box_w - 64, multiline=True
         )
 
         # Buttons geometry
         btn_w, btn_h = 120, 36
-        btn_y = cy - 105
-        skip_x = cx - 70
-        cancel_x = cx + 80
+        btn_y = cy - 115
+        skip_x = cx - 75
+        cancel_x = cx + 75
 
         # Skip button (Red)
         arcade.draw_rect_filled(arcade.XYWH(skip_x, btn_y, btn_w, btn_h), (160, 45, 45, 230))
@@ -409,9 +410,9 @@ class SkipConfirmModal:
         cy = HEIGHT / 2
 
         btn_w, btn_h = 120, 36
-        btn_y = cy - 105
+        btn_y = cy - 115
         skip_x = cx - 75
-        cancel_x = cx + 65
+        cancel_x = cx + 75
 
         # Hit test for Skip button
         if (skip_x - btn_w / 2 <= mouse_x <= skip_x + btn_w / 2) and \
