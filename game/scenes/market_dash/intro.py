@@ -147,6 +147,8 @@ class StorySlideView(StageView):
         self.relayout()
 
     def on_show_view(self):
+        self.title_card.clock = 0.0
+        self.title_card_active = True
         self.trigger_slide(0)
 
     def cleanup_audio(self):
@@ -255,11 +257,6 @@ class StorySlideView(StageView):
         elif hasattr(self, "stage"):
             self.stage.use()
 
-        # Draw entering board over the first scene
-        if self.title_card_active:
-            self.window.default_camera.use()
-            self.title_card.draw()
-
         # 1. Background image (with camera shake)
         self.camera.use()
         if self.current_texture:
@@ -267,6 +264,11 @@ class StorySlideView(StageView):
                 self.current_texture,
                 arcade.XYWH(WIDTH / 2, HEIGHT / 2, WIDTH, HEIGHT)
             )
+
+        # Draw entering title card over the scene
+        if self.title_card_active:
+            self.window.default_camera.use()
+            self.title_card.draw()
 
         # 2. Dialog box & Hint in native screen space
         self.window.default_camera.use()
@@ -285,12 +287,7 @@ class StorySlideView(StageView):
         self.settings_panel.draw()
 
         # 5. Skip confirmation modal (always on topmost layer)
-        self.skip_modal.draw()
-
-        if self.pause_menu.visible:
-            self.pause_menu.draw()
-        if self.settings_panel.visible:
-            self.settings_panel.draw()
+        self.skip_modal.draw(ui_camera=self.ui_camera)
 
     def on_key_press(self, key, modifiers):
         # Prevent input if skip modal is active

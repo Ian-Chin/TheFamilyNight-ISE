@@ -244,6 +244,11 @@ class RetryModal:
         )
 
         # 2. Centered Modal Box in canvas coordinates
+        if ui_camera is None:
+            current_view = getattr(window, 'current_view', None)
+            if current_view is not None:
+                ui_camera = getattr(current_view, 'ui_camera', getattr(current_view, 'camera', None))
+
         if ui_camera is not None:
             ui_camera.use()
 
@@ -361,6 +366,11 @@ class SkipConfirmModal:
         )
 
         # 2. Centered Modal Box in canvas coordinates
+        if ui_camera is None:
+            current_view = getattr(window, 'current_view', None)
+            if current_view is not None:
+                ui_camera = getattr(current_view, 'ui_camera', getattr(current_view, 'camera', None))
+
         if ui_camera is not None:
             ui_camera.use()
 

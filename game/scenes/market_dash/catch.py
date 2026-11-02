@@ -250,6 +250,8 @@ class MarketCatchView(StageView):
         if self.retry_modal.visible:
             return
 
+        self.shake_timer = 0.0
+        self.camera.position = (WIDTH / 2, HEIGHT / 2)
         audio.play("game_failed")
 
         def do_retry():
