@@ -198,7 +198,7 @@ class SnatcherSprite(arcade.Sprite):
         elif move_dx > 0.1:
             self.scale_x = abs(self.base_scale)
 
-    def update_behavior(self, delta_time, player_y, player_x, dropped_items=None):
+    def update_behavior(self, delta_time, player_y, player_x, dropped_items=None, is_wave_3=False, **kwargs):
         step = delta_time * 60.0
         if self.ram_cooldown > 0:
             self.ram_cooldown = max(0.0, self.ram_cooldown - delta_time)
