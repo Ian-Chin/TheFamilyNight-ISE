@@ -58,6 +58,18 @@ PLAY_RIGHT = 1125
 PLAY_BOTTOM = 45
 PLAY_TOP = 675
 
+# 16 Wall-Shelf slot anchor coordinates corresponding to the wooden shelf cubbies
+SHELF_LEFT_X = 168
+SHELF_RIGHT_X = 1112
+SHELF_Y_LEVELS = [68, 148, 232, 314, 398, 480, 562, 644]
+SHELF_SLOTS = [(SHELF_LEFT_X, y) for y in SHELF_Y_LEVELS] + [(SHELF_RIGHT_X, y) for y in SHELF_Y_LEVELS]
+
+# Top-down checkered aisle bounds for player and floor shoppers
+AISLE_MIN_X = PLAY_LEFT + 40   # approx 195
+AISLE_MAX_X = PLAY_RIGHT - 40  # approx 1085
+AISLE_MIN_Y = 60
+AISLE_MAX_Y = 660
+
 
 def cover_rect(texture, rect):
     """Fill `rect` with `texture` without distorting it."""
