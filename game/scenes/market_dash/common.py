@@ -77,10 +77,10 @@ def pick_weighted_shelf_slot():
     return random.choices(SHELF_SLOTS, weights=SHELF_SLOT_WEIGHTS, k=1)[0]
 
 # Top-down checkered aisle bounds for player and floor shoppers
-AISLE_MIN_X = PLAY_LEFT + 40   # approx 195
-AISLE_MAX_X = PLAY_RIGHT - 40  # approx 1085
-AISLE_MIN_Y = 60
-AISLE_MAX_Y = 660
+AISLE_MIN_X = PLAY_LEFT + 15   # approx 170
+AISLE_MAX_X = PLAY_RIGHT - 15  # approx 1110
+AISLE_MIN_Y = 55
+AISLE_MAX_Y = 665
 
 # Checkout Exit Doors Zone (Defend Mode)
 CHECKOUT_MIN_X = 480
@@ -532,11 +532,11 @@ class InstructionModal:
         if self.mode == "veg":
             title = "🥕 HOW TO PLAY: FRESH VEGETABLES 🥦"
             obj_title = "OBJECTIVE:"
-            obj_desc = "Catch all 5 vegetables from the wall shelves! Bumping into wandering shoppers slows you down. Don't let rushing shoppers ram you (-1 HP) or flee with food (-1 HP)!"
+            obj_desc = "Catch all 5 vegetables from the wall shelves before time runs out! Touching or getting rammed by shoppers reduces HP (-1 HP). If a thief escapes with food, you lose time (-5s)!"
         elif self.mode == "meat":
             title = "🥩 HOW TO PLAY: PRIME MEATS 🍖"
             obj_title = "OBJECTIVE:"
-            obj_desc = "Secure all 5 meat cuts from the wall shelves! Bumping into wandering shoppers slows you down. Don't let rushing shoppers ram you (-1 HP) or flee with food (-1 HP)!"
+            obj_desc = "Secure all 5 meat cuts from the wall shelves before time runs out! Touching or getting rammed by shoppers reduces HP (-1 HP). If a thief escapes with food, you lose time (-5s)!"
         else:
             title = "🛒 HOW TO PLAY: CHECKOUT ESCAPE 🚪"
             obj_title = "OBJECTIVE:"

@@ -19,10 +19,10 @@ def get_separated_x(existing_sprites, min_gap=110, attempts=12):
     """Generates an X coordinate spaced away from existing entities."""
     for gap in (min_gap, min_gap * 0.75, min_gap * 0.5):
         for _ in range(attempts // 3):
-            candidate_x = random.randint(AISLE_MIN_X + 40, AISLE_MAX_X - 40)
+            candidate_x = random.randint(AISLE_MIN_X + 20, AISLE_MAX_X - 20)
             if all(abs(candidate_x - s.center_x) >= gap for s in existing_sprites):
                 return candidate_x
-    return random.randint(AISLE_MIN_X + 40, AISLE_MAX_X - 40)
+    return random.randint(AISLE_MIN_X + 20, AISLE_MAX_X - 20)
 
 
 class DroppedIngredient(arcade.Sprite):
@@ -74,7 +74,9 @@ class SnatcherSprite(arcade.Sprite):
 
         self.state = STATE_WANDERING
         self.rush_speed = rush_speed
-        self.wander_speed = random.uniform(1.6, 2.4)
+        self.flee_speed = 2.8
+        self.rush_reaction_timer = 0.0
+        self.wander_speed = random.uniform(2.0, 3.2)
         self.chase_speed = random.uniform(2.5, 3.4)
         self.wander_timer = 0.0
         self.target_x = 0
@@ -97,6 +99,8 @@ class SnatcherSprite(arcade.Sprite):
         self.carried_texture = None
         self.target_floor_item = None
         self.has_fled_with_item = False
+        self.rush_reaction_timer = 0.0
+        self.flee_speed = 2.8
         self.stun_timer = 0.0
         self.ram_cooldown = 0.0
         self.knockback_vx = 0.0
@@ -105,7 +109,7 @@ class SnatcherSprite(arcade.Sprite):
         self.alpha = 255
         if rush_speed is not None:
             self.rush_speed = rush_speed
-        self.wander_speed = random.uniform(1.5, 2.7)
+        self.wander_speed = random.uniform(2.0, 3.2)
         self.chase_speed = random.uniform(2.5, 3.4)
 
         if custom_x is not None and custom_y is not None:
@@ -115,8 +119,8 @@ class SnatcherSprite(arcade.Sprite):
             # Pick a spawn location with comfortable clearance away from player
             chosen = False
             for _ in range(35):
-                cand_x = random.randint(AISLE_MIN_X + 60, AISLE_MAX_X - 60)
-                cand_y = random.randint(AISLE_MIN_Y + 50, AISLE_MAX_Y - 50)
+                cand_x = random.randint(AISLE_MIN_X + 25, AISLE_MAX_X - 25)
+                cand_y = random.randint(AISLE_MIN_Y + 25, AISLE_MAX_Y - 25)
                 if player_pos is not None:
                     dist = math.hypot(cand_x - player_pos[0], cand_y - player_pos[1])
                     if dist < min_dist:
@@ -127,17 +131,51 @@ class SnatcherSprite(arcade.Sprite):
                 break
 
             if not chosen:
-                self.center_x = random.choice([AISLE_MIN_X + 60, AISLE_MAX_X - 60])
-                self.center_y = random.choice([AISLE_MIN_Y + 50, AISLE_MAX_Y - 50])
+                self.center_x = random.choice([AISLE_MIN_X + 35, AISLE_MAX_X - 35])
+                self.center_y = random.choice([AISLE_MIN_Y + 35, AISLE_MAX_Y - 35])
 
         self.pick_new_wander_target()
 
     def pick_new_wander_target(self):
-        self.target_x = random.randint(AISLE_MIN_X + 40, AISLE_MAX_X - 40)
-        self.target_y = random.randint(AISLE_MIN_Y + 40, AISLE_MAX_Y - 40)
-        self.wander_timer = random.uniform(1.5, 3.5)
+        # Spans the entire arena from border to border
+        min_x = AISLE_MIN_X + 15
+        max_x = AISLE_MAX_X - 15
+        min_y = AISLE_MIN_Y + 15
+        max_y = AISLE_MAX_Y - 15
 
-    def trigger_rush(self, shelf_x, shelf_y, item_name, item_texture):
+        # 60% of the time, deliberately pick a destination along outer perimeter border zones
+        # (far left, far right, top checkout boundary, bottom entrance boundary)
+        # 40% across the full arena, ensuring shoppers explore every part of the arena without clustering in the center
+        roll = random.random()
+        if roll < 0.15:
+            # Far Left border area
+            self.target_x = random.randint(min_x, min_x + 180)
+            self.target_y = random.randint(min_y, max_y)
+        elif roll < 0.30:
+            # Far Right border area
+            self.target_x = random.randint(max_x - 180, max_x)
+            self.target_y = random.randint(min_y, max_y)
+        elif roll < 0.45:
+            # Top Checkout exit border area
+            self.target_x = random.randint(min_x, max_x)
+            self.target_y = random.randint(max_y - 150, max_y)
+        elif roll < 0.60:
+            # Bottom Entrance border area
+            self.target_x = random.randint(min_x, max_x)
+            self.target_y = random.randint(min_y, min_y + 150)
+        else:
+            # Full arena
+            self.target_x = random.randint(min_x, max_x)
+            self.target_y = random.randint(min_y, max_y)
+
+        # Allow shopper enough time to travel all the way to their target across the arena
+        dx = self.target_x - self.center_x
+        dy = self.target_y - self.center_y
+        dist = math.hypot(dx, dy)
+        travel_time = dist / max(1.0, self.wander_speed * 60.0)
+        self.wander_timer = travel_time + random.uniform(1.2, 2.8)
+
+    def trigger_rush(self, shelf_x, shelf_y, item_name, item_texture, delay=None):
         if self.state == STATE_WANDERING:
             self.state = STATE_RUSHING_SHELF
             self.target_x = shelf_x
@@ -145,11 +183,13 @@ class SnatcherSprite(arcade.Sprite):
             self.carried_item = None
             self.carried_texture = None
             self.target_floor_item = None
+            self.rush_reaction_timer = delay if delay is not None else random.uniform(1.4, 2.2)
 
     def cancel_rush(self):
         if self.state == STATE_RUSHING_SHELF:
             self.state = STATE_WANDERING
             self.target_floor_item = None
+            self.rush_reaction_timer = 0.0
             self.pick_new_wander_target()
 
     def claim_item(self, item_name, item_texture):
@@ -212,8 +252,8 @@ class SnatcherSprite(arcade.Sprite):
             self.knockback_vy *= 0.88
 
             # Confine within floor area
-            self.center_x = max(AISLE_MIN_X - 10, min(AISLE_MAX_X + 10, self.center_x))
-            self.center_y = max(AISLE_MIN_Y - 10, min(AISLE_MAX_Y + 10, self.center_y))
+            self.center_x = max(AISLE_MIN_X + 5, min(AISLE_MAX_X - 5, self.center_x))
+            self.center_y = max(AISLE_MIN_Y + 5, min(AISLE_MAX_Y - 5, self.center_y))
 
             # Dizzy frame
             self.texture = self.grab_textures[0]
@@ -244,7 +284,7 @@ class SnatcherSprite(arcade.Sprite):
                 dx = self.target_x - self.center_x
                 dy = self.target_y - self.center_y
                 dist = math.hypot(dx, dy)
-                if dist < 20 or self.wander_timer <= 0:
+                if dist < 25 or self.wander_timer <= 0:
                     self.pick_new_wander_target()
                 else:
                     move_dist = min(dist, self.wander_speed * step)
@@ -252,15 +292,27 @@ class SnatcherSprite(arcade.Sprite):
                     self.center_y += (dy / dist) * move_dist
                     self.update_animation(delta_time, dx, is_action=False, fast=False)
 
+                # Clamp shopper within border so they can explore all areas within bounds
+                self.center_x = max(AISLE_MIN_X + 10, min(AISLE_MAX_X - 10, self.center_x))
+                self.center_y = max(AISLE_MIN_Y + 10, min(AISLE_MAX_Y - 10, self.center_y))
+
         # 2. RUSHING_SHELF (or rushing dropped floor item)
         elif self.state == STATE_RUSHING_SHELF:
             # If tracking a dropped item that was picked up, revert to wandering
             if getattr(self, "target_floor_item", None):
                 if dropped_items is not None and self.target_floor_item not in dropped_items:
                     self.target_floor_item = None
+                    self.rush_reaction_timer = 0.0
                     self.state = STATE_WANDERING
                     self.pick_new_wander_target()
                     return
+
+            # Shopper reaction delay: pause with alert before dashing to shelf
+            if getattr(self, "rush_reaction_timer", 0) > 0:
+                self.rush_reaction_timer -= delta_time
+                dx = self.target_x - self.center_x
+                self.update_animation(delta_time, dx, is_action=False, fast=False)
+                return
 
             dx = self.target_x - self.center_x
             dy = self.target_y - self.center_y
@@ -282,7 +334,7 @@ class SnatcherSprite(arcade.Sprite):
         # 3. FLEEING_WITH_ITEM
         elif self.state == STATE_FLEEING_WITH_ITEM:
             dy = self.target_y - self.center_y
-            flee_speed = 5.8
+            flee_speed = getattr(self, "flee_speed", 2.8)
             step_y = (1.0 if dy > 0 else -1.0) * flee_speed * step
             self.center_y += step_y
             self.update_animation(delta_time, 0, is_action=True, fast=True)
@@ -290,10 +342,9 @@ class SnatcherSprite(arcade.Sprite):
             # Exit boundaries check
             if self.center_y > HEIGHT + 60 or self.center_y < -60:
                 self.has_fled_with_item = True
-                self.has_fled_with_item = True
 
     def draw_overlays(self):
-        """Draws carried items or stun indicators above shopper."""
+        """Draws carried items, reaction alert bubbles, or stun indicators above shopper."""
         if self.state == STATE_FLEEING_WITH_ITEM and self.carried_texture:
             bob = math.sin(time.time() * 8) * 3
             icon_x = self.center_x
@@ -302,6 +353,15 @@ class SnatcherSprite(arcade.Sprite):
             arcade.draw_circle_filled(icon_x, icon_y, 18, (255, 245, 210, 220))
             arcade.draw_circle_outline(icon_x, icon_y, 18, (230, 160, 40, 240), 2)
             arcade.draw_texture_rect(self.carried_texture, arcade.XYWH(icon_x, icon_y, 28, 28))
+
+        elif self.state == STATE_RUSHING_SHELF and getattr(self, "rush_reaction_timer", 0) > 0:
+            bob = math.sin(time.time() * 10) * 2
+            bx = self.center_x
+            by = self.top + 16 + bob
+            # Alert exclamation bubble
+            arcade.draw_circle_filled(bx, by, 14, (255, 235, 60, 240))
+            arcade.draw_circle_outline(bx, by, 14, (210, 140, 20, 255), 2)
+            arcade.draw_text("!", bx, by - 8, (200, 40, 20), 16, bold=True, anchor_x="center")
 
         elif self.state == STATE_STUNNED:
             bob = math.sin(time.time() * 9) * 3
