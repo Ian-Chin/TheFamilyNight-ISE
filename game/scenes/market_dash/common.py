@@ -564,7 +564,7 @@ class InstructionModal:
         if self.mode == "defend":
             controls = [
                 ("WASD  /  ARROWS", "Move Terry", "Navigate through the crowded market aisle"),
-                ("LEFT CLICK  /  SPACE", "Mackerel Swing", "Stun & knock back shoppers; force thieves to drop food"),
+                ("LEFT CLICK  /  SPACE", "180° Spin Attack", "Spin 180° clockwise to smack & knock back shoppers; recover food"),
                 ("[ E ]  or  WALK OVER", "Pick Up Food", "Quickly recover spilled ingredients from the floor"),
                 ("HOLD SHIFT", "Sprint Boost", "Run at high speed toward the checkout exit doors"),
             ]

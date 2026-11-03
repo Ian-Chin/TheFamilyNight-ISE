@@ -79,9 +79,10 @@ class MarketCatchView(StageView):
         self.restock_timer = 1.2    # Initial delay before first restock
         self.shopper_rush_speed = 5.0 if self.mode == "veg" else 6.5
 
-        # Terry Action Mechanics (Defend mode Mackerel Swing / Gathering Block)
+        # Terry Action Mechanics (Defend mode Spin Attack / Gathering Block)
         self.swinging = False
         self.swing_timer = 0.0
+        self.swing_duration = 0.30
         self.spin_cooldown = 0.0
         self.exit_warn_timer = 0.0
 
@@ -249,25 +250,22 @@ class MarketCatchView(StageView):
             self.snatchers_list.append(shopper)
 
     def trigger_mackerel_swing(self):
-        """Swings frozen mackerel to stun and knock back shoppers in Defend mode."""
+        """Spins 180 degrees clockwise to stun and knock back shoppers in Defend mode."""
         if self.swinging or self.spin_cooldown > 0:
             return False
         audio.play("swing_sword")
         self.swinging = True
-        self.swing_timer = 0.25
+        self.swing_duration = 0.30
+        self.swing_timer = self.swing_duration
         self.spin_cooldown = 0.45
         self.shake_timer = 0.15
         self.shake_intensity = 4.0
 
-        facing = 1 if self.player.scale_x >= 0 else -1
-        swing_center_x = self.player.center_x + (facing * 35)
-        swing_center_y = self.player.center_y
         swing_radius = 85.0
 
         for shopper in self.snatchers_list:
-            dist = math.hypot(shopper.center_x - swing_center_x, shopper.center_y - swing_center_y)
-            dist_origin = math.hypot(shopper.center_x - self.player.center_x, shopper.center_y - self.player.center_y)
-            if dist <= swing_radius or dist_origin < 65:
+            dist = math.hypot(shopper.center_x - self.player.center_x, shopper.center_y - self.player.center_y)
+            if dist <= swing_radius:
                 dropped = shopper.trigger_stun(self.player.center_x, self.player.center_y, is_defending=True)
                 # Knockback 110px away from Terry
                 angle = math.atan2(shopper.center_y - self.player.center_y, shopper.center_x - self.player.center_x)
@@ -531,18 +529,23 @@ class MarketCatchView(StageView):
         if self.swinging:
             self.swing_timer -= delta_time
             self.player.texture = self.terry_tex_action
+            # 180 degree clockwise spin during attack
+            progress = max(0.0, min(1.0, 1.0 - (self.swing_timer / self.swing_duration)))
+            self.player.angle = 180.0 - (progress * 180.0)
             if self.swing_timer <= 0:
                 self.swinging = False
+                self.player.angle = 180.0
                 self.player.texture = self.terry_tex_defend if self.mode == "defend" else self.terry_tex_normal
         elif self.blocking:
             self.block_timer -= delta_time
             self.player.texture = self.terry_tex_action
+            self.player.angle = 180.0
             if self.block_timer <= 0:
                 self.blocking = False
                 self.player.texture = self.terry_tex_defend if self.mode == "defend" else self.terry_tex_normal
         else:
+            self.player.angle = 180.0
             self.player.texture = self.terry_tex_defend if self.mode == "defend" else self.terry_tex_normal
-        self.player.angle = 180
 
         # 2D Top-Down Movement with diagonal normalization, Shift speed boost, and crowd slowdown
         step = delta_time * 60.0
@@ -1009,15 +1012,6 @@ class MarketCatchView(StageView):
                 shield_radius = 65
                 arcade.draw_circle_filled(cx, cy, shield_radius, (160, 230, 255, 60))
                 arcade.draw_circle_outline(cx, cy, shield_radius, (130, 220, 255, 220), border_width=3)
-
-            # Mackerel Swing slash arc visual effect (Defend mode)
-            if self.mode == "defend" and self.swinging:
-                facing = 1 if self.player.scale_x >= 0 else -1
-                arc_cx = self.player.center_x + (facing * 32)
-                arc_cy = self.player.center_y
-                arc_alpha = int(220 * max(0.0, self.swing_timer / 0.25))
-                arcade.draw_circle_filled(arc_cx, arc_cy, 65, (140, 210, 255, int(arc_alpha * 0.35)))
-                arcade.draw_circle_outline(arc_cx, arc_cy, 65, (180, 230, 255, arc_alpha), border_width=3.5)
 
             # Progress Bar Plaque
             progress = max(0.0, min(1.0, self.time_left / self.duration))
