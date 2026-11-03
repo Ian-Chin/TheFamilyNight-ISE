@@ -26,9 +26,9 @@ def get_separated_x(existing_sprites, min_gap=110, attempts=12):
 
 
 class DroppedIngredient(arcade.Sprite):
-    """Temporary floor pickup dropped when a fleeing shopper is stunned."""
+    """Temporary floor pickup dropped when a fleeing shopper is stunned or food is spilled."""
 
-    def __init__(self, item_name, texture, x, y):
+    def __init__(self, item_name, texture, x, y, persists_indefinitely=False):
         target_size = 46.0
         calc_scale = target_size / max(texture.width, texture.height)
         super().__init__(texture, scale=calc_scale)
@@ -38,8 +38,12 @@ class DroppedIngredient(arcade.Sprite):
         self.timer = 5.0
         self.max_timer = 5.0
         self.expired = False
+        self.persists_indefinitely = persists_indefinitely
 
     def update_timer(self, delta_time):
+        if self.persists_indefinitely:
+            self.alpha = 255
+            return False
         self.timer -= delta_time
         if self.timer <= 0:
             self.expired = True
@@ -91,6 +95,7 @@ class SnatcherSprite(arcade.Sprite):
         self.state = STATE_WANDERING
         self.carried_item = None
         self.carried_texture = None
+        self.target_floor_item = None
         self.has_fled_with_item = False
         self.stun_timer = 0.0
         self.ram_cooldown = 0.0
@@ -100,7 +105,7 @@ class SnatcherSprite(arcade.Sprite):
         self.alpha = 255
         if rush_speed is not None:
             self.rush_speed = rush_speed
-        self.wander_speed = random.uniform(1.6, 2.4)
+        self.wander_speed = random.uniform(1.5, 2.7)
         self.chase_speed = random.uniform(2.5, 3.4)
 
         if custom_x is not None and custom_y is not None:
@@ -128,9 +133,9 @@ class SnatcherSprite(arcade.Sprite):
         self.pick_new_wander_target()
 
     def pick_new_wander_target(self):
-        self.target_x = random.randint(AISLE_MIN_X + 35, AISLE_MAX_X - 35)
-        self.target_y = random.randint(AISLE_MIN_Y + 35, AISLE_MAX_Y - 35)
-        self.wander_timer = random.uniform(2.0, 4.2)
+        self.target_x = random.randint(AISLE_MIN_X + 40, AISLE_MAX_X - 40)
+        self.target_y = random.randint(AISLE_MIN_Y + 40, AISLE_MAX_Y - 40)
+        self.wander_timer = random.uniform(1.5, 3.5)
 
     def trigger_rush(self, shelf_x, shelf_y, item_name, item_texture):
         if self.state == STATE_WANDERING:
@@ -139,16 +144,19 @@ class SnatcherSprite(arcade.Sprite):
             self.target_y = shelf_y
             self.carried_item = None
             self.carried_texture = None
+            self.target_floor_item = None
 
     def cancel_rush(self):
         if self.state == STATE_RUSHING_SHELF:
             self.state = STATE_WANDERING
+            self.target_floor_item = None
             self.pick_new_wander_target()
 
     def claim_item(self, item_name, item_texture):
         self.state = STATE_FLEEING_WITH_ITEM
         self.carried_item = item_name
         self.carried_texture = item_texture
+        self.target_floor_item = None
         # Sprint toward nearest top/bottom exit of the screen
         if self.center_y >= HEIGHT / 2:
             self.target_y = HEIGHT + 120
@@ -162,6 +170,7 @@ class SnatcherSprite(arcade.Sprite):
 
         self.carried_item = None
         self.carried_texture = None
+        self.target_floor_item = None
         self.state = STATE_STUNNED
         self.stun_timer = 1.8
         self.ram_cooldown = 1.8
@@ -189,7 +198,7 @@ class SnatcherSprite(arcade.Sprite):
         elif move_dx > 0.1:
             self.scale_x = abs(self.base_scale)
 
-    def update_behavior(self, delta_time, player_y, player_x, is_wave_3=False):
+    def update_behavior(self, delta_time, player_y, player_x, dropped_items=None):
         step = delta_time * 60.0
         if self.ram_cooldown > 0:
             self.ram_cooldown = max(0.0, self.ram_cooldown - delta_time)
@@ -213,33 +222,46 @@ class SnatcherSprite(arcade.Sprite):
                 self.pick_new_wander_target()
             return
 
-        # WAVE 3 DEFEND MODE TRACKING
-        if is_wave_3:
-            dx = player_x - self.center_x
-            dy = player_y - self.center_y
-            dist = max(1.0, math.hypot(dx, dy))
-            chase_speed = self.chase_speed
-            self.center_x += (dx / dist) * chase_speed * step
-            self.center_y += (dy / dist) * chase_speed * step
-            self.update_animation(delta_time, dx, is_action=(dist < 85), fast=(dist < 120))
-            return
-
-        # 1. WANDERING
+        # 1. WANDERING (with Opportunistic Stealing of dropped items within 260px)
         if self.state == STATE_WANDERING:
-            self.wander_timer -= delta_time
-            dx = self.target_x - self.center_x
-            dy = self.target_y - self.center_y
-            dist = math.hypot(dx, dy)
-            if dist < 15 or self.wander_timer <= 0:
-                self.pick_new_wander_target()
-            else:
-                move_dist = min(dist, self.wander_speed * step)
-                self.center_x += (dx / dist) * move_dist
-                self.center_y += (dy / dist) * move_dist
-                self.update_animation(delta_time, dx, is_action=False, fast=False)
+            if dropped_items:
+                nearest_item = None
+                nearest_dist = 260.0
+                for item in dropped_items:
+                    d = math.hypot(item.center_x - self.center_x, item.center_y - self.center_y)
+                    if d < nearest_dist:
+                        nearest_dist = d
+                        nearest_item = item
 
-        # 2. RUSHING_SHELF
+                if nearest_item:
+                    self.state = STATE_RUSHING_SHELF
+                    self.target_x = nearest_item.center_x
+                    self.target_y = nearest_item.center_y
+                    self.target_floor_item = nearest_item
+
+            if self.state == STATE_WANDERING:
+                self.wander_timer -= delta_time
+                dx = self.target_x - self.center_x
+                dy = self.target_y - self.center_y
+                dist = math.hypot(dx, dy)
+                if dist < 20 or self.wander_timer <= 0:
+                    self.pick_new_wander_target()
+                else:
+                    move_dist = min(dist, self.wander_speed * step)
+                    self.center_x += (dx / dist) * move_dist
+                    self.center_y += (dy / dist) * move_dist
+                    self.update_animation(delta_time, dx, is_action=False, fast=False)
+
+        # 2. RUSHING_SHELF (or rushing dropped floor item)
         elif self.state == STATE_RUSHING_SHELF:
+            # If tracking a dropped item that was picked up, revert to wandering
+            if getattr(self, "target_floor_item", None):
+                if dropped_items is not None and self.target_floor_item not in dropped_items:
+                    self.target_floor_item = None
+                    self.state = STATE_WANDERING
+                    self.pick_new_wander_target()
+                    return
+
             dx = self.target_x - self.center_x
             dy = self.target_y - self.center_y
             dist = math.hypot(dx, dy)
@@ -248,6 +270,14 @@ class SnatcherSprite(arcade.Sprite):
                 self.center_x += (dx / dist) * move_dist
                 self.center_y += (dy / dist) * move_dist
             self.update_animation(delta_time, dx, is_action=True, fast=True)
+
+            # Check if reached target floor item to claim it
+            if getattr(self, "target_floor_item", None):
+                if dist < 35:
+                    item = self.target_floor_item
+                    self.claim_item(item.item_name, item.texture)
+                    self.target_floor_item = None
+                    item.remove_from_sprite_lists()
 
         # 3. FLEEING_WITH_ITEM
         elif self.state == STATE_FLEEING_WITH_ITEM:
@@ -259,6 +289,7 @@ class SnatcherSprite(arcade.Sprite):
 
             # Exit boundaries check
             if self.center_y > HEIGHT + 60 or self.center_y < -60:
+                self.has_fled_with_item = True
                 self.has_fled_with_item = True
 
     def draw_overlays(self):

@@ -1,3 +1,5 @@
+import math
+import time
 import arcade
 from ...config import ASSETS, HEIGHT, WIDTH
 
@@ -79,6 +81,11 @@ AISLE_MIN_X = PLAY_LEFT + 40   # approx 195
 AISLE_MAX_X = PLAY_RIGHT - 40  # approx 1085
 AISLE_MIN_Y = 60
 AISLE_MAX_Y = 660
+
+# Checkout Exit Doors Zone (Defend Mode)
+CHECKOUT_MIN_X = 480
+CHECKOUT_MAX_X = 800
+CHECKOUT_MIN_Y = 615
 
 
 def cover_rect(texture, rect):
@@ -463,4 +470,183 @@ class SkipConfirmModal:
             return True
 
         # Block mouse clicks from bleeding through to dialogue underneath
+        return True
+
+
+class InstructionModal:
+    """Displays a wooden instruction board before gameplay starts with an OK button."""
+
+    def __init__(self):
+        self.visible = False
+        self.mode = "veg"
+        self.on_ok = None
+
+    def open(self, mode="veg", on_ok=None):
+        self.mode = mode
+        self.on_ok = on_ok
+        self.visible = True
+
+    def close(self):
+        self.visible = False
+        if self.on_ok:
+            cb = self.on_ok
+            self.on_ok = None
+            cb()
+
+    def draw(self, ui_camera=None):
+        if not self.visible:
+            return
+
+        window = arcade.get_window()
+
+        # 1. Full-screen dimmer overlay
+        window.default_camera.use()
+        arcade.draw_rect_filled(
+            arcade.XYWH(window.width / 2, window.height / 2, window.width, window.height),
+            (0, 0, 0, 195)
+        )
+
+        # 2. Centered Modal Box in canvas coordinates
+        if ui_camera is None:
+            current_view = getattr(window, 'current_view', None)
+            if current_view is not None:
+                ui_camera = getattr(current_view, 'ui_camera', getattr(current_view, 'camera', None))
+
+        if ui_camera is not None:
+            ui_camera.use()
+
+        cx = WIDTH / 2
+        cy = HEIGHT / 2
+        box_w = 720
+        box_h = 490
+
+        # Outer drop shadow & rich wooden frame
+        arcade.draw_rect_filled(arcade.XYWH(cx, cy - 4, box_w + 10, box_h + 10), (12, 6, 3, 190))
+        arcade.draw_rect_filled(arcade.XYWH(cx, cy, box_w, box_h), (48, 28, 16, 255))
+        arcade.draw_rect_filled(arcade.XYWH(cx, cy, box_w - 8, box_h - 8), (78, 48, 28, 255))
+        arcade.draw_rect_filled(arcade.XYWH(cx, cy, box_w - 18, box_h - 18), (110, 68, 38, 255))
+        arcade.draw_rect_outline(arcade.XYWH(cx, cy, box_w - 8, box_h - 8), (180, 140, 90, 220), 2)
+        arcade.draw_rect_outline(arcade.XYWH(cx, cy, box_w, box_h), (35, 18, 10, 255), 2)
+
+        # Title configuration
+        if self.mode == "veg":
+            title = "🥕 HOW TO PLAY: FRESH VEGETABLES 🥦"
+            obj_title = "OBJECTIVE:"
+            obj_desc = "Catch all 5 required vegetables from the wall shelf restocks before time expires! Deflect aggressive shoppers so they can't escape off-screen with food."
+        elif self.mode == "meat":
+            title = "🥩 HOW TO PLAY: PRIME MEATS 🍖"
+            obj_title = "OBJECTIVE:"
+            obj_desc = "Secure all 5 prime meat cuts from the wall shelf restocks before time runs out! Watch out for rushing shoppers trying to snatch them first."
+        else:
+            title = "🛒 HOW TO PLAY: CHECKOUT ESCAPE 🚪"
+            obj_title = "OBJECTIVE:"
+            obj_desc = "Escort your basket with all 5 ingredients to the CHECKOUT EXIT DOORS at the top! Bumps from shoppers will spill items onto the floor—retrieve them all before exiting!"
+
+        # Title text
+        arcade.draw_text(
+            title, cx, cy + 195, (255, 235, 175), 16, bold=True,
+            anchor_x="center", anchor_y="center"
+        )
+        # Decorative divider line
+        arcade.draw_line(cx - 300, cy + 172, cx + 300, cy + 172, (180, 140, 90, 180), 2)
+
+        # Objective Banner Box
+        obj_box_y = cy + 130
+        arcade.draw_rect_filled(arcade.XYWH(cx, obj_box_y, box_w - 48, 56), (36, 20, 12, 230))
+        arcade.draw_rect_outline(arcade.XYWH(cx, obj_box_y, box_w - 48, 56), (150, 110, 70, 180), 1.5)
+        arcade.draw_text(obj_title, cx - 315, obj_box_y + 11, (255, 215, 110), 11, bold=True)
+        arcade.draw_text(obj_desc, cx - 315, obj_box_y - 18, (230, 225, 215), 10, width=630)
+
+        # Controls Cards Header
+        arcade.draw_text("CONTROLS & ACTIONS", cx, cy + 80, (255, 215, 110), 12, bold=True, anchor_x="center")
+
+        # Control Rows
+        if self.mode == "defend":
+            controls = [
+                ("WASD  /  ARROWS", "Move Terry", "Navigate through the crowded market aisle"),
+                ("LEFT CLICK  /  SPACE", "Mackerel Swing", "Stun & knock back shoppers; force thieves to drop food"),
+                ("[ E ]  or  WALK OVER", "Pick Up Food", "Quickly recover spilled ingredients from the floor"),
+                ("HOLD SHIFT", "Sprint Boost", "Run at high speed toward the checkout exit doors"),
+            ]
+        else:
+            controls = [
+                ("WASD  /  ARROWS", "Move Terry", "Navigate across the aisle toward glowing restock shelves"),
+                ("[ E ]  or  ENTER", "Grab Shelf Item", "Take the active ingredient from shelf crate when nearby"),
+                ("SPACE  /  LEFT CLICK", "Shield Block", "Block & deflect aggressive shoppers; make them drop items"),
+                ("HOLD SHIFT", "Sprint Boost", "Run at high speed to beat rushing shoppers to the shelf"),
+            ]
+
+        row_start_y = cy + 50
+        row_h = 44
+        for idx, (badge_text, act_label, desc_text) in enumerate(controls):
+            ry = row_start_y - (idx * row_h)
+            # Subtle row backdrop
+            arcade.draw_rect_filled(arcade.XYWH(cx, ry, box_w - 48, 36), (42, 24, 14, 180))
+            arcade.draw_rect_outline(arcade.XYWH(cx, ry, box_w - 48, 36), (90, 60, 40, 140), 1)
+
+            # Key Badge pill
+            badge_w = 175
+            badge_x = cx - 225
+            arcade.draw_rect_filled(arcade.XYWH(badge_x, ry, badge_w, 26), (22, 14, 8, 255))
+            arcade.draw_rect_outline(arcade.XYWH(badge_x, ry, badge_w, 26), (210, 160, 90, 220), 1.5)
+            arcade.draw_text(badge_text, badge_x, ry - 5, (255, 240, 200), 10, bold=True, anchor_x="center")
+
+            # Action Label
+            arcade.draw_text(act_label, cx - 120, ry - 5, (255, 220, 130), 11, bold=True)
+
+            # Description
+            arcade.draw_text(desc_text, cx + 55, ry - 5, (225, 220, 210), 10)
+
+        # OK / START Button
+        btn_w, btn_h = 180, 42
+        btn_y = cy - 185
+        btn_x = cx
+
+        # Pulsing gold/green button
+        pulse = 0.5 + 0.5 * math.sin(time.time() * 5.0)
+        btn_col = (38, 135, 62, 245)
+        border_col = (110 + int(70 * pulse), 235, 140)
+
+        arcade.draw_rect_filled(arcade.XYWH(btn_x, btn_y - 2, btn_w, btn_h), (18, 48, 24, 255))
+        arcade.draw_rect_filled(arcade.XYWH(btn_x, btn_y, btn_w, btn_h), btn_col)
+        arcade.draw_rect_filled(arcade.XYWH(btn_x, btn_y + (btn_h / 4), btn_w - 6, btn_h / 2), (65, 175, 95, 120))
+        arcade.draw_rect_outline(arcade.XYWH(btn_x, btn_y, btn_w, btn_h), border_col, 2.5)
+
+        arcade.draw_text(
+            "OK - START!", btn_x, btn_y - 6, (255, 255, 255), 13, bold=True,
+            anchor_x="center"
+        )
+        arcade.draw_text(
+            "(Press ENTER or SPACE to begin)", btn_x, btn_y - 32, (200, 185, 160), 9,
+            anchor_x="center"
+        )
+
+    def handle_mouse_press(self, mouse_x, mouse_y):
+        if not self.visible:
+            return False
+
+        cx = WIDTH / 2
+        cy = HEIGHT / 2
+        btn_w, btn_h = 180, 42
+        btn_y = cy - 185
+        btn_x = cx
+
+        if (btn_x - btn_w / 2 <= mouse_x <= btn_x + btn_w / 2) and \
+           (btn_y - btn_h / 2 <= mouse_y <= btn_y + btn_h / 2):
+            from ...core import audio
+            audio.play("ui_click")
+            self.close()
+            return True
+
+        # Consume clicks on the modal so they don't bleed through
+        return True
+
+    def handle_key_press(self, key):
+        if not self.visible:
+            return False
+        if key in (arcade.key.ENTER, arcade.key.NUM_ENTER, arcade.key.SPACE, arcade.key.E, arcade.key.ESCAPE):
+            from ...core import audio
+            audio.play("ui_click")
+            self.close()
+            return True
         return True
