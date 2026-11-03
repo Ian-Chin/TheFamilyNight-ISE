@@ -77,10 +77,10 @@ def pick_weighted_shelf_slot():
     return random.choices(SHELF_SLOTS, weights=SHELF_SLOT_WEIGHTS, k=1)[0]
 
 # Top-down checkered aisle bounds for player and floor shoppers
-AISLE_MIN_X = PLAY_LEFT + 40   # approx 195
-AISLE_MAX_X = PLAY_RIGHT - 40  # approx 1085
-AISLE_MIN_Y = 60
-AISLE_MAX_Y = 660
+AISLE_MIN_X = PLAY_LEFT + 15   # approx 170
+AISLE_MAX_X = PLAY_RIGHT - 15  # approx 1110
+AISLE_MIN_Y = 55
+AISLE_MAX_Y = 665
 
 # Checkout Exit Doors Zone (Defend Mode)
 CHECKOUT_MIN_X = 480

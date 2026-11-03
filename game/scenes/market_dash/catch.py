@@ -257,18 +257,18 @@ class MarketCatchView(StageView):
             self.snatchers_list.append(shopper)
 
     def trigger_mackerel_swing(self):
-        """Spins 180 degrees clockwise to stun and knock back shoppers in Defend mode."""
+        """Spins 360 degrees clockwise to stun and knock back shoppers in Defend mode."""
         if self.swinging or self.spin_cooldown > 0:
             return False
         audio.play("swing_sword")
         self.swinging = True
-        self.swing_duration = 0.30
+        self.swing_duration = 0.35
         self.swing_timer = self.swing_duration
         self.spin_cooldown = 0.45
         self.shake_timer = 0.15
         self.shake_intensity = 4.0
 
-        swing_radius = 85.0
+        swing_radius = 95.0
 
         for shopper in self.snatchers_list:
             dist = math.hypot(shopper.center_x - self.player.center_x, shopper.center_y - self.player.center_y)
@@ -537,9 +537,9 @@ class MarketCatchView(StageView):
         if self.swinging:
             self.swing_timer -= delta_time
             self.player.texture = self.terry_tex_action
-            # 180 degree clockwise spin during attack
+            # 360 degree clockwise spin during attack
             progress = max(0.0, min(1.0, 1.0 - (self.swing_timer / self.swing_duration)))
-            self.player.angle = 180.0 - (progress * 180.0)
+            self.player.angle = 180.0 - (progress * 360.0)
             if self.swing_timer <= 0:
                 self.swinging = False
                 self.player.angle = 180.0
