@@ -94,6 +94,7 @@ class MarketCatchView(StageView):
         self.boost_speed = 13.0
         self.speed_boosted = False
         self.invuln_timer = 0.0
+        self.touching_crowd_timer = 0.0
 
         # Visual juice & floating popups
         self.floating_popups = []
@@ -218,6 +219,7 @@ class MarketCatchView(StageView):
         self.time_left = self.duration
         self.restock_timer = 1.2
         self.invuln_timer = 0.0
+        self.touching_crowd_timer = 0.0
 
         if self.mode == "defend":
             self.basket_items = list(self.basket_keys)
@@ -468,6 +470,8 @@ class MarketCatchView(StageView):
             self.player.alpha = 130 if int(self.invuln_timer * 14) % 2 == 0 else 255
         else:
             self.player.alpha = 255
+        if self.touching_crowd_timer > 0:
+            self.touching_crowd_timer = max(0.0, self.touching_crowd_timer - delta_time)
 
         # Screenshake update
         if self.shake_timer > 0:
@@ -540,9 +544,10 @@ class MarketCatchView(StageView):
             self.player.texture = self.terry_tex_defend if self.mode == "defend" else self.terry_tex_normal
         self.player.angle = 180
 
-        # 2D Top-Down Movement with diagonal normalization and Shift speed boost
+        # 2D Top-Down Movement with diagonal normalization, Shift speed boost, and crowd slowdown
         step = delta_time * 60.0
-        current_speed = self.boost_speed if self.speed_boosted else self.base_speed
+        crowd_slow = 0.50 if (self.mode in ("veg", "meat") and self.touching_crowd_timer > 0) else 1.0
+        current_speed = (self.boost_speed if self.speed_boosted else self.base_speed) * crowd_slow
         norm = 0.7071 if (self.player_move_x != 0 and self.player_move_y != 0) else 1.0
 
         self.player.center_x += self.player_move_x * current_speed * norm * step
@@ -759,10 +764,9 @@ class MarketCatchView(StageView):
                         self.dropped_items.append(floor_item)
 
                 # Unblocked Collision
-                elif is_colliding and shopper.ram_cooldown <= 0:
-                    shopper.ram_cooldown = 1.0
-
-                    if self.mode == "defend":
+                elif is_colliding:
+                    if self.mode == "defend" and shopper.ram_cooldown <= 0:
+                        shopper.ram_cooldown = 1.0
                         # Stumble backward slightly with 0.8s invulnerability
                         push_angle = math.atan2(self.player.center_y - shopper.center_y, self.player.center_x - shopper.center_x)
                         self.player.center_x += math.cos(push_angle) * 25.0
@@ -808,14 +812,26 @@ class MarketCatchView(StageView):
                             })
                             if self.lives <= 0:
                                 return
-                    else:
-                        # In Veg & Meat modes: Touching or ramming shoppers does NOT reduce HP!
-                        # Terry can still block with Space to deflect them / make them drop items.
-                        push_angle = math.atan2(self.player.center_y - shopper.center_y, self.player.center_x - shopper.center_x)
-                        self.player.center_x += math.cos(push_angle) * 12.0
-                        self.player.center_y += math.sin(push_angle) * 12.0
-                        self.player.center_x = max(AISLE_MIN_X, min(AISLE_MAX_X, self.player.center_x))
-                        self.player.center_y = max(AISLE_MIN_Y, min(AISLE_MAX_Y, self.player.center_y))
+
+                    elif self.mode in ("veg", "meat"):
+                        # Touching any shopper slows Terry's movement speed by 50%
+                        self.touching_crowd_timer = 0.18
+
+                        # If the shopper is actively RUSHING the shelf, Terry gets RAMMED and loses HP!
+                        if shopper.state == STATE_RUSHING_SHELF:
+                            if shopper.ram_cooldown <= 0:
+                                shopper.ram_cooldown = 1.2
+                                self.take_damage()
+                                self.floating_popups.append({
+                                    "text": "RAMMED!",
+                                    "x": self.player.center_x,
+                                    "y": self.player.center_y + 65,
+                                    "timer": 0.6,
+                                    "max_timer": 0.6,
+                                    "color": (255, 70, 70)
+                                })
+                                if self.lives <= 0:
+                                    return
 
     def complete_game_mode(self):
         audio.play("game_success")

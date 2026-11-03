@@ -532,11 +532,11 @@ class InstructionModal:
         if self.mode == "veg":
             title = "🥕 HOW TO PLAY: FRESH VEGETABLES 🥦"
             obj_title = "OBJECTIVE:"
-            obj_desc = "Catch all 5 required vegetables from the wall shelf restocks before time expires! Deflect aggressive shoppers so they can't escape off-screen with food."
+            obj_desc = "Catch all 5 vegetables from the wall shelves! Bumping into wandering shoppers slows you down. Don't let rushing shoppers ram you (-1 HP) or flee with food (-1 HP)!"
         elif self.mode == "meat":
             title = "🥩 HOW TO PLAY: PRIME MEATS 🍖"
             obj_title = "OBJECTIVE:"
-            obj_desc = "Secure all 5 prime meat cuts from the wall shelf restocks before time runs out! Watch out for rushing shoppers trying to snatch them first."
+            obj_desc = "Secure all 5 meat cuts from the wall shelves! Bumping into wandering shoppers slows you down. Don't let rushing shoppers ram you (-1 HP) or flee with food (-1 HP)!"
         else:
             title = "🛒 HOW TO PLAY: CHECKOUT ESCAPE 🚪"
             obj_title = "OBJECTIVE:"
