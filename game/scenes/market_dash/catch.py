@@ -18,6 +18,7 @@ from .common import (
     INGREDIENTS_BASE_DIR, cover_rect,
     PLAY_LEFT, PLAY_RIGHT, PLAY_BOTTOM, PLAY_TOP,
     SHELF_LEFT_X, SHELF_RIGHT_X, SHELF_Y_LEVELS, SHELF_SLOTS,
+    SHELF_SLOT_WEIGHTS, pick_weighted_shelf_slot,
     AISLE_MIN_X, AISLE_MAX_X, AISLE_MIN_Y, AISLE_MAX_Y,
     DialogueController, RetryModal
 )
@@ -203,14 +204,12 @@ class MarketCatchView(StageView):
         self.restock_timer = 1.2
         self.invuln_timer = 0.0
 
+        count = 8
         if self.mode == "veg":
-            count = 14
             self.shopper_rush_speed = 4.8
         elif self.mode == "meat":
-            count = 16
-            self.shopper_rush_speed = 6.2
+            self.shopper_rush_speed = 6.0
         else:
-            count = 15
             self.shopper_rush_speed = 4.5
 
         for _ in range(count):
@@ -469,7 +468,7 @@ class MarketCatchView(StageView):
                     self.restock_timer -= delta_time
                     if self.restock_timer <= 0:
                         pick_name = random.choice(candidates)
-                        slot_x, slot_y = random.choice(SHELF_SLOTS)
+                        slot_x, slot_y = pick_weighted_shelf_slot()
                         self.active_restock = {
                             "x": slot_x,
                             "y": slot_y,
