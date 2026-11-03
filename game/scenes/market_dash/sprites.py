@@ -74,6 +74,8 @@ class SnatcherSprite(arcade.Sprite):
 
         self.state = STATE_WANDERING
         self.rush_speed = rush_speed
+        self.flee_speed = 2.8
+        self.rush_reaction_timer = 0.0
         self.wander_speed = random.uniform(1.6, 2.4)
         self.chase_speed = random.uniform(2.5, 3.4)
         self.wander_timer = 0.0
@@ -97,6 +99,8 @@ class SnatcherSprite(arcade.Sprite):
         self.carried_texture = None
         self.target_floor_item = None
         self.has_fled_with_item = False
+        self.rush_reaction_timer = 0.0
+        self.flee_speed = 2.8
         self.stun_timer = 0.0
         self.ram_cooldown = 0.0
         self.knockback_vx = 0.0
@@ -137,7 +141,7 @@ class SnatcherSprite(arcade.Sprite):
         self.target_y = random.randint(AISLE_MIN_Y + 40, AISLE_MAX_Y - 40)
         self.wander_timer = random.uniform(1.5, 3.5)
 
-    def trigger_rush(self, shelf_x, shelf_y, item_name, item_texture):
+    def trigger_rush(self, shelf_x, shelf_y, item_name, item_texture, delay=None):
         if self.state == STATE_WANDERING:
             self.state = STATE_RUSHING_SHELF
             self.target_x = shelf_x
@@ -145,11 +149,13 @@ class SnatcherSprite(arcade.Sprite):
             self.carried_item = None
             self.carried_texture = None
             self.target_floor_item = None
+            self.rush_reaction_timer = delay if delay is not None else random.uniform(1.4, 2.2)
 
     def cancel_rush(self):
         if self.state == STATE_RUSHING_SHELF:
             self.state = STATE_WANDERING
             self.target_floor_item = None
+            self.rush_reaction_timer = 0.0
             self.pick_new_wander_target()
 
     def claim_item(self, item_name, item_texture):
@@ -258,9 +264,17 @@ class SnatcherSprite(arcade.Sprite):
             if getattr(self, "target_floor_item", None):
                 if dropped_items is not None and self.target_floor_item not in dropped_items:
                     self.target_floor_item = None
+                    self.rush_reaction_timer = 0.0
                     self.state = STATE_WANDERING
                     self.pick_new_wander_target()
                     return
+
+            # Shopper reaction delay: pause with alert before dashing to shelf
+            if getattr(self, "rush_reaction_timer", 0) > 0:
+                self.rush_reaction_timer -= delta_time
+                dx = self.target_x - self.center_x
+                self.update_animation(delta_time, dx, is_action=False, fast=False)
+                return
 
             dx = self.target_x - self.center_x
             dy = self.target_y - self.center_y
@@ -282,7 +296,7 @@ class SnatcherSprite(arcade.Sprite):
         # 3. FLEEING_WITH_ITEM
         elif self.state == STATE_FLEEING_WITH_ITEM:
             dy = self.target_y - self.center_y
-            flee_speed = 5.8
+            flee_speed = getattr(self, "flee_speed", 2.8)
             step_y = (1.0 if dy > 0 else -1.0) * flee_speed * step
             self.center_y += step_y
             self.update_animation(delta_time, 0, is_action=True, fast=True)
@@ -290,10 +304,9 @@ class SnatcherSprite(arcade.Sprite):
             # Exit boundaries check
             if self.center_y > HEIGHT + 60 or self.center_y < -60:
                 self.has_fled_with_item = True
-                self.has_fled_with_item = True
 
     def draw_overlays(self):
-        """Draws carried items or stun indicators above shopper."""
+        """Draws carried items, reaction alert bubbles, or stun indicators above shopper."""
         if self.state == STATE_FLEEING_WITH_ITEM and self.carried_texture:
             bob = math.sin(time.time() * 8) * 3
             icon_x = self.center_x
@@ -302,6 +315,15 @@ class SnatcherSprite(arcade.Sprite):
             arcade.draw_circle_filled(icon_x, icon_y, 18, (255, 245, 210, 220))
             arcade.draw_circle_outline(icon_x, icon_y, 18, (230, 160, 40, 240), 2)
             arcade.draw_texture_rect(self.carried_texture, arcade.XYWH(icon_x, icon_y, 28, 28))
+
+        elif self.state == STATE_RUSHING_SHELF and getattr(self, "rush_reaction_timer", 0) > 0:
+            bob = math.sin(time.time() * 10) * 2
+            bx = self.center_x
+            by = self.top + 16 + bob
+            # Alert exclamation bubble
+            arcade.draw_circle_filled(bx, by, 14, (255, 235, 60, 240))
+            arcade.draw_circle_outline(bx, by, 14, (210, 140, 20, 255), 2)
+            arcade.draw_text("!", bx, by - 8, (200, 40, 20), 16, bold=True, anchor_x="center")
 
         elif self.state == STATE_STUNNED:
             bob = math.sin(time.time() * 9) * 3

@@ -217,8 +217,11 @@ class MarketCatchView(StageView):
         self.snatchers_list.clear()
         self.dropped_items.clear()
         self.active_restock = None
+        self.upcoming_restock = None
         self.time_left = self.duration
-        self.restock_timer = 1.2
+        self.restock_timer = 4.0
+        self.phase_spawn_timer = 10.0
+        self.max_shoppers = 8
         self.invuln_timer = 0.0
         self.touching_crowd_timer = 0.0
 
@@ -230,11 +233,15 @@ class MarketCatchView(StageView):
             self.swing_timer = 0.0
             self.exit_warn_timer = 0.0
 
-        count = 8
+        if self.mode in ("veg", "meat"):
+            count = 3
+        else:
+            count = 8
+
         if self.mode == "veg":
-            self.shopper_rush_speed = 4.8
+            self.shopper_rush_speed = 3.2
         elif self.mode == "meat":
-            self.shopper_rush_speed = 6.0
+            self.shopper_rush_speed = 3.6
         else:
             self.shopper_rush_speed = 4.5
 
@@ -422,6 +429,7 @@ class MarketCatchView(StageView):
 
             # Clear active slot and cancel rushing shoppers
             self.active_restock = None
+            self.upcoming_restock = None
             self.restock_timer = self.restock_interval
             for shopper in self.snatchers_list:
                 shopper.cancel_rush()
@@ -566,6 +574,25 @@ class MarketCatchView(StageView):
         elif self.player_move_x > 0:
             self.player.scale_x = abs(self.player_scale)
 
+        # Shopper wave increase by duration phase (Veg & Meat Modes)
+        # Initial 3 shoppers, increasing by 1 or 2 every 10 seconds up to max 8 shoppers
+        if self.mode in ("veg", "meat") and not self.completed:
+            self.phase_spawn_timer -= delta_time
+            if self.phase_spawn_timer <= 0:
+                self.phase_spawn_timer = 10.0
+                if len(self.snatchers_list) < self.max_shoppers:
+                    needed = min(random.randint(1, 2), self.max_shoppers - len(self.snatchers_list))
+                    for _ in range(needed):
+                        falls, grabs = random.choice(self.snatcher_types)
+                        new_shopper = SnatcherSprite(
+                            falls,
+                            grabs,
+                            rush_speed=self.shopper_rush_speed,
+                            player_pos=(self.player.center_x, self.player.center_y),
+                            min_dist=200
+                        )
+                        self.snatchers_list.append(new_shopper)
+
         # 3. Shelf Restock Cycle (Veg & Meat Modes)
         if self.mode in ("veg", "meat") and not self.completed:
             # Active shelf slot timer update
@@ -575,6 +602,7 @@ class MarketCatchView(StageView):
                 if self.active_restock["timer"] <= 0:
                     # Urgency expired - shoppers cleared the shelf
                     self.active_restock = None
+                    self.upcoming_restock = None
                     self.restock_timer = self.restock_interval
                     for shopper in self.snatchers_list:
                         shopper.cancel_rush()
@@ -589,26 +617,52 @@ class MarketCatchView(StageView):
 
                 if candidates:
                     self.restock_timer -= delta_time
+
+                    # 3 seconds before restock: determine upcoming shelf slot & item for hint
+                    if self.restock_timer <= 3.0:
+                        if self.upcoming_restock is None:
+                            pick_name = random.choice(candidates)
+                            slot_x, slot_y = pick_weighted_shelf_slot()
+                            self.upcoming_restock = {
+                                "x": slot_x,
+                                "y": slot_y,
+                                "side": "left" if slot_x == SHELF_LEFT_X else "right",
+                                "item_name": pick_name,
+                                "texture": self.all_ingredients[pick_name],
+                            }
+
                     if self.restock_timer <= 0:
-                        pick_name = random.choice(candidates)
-                        slot_x, slot_y = pick_weighted_shelf_slot()
+                        if self.upcoming_restock is not None:
+                            slot_x = self.upcoming_restock["x"]
+                            slot_y = self.upcoming_restock["y"]
+                            side = self.upcoming_restock["side"]
+                            pick_name = self.upcoming_restock["item_name"]
+                            item_tex = self.upcoming_restock["texture"]
+                            self.upcoming_restock = None
+                        else:
+                            pick_name = random.choice(candidates)
+                            slot_x, slot_y = pick_weighted_shelf_slot()
+                            side = "left" if slot_x == SHELF_LEFT_X else "right"
+                            item_tex = self.all_ingredients[pick_name]
+
                         self.active_restock = {
                             "x": slot_x,
                             "y": slot_y,
-                            "side": "left" if slot_x == SHELF_LEFT_X else "right",
+                            "side": side,
                             "item_name": pick_name,
-                            "texture": self.all_ingredients[pick_name],
+                            "texture": item_tex,
                             "timer": 6.0,
                             "max_timer": 6.0,
                             "anim_timer": 0.0,
                         }
 
-                        # Trigger shoppers on that side to rush the shelf
+                        # Trigger shoppers on that side to rush the shelf with reaction delay
                         for shopper in self.snatchers_list:
+                            delay = random.uniform(1.4, 2.2)
                             if slot_x < 640 and shopper.center_x < 640:
-                                shopper.trigger_rush(slot_x, slot_y, pick_name, self.all_ingredients[pick_name])
+                                shopper.trigger_rush(slot_x, slot_y, pick_name, item_tex, delay=delay)
                             elif slot_x >= 640 and shopper.center_x >= 640:
-                                shopper.trigger_rush(slot_x, slot_y, pick_name, self.all_ingredients[pick_name])
+                                shopper.trigger_rush(slot_x, slot_y, pick_name, item_tex, delay=delay)
 
         # 4. Floor Dropped Pickups Update
         for item in list(self.dropped_items):
@@ -713,6 +767,7 @@ class MarketCatchView(StageView):
                     })
 
                     self.active_restock = None
+                    self.upcoming_restock = None
                     self.restock_timer = self.restock_interval
                     for other in self.snatchers_list:
                         other.cancel_rush()
@@ -977,6 +1032,36 @@ class MarketCatchView(StageView):
                     arcade.draw_rect_filled(arcade.XYWH(rx, tag_y, badge_w, badge_h), (18, 65, 28, 240))
                     arcade.draw_rect_outline(arcade.XYWH(rx, tag_y, badge_w, badge_h), (100, 255, 140, pulse_alpha), border_width=2)
                     arcade.draw_text("[E] GRAB!", rx, tag_y - 4, (240, 255, 220), 11, bold=True, anchor_x="center")
+
+            # 3-Second Warning Hint (Blinking Exclamation Mark) before Food Drops on Shelf
+            elif self.mode in ("veg", "meat") and getattr(self, "upcoming_restock", None) is not None and self.restock_timer <= 3.0:
+                ux = self.upcoming_restock["x"]
+                uy = self.upcoming_restock["y"]
+                crate_w = 140
+                crate_h = 80
+
+                # Rapid blinking state
+                blink_on = int(time.time() * 7.0) % 2 == 0
+                alert_col = (255, 60, 60) if blink_on else (255, 220, 40)
+                glow_alpha = 230 if blink_on else 120
+
+                # Pulsing warning highlight around the target shelf crate
+                arcade.draw_rect_filled(arcade.XYWH(ux, uy, crate_w, crate_h), (40, 20, 10, 180))
+                arcade.draw_rect_outline(arcade.XYWH(ux, uy, crate_w, crate_h), (alert_col[0], alert_col[1], alert_col[2], glow_alpha), border_width=3)
+
+                # Centered blinking exclamation mark bubble
+                bob = math.sin(time.time() * 12.0) * 3.0
+                bubble_y = uy + bob
+                arcade.draw_circle_filled(ux, bubble_y, 22, (25, 18, 12, 230))
+                arcade.draw_circle_outline(ux, bubble_y, 22, alert_col, border_width=2.5)
+                arcade.draw_text("!", ux, bubble_y - 12, alert_col, 26, bold=True, anchor_x="center")
+
+                # Floating "INCOMING! X.Xs" countdown banner right above crate
+                sec_left = max(0.1, self.restock_timer)
+                banner_y = uy + 50
+                arcade.draw_rect_filled(arcade.XYWH(ux, banner_y, 116, 22), (25, 15, 12, 240))
+                arcade.draw_rect_outline(arcade.XYWH(ux, banner_y, 116, 22), alert_col, border_width=1.5)
+                arcade.draw_text(f"INCOMING! {sec_left:.1f}s", ux, banner_y - 4, (255, 235, 180), 10, bold=True, anchor_x="center")
 
             # Defend Mode: Exit Mat & Chevron Floor Guide
             if self.mode == "defend":
