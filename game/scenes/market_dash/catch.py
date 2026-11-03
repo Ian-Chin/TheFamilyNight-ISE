@@ -20,8 +20,7 @@ from .common import (
     SHELF_LEFT_X, SHELF_RIGHT_X, SHELF_Y_LEVELS, SHELF_SLOTS,
     SHELF_SLOT_WEIGHTS, pick_weighted_shelf_slot,
     AISLE_MIN_X, AISLE_MAX_X, AISLE_MIN_Y, AISLE_MAX_Y,
-    CHECKOUT_MIN_X, CHECKOUT_MAX_X, CHECKOUT_MIN_Y,
-    DialogueController, RetryModal, InstructionModal
+    DialogueController, RetryModal
 )
 from .sprites import (
     SnatcherSprite, DroppedIngredient, IngredientDrop,
@@ -47,12 +46,10 @@ class MarketCatchView(StageView):
         self.pause_menu = PauseMenu()
         self.settings_panel = SettingsPanel()
         self.retry_modal = RetryModal()
-        self.instruction_modal = InstructionModal()
-        self.instruction_modal.open(mode=self.mode)
         self.widgets = [self.dialog, self.pause_menu, self.settings_panel]
 
-        # Duration: 40s for gathering, 50s for defend checkout escape
-        self.duration = 50.0 if self.mode == "defend" else 40.0
+        # Duration: 60s for gathering, 45s for defend
+        self.duration = 45.0 if self.mode == "defend" else 60.0
         self.time_left = self.duration
 
         # HP, Heart animation, and Damage Flash variables
@@ -79,18 +76,18 @@ class MarketCatchView(StageView):
         self.restock_timer = 1.2    # Initial delay before first restock
         self.shopper_rush_speed = 5.0 if self.mode == "veg" else 6.5
 
-        # Terry Action Mechanics (Defend mode Mackerel Swing / Gathering Block)
-        self.swinging = False
-        self.swing_timer = 0.0
+        # Terry Spin Mechanics (Defend mode)
+        self.spinning = False
+        self.spin_timer = 0.0
+        self.spin_angle = 180.0
         self.spin_cooldown = 0.0
-        self.exit_warn_timer = 0.0
 
         # Terry Block & Speed Boost Mechanics
         self.blocking = False
         self.block_timer = 0.0
         self.block_duration = 0.45
         self.block_cooldown = 0.0
-        self.base_speed = 8.5 if self.mode == "defend" else 7.5
+        self.base_speed = 8.5
         self.boost_speed = 13.0
         self.speed_boosted = False
         self.invuln_timer = 0.0
@@ -113,12 +110,8 @@ class MarketCatchView(StageView):
         self.player_scale = 0.15
         self.player = arcade.Sprite(active_tex, scale=self.player_scale)
         self.player.angle = 180  
-        if self.mode == "defend":
-            self.player.center_x = 640
-            self.player.center_y = 95
-        else:
-            self.player.center_x = (AISLE_MIN_X + AISLE_MAX_X) / 2
-            self.player.center_y = (AISLE_MIN_Y + AISLE_MAX_Y) / 2
+        self.player.center_x = (AISLE_MIN_X + AISLE_MAX_X) / 2
+        self.player.center_y = (AISLE_MIN_Y + AISLE_MAX_Y) / 2
         self.player_move_x = 0
         self.player_move_y = 0
         self.player_list = arcade.SpriteList()
@@ -148,14 +141,6 @@ class MarketCatchView(StageView):
             self.active_keys = self.veg_keys
         else:
             self.active_keys = []
-
-        # Defend Mode Basket Setup (Terry starts with 5 gathered items)
-        if self.mode == "defend":
-            self.basket_keys = list(self.meat_keys[:3] + self.veg_keys[:2])[:5]
-            self.basket_items = list(self.basket_keys)
-        else:
-            self.basket_keys = []
-            self.basket_items = []
 
         self.collected_status = {k: False for k in self.active_keys}
 
@@ -219,14 +204,6 @@ class MarketCatchView(StageView):
         self.restock_timer = 1.2
         self.invuln_timer = 0.0
 
-        if self.mode == "defend":
-            self.basket_items = list(self.basket_keys)
-            self.player.center_x = 640
-            self.player.center_y = 95
-            self.swinging = False
-            self.swing_timer = 0.0
-            self.exit_warn_timer = 0.0
-
         count = 8
         if self.mode == "veg":
             self.shopper_rush_speed = 4.8
@@ -246,65 +223,20 @@ class MarketCatchView(StageView):
             )
             self.snatchers_list.append(shopper)
 
-    def trigger_mackerel_swing(self):
-        """Swings frozen mackerel to stun and knock back shoppers in Defend mode."""
-        if self.swinging or self.spin_cooldown > 0:
-            return False
-        audio.play("swing_sword")
-        self.swinging = True
-        self.swing_timer = 0.25
-        self.spin_cooldown = 0.45
-        self.shake_timer = 0.15
-        self.shake_intensity = 4.0
-
-        facing = 1 if self.player.scale_x >= 0 else -1
-        swing_center_x = self.player.center_x + (facing * 35)
-        swing_center_y = self.player.center_y
-        swing_radius = 85.0
-
-        for shopper in self.snatchers_list:
-            dist = math.hypot(shopper.center_x - swing_center_x, shopper.center_y - swing_center_y)
-            dist_origin = math.hypot(shopper.center_x - self.player.center_x, shopper.center_y - self.player.center_y)
-            if dist <= swing_radius or dist_origin < 65:
-                dropped = shopper.trigger_stun(self.player.center_x, self.player.center_y, is_defending=True)
-                # Knockback 110px away from Terry
-                angle = math.atan2(shopper.center_y - self.player.center_y, shopper.center_x - self.player.center_x)
-                shopper.center_x += math.cos(angle) * 110.0
-                shopper.center_y += math.sin(angle) * 110.0
-                shopper.center_x = max(AISLE_MIN_X - 10, min(AISLE_MAX_X + 10, shopper.center_x))
-                shopper.center_y = max(AISLE_MIN_Y - 10, min(AISLE_MAX_Y + 10, shopper.center_y))
-
-                self.floating_popups.append({
-                    "text": "SMACK!",
-                    "x": shopper.center_x,
-                    "y": shopper.center_y + 40,
-                    "timer": 0.45,
-                    "max_timer": 0.45,
-                    "color": (255, 230, 120)
-                })
-
-                if dropped:
-                    drop_name, drop_tex = dropped
-                    floor_item = DroppedIngredient(drop_name, drop_tex, shopper.center_x, shopper.center_y, persists_indefinitely=True)
-                    self.dropped_items.append(floor_item)
-                    self.floating_popups.append({
-                        "text": f"RECOVERED: {drop_name}!",
-                        "x": shopper.center_x,
-                        "y": shopper.center_y + 60,
-                        "timer": 0.75,
-                        "max_timer": 0.75,
-                        "color": (120, 255, 140)
-                    })
-        return True
-
     def trigger_block_or_spin(self):
-        """Triggers Terry's block in gathering modes or mackerel swing in defend mode."""
-        if self.mode == "defend":
-            return self.trigger_mackerel_swing()
+        """Triggers Terry's block in gathering modes or spin attack in defend mode."""
+        if self.mode == "defend" and not self.spinning and self.spin_cooldown <= 0:
+            audio.play("swing_sword")
+            self.spinning = True
+            self.spin_timer = 0.35
+            self.spin_cooldown = 0.55
+            return True
         elif self.mode in ("veg", "meat") and not self.blocking and self.block_cooldown <= 0:
             audio.play("block")
             self.blocking = True
             self.block_timer = self.block_duration
+
+            # block CD
             self.block_cooldown = self.block_duration + 0.15 
             return True
         return False
@@ -381,25 +313,7 @@ class MarketCatchView(StageView):
         )
 
     def try_grab_shelf(self):
-        """Grabs the item from the active shelf slot (gathering) or picks up nearest floor item (defend)."""
-        if self.mode == "defend":
-            for item in list(self.dropped_items):
-                d = math.hypot(self.player.center_x - item.center_x, self.player.center_y - item.center_y)
-                if d <= 70:
-                    audio.play("ingredient_get")
-                    self.basket_items.append(item.item_name)
-                    self.floating_popups.append({
-                        "text": f"+ {item.item_name} SECURED!",
-                        "x": self.player.center_x,
-                        "y": self.player.center_y + 65,
-                        "timer": 0.85,
-                        "max_timer": 0.85,
-                        "color": (120, 255, 140)
-                    })
-                    item.remove_from_sprite_lists()
-                    return True
-            return False
-
+        """Grabs the item from the active shelf slot if Terry is within 140px."""
         if not self.active_restock:
             return False
 
@@ -449,7 +363,7 @@ class MarketCatchView(StageView):
                     self.hearts[self.breaking_idx].alpha = 0
                     self.heart_anim_state = 0
 
-        if self.instruction_modal.visible or self.pause_menu.visible or self.settings_panel.visible or self.retry_modal.visible:
+        if self.pause_menu.visible or self.settings_panel.visible or self.retry_modal.visible:
             return
 
         if self.in_wave_dialogue:
@@ -492,53 +406,32 @@ class MarketCatchView(StageView):
                 self.time_left = 0
                 if self.mode in ("veg", "meat") and not all(self.collected_status.values()):
                     self.show_retry_prompt("Time's up! Ingredients were not gathered in time.")
-                elif self.mode == "defend":
-                    self.show_retry_prompt("Time's up! Terry couldn't reach the checkout doors in time.")
                 else:
                     self.completed = True
                     self.complete_game_mode()
                 return
 
-        # Exit warning timer decay
-        if self.exit_warn_timer > 0:
-            self.exit_warn_timer = max(0.0, self.exit_warn_timer - delta_time)
-
-        # Defend Mode Victory Trigger: Reaching checkout doors at top
-        if self.mode == "defend" and not self.completed:
-            if CHECKOUT_MIN_X <= self.player.center_x <= CHECKOUT_MAX_X and self.player.center_y >= 620:
-                if len(self.dropped_items) > 0:
-                    if self.exit_warn_timer <= 0:
-                        self.exit_warn_timer = 1.4
-                        audio.play("hp_reduced")
-                        self.floating_popups.append({
-                            "text": "DON'T LEAVE YOUR FOOD BEHIND!",
-                            "x": self.player.center_x,
-                            "y": self.player.center_y + 65,
-                            "timer": 1.2,
-                            "max_timer": 1.2,
-                            "color": (255, 120, 60)
-                        })
-                elif len(self.basket_items) >= 1:
-                    self.completed = True
-                    self.complete_game_mode()
-                    return
-
         # 2. Player Movement & Actions
-        if self.swinging:
-            self.swing_timer -= delta_time
-            self.player.texture = self.terry_tex_action
-            if self.swing_timer <= 0:
-                self.swinging = False
-                self.player.texture = self.terry_tex_defend if self.mode == "defend" else self.terry_tex_normal
-        elif self.blocking:
+        if self.spinning:
+            self.spin_timer -= delta_time
+            self.spin_angle -= 1440.0 * delta_time
+            self.player.angle = self.spin_angle
+            if self.spin_timer <= 0:
+                self.spinning = False
+                self.player.angle = 180
+        else:
+            self.player.angle = 180
+
+        # Block state tick
+        if self.blocking:
             self.block_timer -= delta_time
             self.player.texture = self.terry_tex_action
             if self.block_timer <= 0:
                 self.blocking = False
                 self.player.texture = self.terry_tex_defend if self.mode == "defend" else self.terry_tex_normal
         else:
-            self.player.texture = self.terry_tex_defend if self.mode == "defend" else self.terry_tex_normal
-        self.player.angle = 180
+            if not self.spinning:
+                self.player.texture = self.terry_tex_defend if self.mode == "defend" else self.terry_tex_normal
 
         # 2D Top-Down Movement with diagonal normalization and Shift speed boost
         step = delta_time * 60.0
@@ -609,81 +502,49 @@ class MarketCatchView(StageView):
                 item.remove_from_sprite_lists()
             else:
                 dist_item = math.hypot(self.player.center_x - item.center_x, self.player.center_y - item.center_y)
-                if arcade.check_for_collision(self.player, item) or dist_item < 55:
+                if arcade.check_for_collision(self.player, item) or dist_item < 50:
                     audio.play("ingredient_get")
-                    if self.mode == "defend":
-                        self.basket_items.append(item.item_name)
-                        self.floating_popups.append({
-                            "text": f"+ {item.item_name} SECURED!",
-                            "x": self.player.center_x,
-                            "y": self.player.center_y + 65,
-                            "timer": 0.85,
-                            "max_timer": 0.85,
-                            "color": (120, 255, 140)
-                        })
-                    else:
-                        self.collected_status[item.item_name] = True
-                        self.floating_popups.append({
-                            "text": f"+ {item.item_name}",
-                            "x": self.player.center_x,
-                            "y": self.player.center_y + 65,
-                            "timer": 0.85,
-                            "max_timer": 0.85,
-                            "color": (120, 255, 140)
-                        })
+                    self.collected_status[item.item_name] = True
+                    self.floating_popups.append({
+                        "text": f"+ {item.item_name}",
+                        "x": self.player.center_x,
+                        "y": self.player.center_y + 65,
+                        "timer": 0.85,
+                        "max_timer": 0.85,
+                        "color": (120, 255, 140)
+                    })
                     item.remove_from_sprite_lists()
-                    if self.mode in ("veg", "meat") and all(self.collected_status.values()) and not self.completed:
+                    if all(self.collected_status.values()) and not self.completed:
                         self.completed = True
                         self.complete_game_mode()
                         return
 
         # 5. Shopper Behavior, Shelf Claim, and Collisions
         for shopper in list(self.snatchers_list):
-            shopper.update_behavior(delta_time, self.player.center_y, self.player.center_x, dropped_items=self.dropped_items)
+            shopper.update_behavior(delta_time, self.player.center_y, self.player.center_x, is_wave_3=(self.mode == "defend"))
 
             # Check if shopper successfully fled off screen with a stolen ingredient
             if shopper.has_fled_with_item:
-                if self.mode == "defend":
-                    lost_item = shopper.carried_item or "Ingredient"
-                    self.take_damage()
-                    self.floating_popups.append({
-                        "text": f"PERMANENTLY LOST: {lost_item}!",
-                        "x": self.player.center_x,
-                        "y": self.player.center_y + 65,
-                        "timer": 1.0,
-                        "max_timer": 1.0,
-                        "color": (255, 60, 60)
-                    })
-                    shopper.reset_pos(
-                        rush_speed=self.shopper_rush_speed,
-                        player_pos=(self.player.center_x, self.player.center_y),
-                        min_dist=200
-                    )
-                    # Check if all 5 items permanently stolen
-                    if len(self.basket_items) == 0 and len(self.dropped_items) == 0 and not any(s.carried_item for s in self.snatchers_list):
-                        self.show_retry_prompt("All 5 ingredients were stolen! Your basket is empty.")
-                        return
-                    if self.lives <= 0:
-                        return
-                else:
-                    # In Veg & Meat modes: HP reduction when an ingredient is lost off-screen
-                    self.take_damage()
-                    self.floating_popups.append({
-                        "text": "ITEM LOST!",
-                        "x": self.player.center_x,
-                        "y": self.player.center_y + 65,
-                        "timer": 0.85,
-                        "max_timer": 0.85,
-                        "color": (255, 90, 90)
-                    })
-                    shopper.reset_pos(
-                        rush_speed=self.shopper_rush_speed,
-                        player_pos=(self.player.center_x, self.player.center_y),
-                        min_dist=200
-                    )
-                    if self.lives <= 0:
-                        self.show_retry_prompt("Out of HP! Shoppers snatched too many ingredients.")
-                        return
+                # Time penalty deduction instead of HP loss
+                time_penalty = 5.0
+                self.time_left = max(0.0, self.time_left - time_penalty)
+                audio.play("hp_reduced")
+                self.floating_popups.append({
+                    "text": f"ITEM LOST! -{int(time_penalty)}s",
+                    "x": self.player.center_x,
+                    "y": self.player.center_y + 65,
+                    "timer": 0.9,
+                    "max_timer": 0.9,
+                    "color": (255, 140, 60)
+                })
+                shopper.reset_pos(
+                    rush_speed=self.shopper_rush_speed,
+                    player_pos=(self.player.center_x, self.player.center_y),
+                    min_dist=200
+                )
+                if self.time_left <= 0:
+                    self.show_retry_prompt("Time's up! Ingredients were not gathered in time.")
+                    return
 
             # Check if rushing shopper reached the active shelf slot before Terry
             if self.active_restock and shopper.state == STATE_RUSHING_SHELF:
@@ -715,7 +576,7 @@ class MarketCatchView(StageView):
 
             if shopper.state != STATE_STUNNED:
                 # Terry Block / Parry
-                if self.blocking and self.mode in ("veg", "meat") and (is_colliding or dist_total < 80):
+                if self.blocking and (is_colliding or dist_total < 80):
                     audio.play("block")
                     self.shake_timer = 0.25
                     self.shake_intensity = 6.0
@@ -742,9 +603,12 @@ class MarketCatchView(StageView):
                             "color": (120, 255, 140)
                         })
 
-                # Mackerel Swing active hit in Defend mode
-                elif self.swinging and self.mode == "defend" and is_colliding:
-                    dropped = shopper.trigger_stun(self.player.center_x, self.player.center_y, is_defending=True)
+                # Terry Spin attack in Defend mode
+                elif self.spinning and is_colliding:
+                    audio.play("ui_click")
+                    self.shake_timer = 0.25
+                    self.shake_intensity = 6.0
+                    shopper.trigger_stun(self.player.center_x, self.player.center_y, is_defending=True)
                     self.floating_popups.append({
                         "text": "SMACK!",
                         "x": shopper.center_x,
@@ -753,69 +617,23 @@ class MarketCatchView(StageView):
                         "max_timer": 0.45,
                         "color": (255, 230, 120)
                     })
-                    if dropped:
-                        drop_name, drop_tex = dropped
-                        floor_item = DroppedIngredient(drop_name, drop_tex, shopper.center_x, shopper.center_y, persists_indefinitely=True)
-                        self.dropped_items.append(floor_item)
 
-                # Unblocked Collision
+                # Unblocked Collision: Touching or ramming into shoppers reduces HP!
                 elif is_colliding and shopper.ram_cooldown <= 0:
-                    shopper.ram_cooldown = 1.0
-
-                    if self.mode == "defend":
-                        # Stumble backward slightly with 0.8s invulnerability
-                        push_angle = math.atan2(self.player.center_y - shopper.center_y, self.player.center_x - shopper.center_x)
-                        self.player.center_x += math.cos(push_angle) * 25.0
-                        self.player.center_y += math.sin(push_angle) * 25.0
-                        self.player.center_x = max(AISLE_MIN_X, min(AISLE_MAX_X, self.player.center_x))
-                        self.player.center_y = max(AISLE_MIN_Y, min(AISLE_MAX_Y, self.player.center_y))
-                        self.invuln_timer = 0.8
-
-                        if self.basket_items:
-                            # Spill 1 item from basket onto the floor
-                            spilled_idx = random.randrange(len(self.basket_items))
-                            spilled_item = self.basket_items.pop(spilled_idx)
-                            scatter_x = self.player.center_x + random.uniform(-35, 35)
-                            scatter_y = self.player.center_y + random.uniform(-35, 35)
-                            scatter_x = max(AISLE_MIN_X + 15, min(AISLE_MAX_X - 15, scatter_x))
-                            scatter_y = max(AISLE_MIN_Y + 15, min(AISLE_MAX_Y - 15, scatter_y))
-                            spilled_tex = self.all_ingredients.get(spilled_item)
-
-                            floor_item = DroppedIngredient(spilled_item, spilled_tex, scatter_x, scatter_y, persists_indefinitely=True)
-                            self.dropped_items.append(floor_item)
-
-                            audio.play("get_snatched")
-                            self.shake_timer = 0.2
-                            self.shake_intensity = 5.0
-                            self.floating_popups.append({
-                                "text": f"-1 {spilled_item} DROPPED!",
-                                "x": self.player.center_x,
-                                "y": self.player.center_y + 65,
-                                "timer": 0.8,
-                                "max_timer": 0.8,
-                                "color": (255, 70, 70)
-                            })
-                        else:
-                            # Basket is empty, Terry takes damage!
-                            self.take_damage()
-                            self.floating_popups.append({
-                                "text": "OUCH!",
-                                "x": self.player.center_x,
-                                "y": self.player.center_y + 65,
-                                "timer": 0.6,
-                                "max_timer": 0.6,
-                                "color": (255, 70, 70)
-                            })
-                            if self.lives <= 0:
-                                return
-                    else:
-                        # In Veg & Meat modes: Touching or ramming shoppers does NOT reduce HP!
-                        # Terry can still block with Space to deflect them / make them drop items.
-                        push_angle = math.atan2(self.player.center_y - shopper.center_y, self.player.center_x - shopper.center_x)
-                        self.player.center_x += math.cos(push_angle) * 12.0
-                        self.player.center_y += math.sin(push_angle) * 12.0
-                        self.player.center_x = max(AISLE_MIN_X, min(AISLE_MAX_X, self.player.center_x))
-                        self.player.center_y = max(AISLE_MIN_Y, min(AISLE_MAX_Y, self.player.center_y))
+                    shopper.ram_cooldown = 1.2
+                    self.take_damage()
+                    popup_text = "RAMMED!" if shopper.state == STATE_RUSHING_SHELF else "OUCH!"
+                    self.floating_popups.append({
+                        "text": popup_text,
+                        "x": self.player.center_x,
+                        "y": self.player.center_y + 65,
+                        "timer": 0.6,
+                        "max_timer": 0.6,
+                        "color": (255, 70, 70)
+                    })
+                    if self.lives <= 0:
+                        self.show_retry_prompt("Out of HP! Terry was overwhelmed by shoppers.")
+                        return
 
     def complete_game_mode(self):
         audio.play("game_success")
@@ -843,9 +661,8 @@ class MarketCatchView(StageView):
 
         elif self.mode == "defend":
             dialogue = [
-                ("Terry", "I made it through the checkout exit doors!"),
-                ("Terry", "The groceries survived the mob unscratched!"),
-                ("Terry", "Time to head home for the Family Night dinner!"),
+                ("Terry", "I dodged them all! The last of the mob finally gave up chasing!"),
+                ("Terry", "My basket survived unscratched! Let's get out of here!"),
             ]
             def to_ending():
                 from .ending import MarketEndingView
@@ -956,30 +773,6 @@ class MarketCatchView(StageView):
                     arcade.draw_rect_outline(arcade.XYWH(rx, tag_y, badge_w, badge_h), (100, 255, 140, pulse_alpha), border_width=2)
                     arcade.draw_text("[E] GRAB!", rx, tag_y - 4, (240, 255, 220), 11, bold=True, anchor_x="center")
 
-            # Defend Mode: Exit Mat & Chevron Floor Guide
-            if self.mode == "defend":
-                exit_w = CHECKOUT_MAX_X - CHECKOUT_MIN_X
-                exit_cx = (CHECKOUT_MIN_X + CHECKOUT_MAX_X) / 2
-                exit_cy = 655
-                exit_h = 75
-
-                pulse_a = int(140 + 90 * math.sin(time.time() * 6.0))
-                # Glowing green exit mat
-                arcade.draw_rect_filled(arcade.XYWH(exit_cx, exit_cy, exit_w, exit_h), (18, 75, 35, 160))
-                arcade.draw_rect_outline(arcade.XYWH(exit_cx, exit_cy, exit_w, exit_h), (80, 240, 120, pulse_a), border_width=3)
-
-                # Pulsing chevron arrows pointing up to the checkout doors
-                chev_y_offsets = [-18, 0, 18]
-                for dy in chev_y_offsets:
-                    arrow_y = exit_cy + dy + (math.sin(time.time() * 6.0 + dy) * 3.0)
-                    arcade.draw_text("▲   ▲   ▲", exit_cx, arrow_y - 7, (120, 255, 160, pulse_a), 13, bold=True, anchor_x="center")
-
-                # Arcade label: "CHECKOUT EXIT DOORS"
-                label_y = CHECKOUT_MIN_Y + 12
-                arcade.draw_rect_filled(arcade.XYWH(exit_cx, label_y, 190, 22), (12, 45, 22, 230))
-                arcade.draw_rect_outline(arcade.XYWH(exit_cx, label_y, 190, 22), (100, 255, 150, pulse_a), border_width=1.5)
-                arcade.draw_text("CHECKOUT EXIT DOORS", exit_cx, label_y - 5, (230, 255, 230), 10, bold=True, anchor_x="center")
-
             # Draw floor dropped items, shoppers, and player
             self.dropped_items.draw()
             self.snatchers_list.draw()
@@ -987,21 +780,12 @@ class MarketCatchView(StageView):
                 s.draw_overlays()
             self.player_list.draw()
 
-            # Visual shield aura while Terry is actively blocking (Veg & Meat)
+            # Visual shield aura while Terry is actively blocking
             if self.blocking and self.mode in ("veg", "meat"):
                 cx, cy = self.player.center_x, self.player.center_y
                 shield_radius = 65
                 arcade.draw_circle_filled(cx, cy, shield_radius, (160, 230, 255, 60))
                 arcade.draw_circle_outline(cx, cy, shield_radius, (130, 220, 255, 220), border_width=3)
-
-            # Mackerel Swing slash arc visual effect (Defend mode)
-            if self.mode == "defend" and self.swinging:
-                facing = 1 if self.player.scale_x >= 0 else -1
-                arc_cx = self.player.center_x + (facing * 32)
-                arc_cy = self.player.center_y
-                arc_alpha = int(220 * max(0.0, self.swing_timer / 0.25))
-                arcade.draw_circle_filled(arc_cx, arc_cy, 65, (140, 210, 255, int(arc_alpha * 0.35)))
-                arcade.draw_circle_outline(arc_cx, arc_cy, 65, (180, 230, 255, arc_alpha), border_width=3.5)
 
             # Progress Bar Plaque
             progress = max(0.0, min(1.0, self.time_left / self.duration))
@@ -1015,7 +799,7 @@ class MarketCatchView(StageView):
             arcade.draw_rect_filled(arcade.XYWH(panel_x, panel_y, panel_w - 6, panel_h - 6), (138, 88, 48, 255))
             arcade.draw_rect_outline(arcade.XYWH(panel_x, panel_y, panel_w, panel_h), (42, 22, 10), 2)
 
-            banner_title = "PRIME STEAKS" if self.mode == "meat" else "VEGETABLE HARVEST" if self.mode == "veg" else "CHECKOUT ESCAPE!"
+            banner_title = "PRIME STEAKS" if self.mode == "meat" else "VEGETABLE HARVEST" if self.mode == "veg" else "DEFEND BASKET!"
             arcade.draw_text(banner_title, panel_x, panel_y + 13, (255, 238, 185), 12, bold=True, anchor_x="center", anchor_y="center")
 
             bar_w = 420
@@ -1044,71 +828,8 @@ class MarketCatchView(StageView):
             arcade.draw_rect_outline(arcade.XYWH(hp_x, hp_y, hp_w, hp_h), (42, 22, 10), 2)
             self.hearts.draw()
 
-            # --- Top-Right Horizontal Shopping Checklist / Basket Ribbon ---
-            if self.mode == "defend" and self.basket_keys:
-                item_count = len(self.basket_keys)
-                slot_step = 42
-                ribbon_w = (item_count * slot_step) + 16
-                ribbon_h = 46
-                ribbon_x = WIDTH - (ribbon_w / 2) - 18
-                ribbon_y = HEIGHT - 35
-
-                # Basket count tag
-                basket_count = len(self.basket_items)
-                count_col = (130, 255, 150) if basket_count > 0 else (255, 90, 90)
-                arcade.draw_text(
-                    f"BASKET: {basket_count}/5",
-                    ribbon_x,
-                    ribbon_y + 30,
-                    count_col,
-                    11,
-                    bold=True,
-                    anchor_x="center",
-                    anchor_y="center"
-                )
-
-                # Semi-translucent dark pill with subtle wooden border
-                arcade.draw_rect_filled(arcade.XYWH(ribbon_x, ribbon_y, ribbon_w, ribbon_h), (25, 15, 10, 190))
-                arcade.draw_rect_outline(arcade.XYWH(ribbon_x, ribbon_y, ribbon_w, ribbon_h), (180, 140, 90, 200), border_width=2)
-
-                start_slot_x = (ribbon_x - ribbon_w / 2) + 21
-                for i, name in enumerate(self.basket_keys):
-                    slot_cx = start_slot_x + (i * slot_step)
-                    slot_cy = ribbon_y
-                    in_basket = name in self.basket_items
-                    tex = self.all_ingredients.get(name)
-
-                    if in_basket:
-                        # Carried: subtle green backdrop circle + full opacity icon + bright green checkmark badge
-                        arcade.draw_circle_filled(slot_cx, slot_cy, 16, (40, 120, 60, 220))
-                        arcade.draw_circle_outline(slot_cx, slot_cy, 16, (90, 210, 110, 200), border_width=1.5)
-                        if tex:
-                            arcade.draw_texture_rect(tex, arcade.XYWH(slot_cx, slot_cy, 24, 24))
-
-                        # Checkmark badge at bottom-right
-                        chk_x = slot_cx + 10
-                        chk_y = slot_cy - 10
-                        arcade.draw_circle_filled(chk_x, chk_y, 7, (20, 75, 30, 255))
-                        arcade.draw_circle_outline(chk_x, chk_y, 7, (120, 255, 150, 255), border_width=1)
-                        arcade.draw_text("✔", chk_x, chk_y - 5, (130, 255, 150), 8, bold=True, anchor_x="center")
-                    else:
-                        # Spilled: dark red slot backdrop with warning red border + reduced opacity icon + red ! badge
-                        arcade.draw_circle_filled(slot_cx, slot_cy, 16, (55, 15, 15, 210))
-                        arcade.draw_circle_outline(slot_cx, slot_cy, 16, (230, 60, 60, 200), border_width=1.5)
-                        if tex:
-                            arcade.draw_texture_rect(
-                                tex,
-                                arcade.XYWH(slot_cx, slot_cy, 22, 22),
-                                color=arcade.types.Color(160, 140, 140, 100)
-                            )
-
-                        chk_x = slot_cx + 10
-                        chk_y = slot_cy - 10
-                        arcade.draw_circle_filled(chk_x, chk_y, 7, (80, 15, 15, 255))
-                        arcade.draw_circle_outline(chk_x, chk_y, 7, (255, 90, 90, 255), border_width=1)
-                        arcade.draw_text("!", chk_x, chk_y - 5, (255, 120, 120), 9, bold=True, anchor_x="center")
-
-            elif self.mode in ("veg", "meat") and self.active_keys:
+            # --- Top-Right Horizontal Shopping Checklist Ribbon ---
+            if self.mode in ("veg", "meat") and self.active_keys:
                 item_count = len(self.active_keys)
                 slot_step = 42
                 ribbon_w = (item_count * slot_step) + 16
@@ -1166,6 +887,22 @@ class MarketCatchView(StageView):
                     anchor_y="center"
                 )
 
+            # --- Bottom Key Hints ---
+            if self.mode in ("veg", "meat"):
+                block_status = "READY" if self.block_cooldown <= 0 else "RECHARGING"
+                status_col = (130, 240, 160) if self.block_cooldown <= 0 else (240, 180, 100)
+                arcade.draw_text(
+                    f"WASD: Move   |   [E] Grab Shelf   |   SPACE: Block [{block_status}]   |   Hold Shift: Speed Boost",
+                    WIDTH / 2 - 40, 25, status_col, 13, anchor_x="center", bold=True
+                )
+            elif self.mode == "defend":
+                spin_status = "READY" if self.spin_cooldown <= 0 else "RECHARGING"
+                status_col = (130, 240, 160) if self.spin_cooldown <= 0 else (240, 180, 100)
+                arcade.draw_text(
+                    f"WASD: Move   |   SPACE: Spin & Defend [{spin_status}]   |   Hold Shift: Speed Boost",
+                    WIDTH / 2 - 40, 25, status_col, 13, anchor_x="center", bold=True
+                )
+
         # 2. Screen-Space Overlays & UI
         self.window.default_camera.use()
 
@@ -1186,14 +923,7 @@ class MarketCatchView(StageView):
         # Draw Retry Modal
         self.retry_modal.draw(ui_camera=self.camera)
 
-        # Draw Instruction Modal Board
-        self.instruction_modal.draw(ui_camera=self.camera)
-
     def on_key_press(self, key, modifiers):
-        if self.instruction_modal.visible:
-            self.instruction_modal.handle_key_press(key)
-            return
-
         if self.retry_modal.visible:
             return
 
@@ -1253,10 +983,6 @@ class MarketCatchView(StageView):
 
     def on_mouse_press(self, x, y, button, modifiers):
         canvas_x, canvas_y = self.canvas_point(x, y)
-
-        if self.instruction_modal.visible:
-            self.instruction_modal.handle_mouse_press(canvas_x, canvas_y)
-            return
 
         if self.retry_modal.visible:
             self.retry_modal.handle_mouse_press(canvas_x, canvas_y)
