@@ -60,7 +60,7 @@ IngredientDrop = DroppedIngredient
 class SnatcherSprite(arcade.Sprite):
     """2D floor NPC with 4 AI states: WANDERING, RUSHING_SHELF, FLEEING_WITH_ITEM, STUNNED."""
 
-    def __init__(self, fall_textures, grab_textures, initial_x=None, initial_y=None, rush_speed=5.2, player_pos=None, min_dist=220):
+    def __init__(self, fall_textures, grab_textures, initial_x=None, initial_y=None, rush_speed=5.2, player_pos=None, min_dist=200):
         self.base_scale = 0.38
         super().__init__(fall_textures[0], scale=self.base_scale)
         self.fall_textures = fall_textures
@@ -71,6 +71,7 @@ class SnatcherSprite(arcade.Sprite):
         self.state = STATE_WANDERING
         self.rush_speed = rush_speed
         self.wander_speed = random.uniform(1.6, 2.4)
+        self.chase_speed = random.uniform(2.5, 3.4)
         self.wander_timer = 0.0
         self.target_x = 0
         self.target_y = 0
@@ -86,7 +87,7 @@ class SnatcherSprite(arcade.Sprite):
 
         self.reset_pos(custom_x=initial_x, custom_y=initial_y, rush_speed=rush_speed, player_pos=player_pos, min_dist=min_dist)
 
-    def reset_pos(self, custom_x=None, custom_y=None, rush_speed=None, existing_list=None, player_pos=None, min_dist=220):
+    def reset_pos(self, custom_x=None, custom_y=None, rush_speed=None, existing_list=None, player_pos=None, min_dist=200):
         self.state = STATE_WANDERING
         self.carried_item = None
         self.carried_texture = None
@@ -100,6 +101,7 @@ class SnatcherSprite(arcade.Sprite):
         if rush_speed is not None:
             self.rush_speed = rush_speed
         self.wander_speed = random.uniform(1.6, 2.4)
+        self.chase_speed = random.uniform(2.5, 3.4)
 
         if custom_x is not None and custom_y is not None:
             self.center_x = custom_x
@@ -216,7 +218,7 @@ class SnatcherSprite(arcade.Sprite):
             dx = player_x - self.center_x
             dy = player_y - self.center_y
             dist = max(1.0, math.hypot(dx, dy))
-            chase_speed = 3.4
+            chase_speed = self.chase_speed
             self.center_x += (dx / dist) * chase_speed * step
             self.center_y += (dy / dist) * chase_speed * step
             self.update_animation(delta_time, dx, is_action=(dist < 85), fast=(dist < 120))

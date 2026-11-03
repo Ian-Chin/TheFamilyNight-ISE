@@ -89,6 +89,7 @@ class MarketCatchView(StageView):
         self.base_speed = 7.5
         self.boost_speed = 13.0
         self.speed_boosted = False
+        self.invuln_timer = 0.0
 
         # Visual juice & floating popups
         self.floating_popups = []
@@ -200,15 +201,16 @@ class MarketCatchView(StageView):
         self.active_restock = None
         self.time_left = self.duration
         self.restock_timer = 1.2
+        self.invuln_timer = 0.0
 
         if self.mode == "veg":
-            count = 3
-            self.shopper_rush_speed = 5.0
+            count = 14
+            self.shopper_rush_speed = 4.8
         elif self.mode == "meat":
-            count = 5
-            self.shopper_rush_speed = 6.5
+            count = 16
+            self.shopper_rush_speed = 6.2
         else:
-            count = 6
+            count = 15
             self.shopper_rush_speed = 4.5
 
         for _ in range(count):
@@ -218,7 +220,7 @@ class MarketCatchView(StageView):
                 grabs,
                 rush_speed=self.shopper_rush_speed,
                 player_pos=(self.player.center_x, self.player.center_y),
-                min_dist=240
+                min_dist=200
             )
             self.snatchers_list.append(shopper)
 
@@ -304,7 +306,7 @@ class MarketCatchView(StageView):
         )
 
     def try_grab_shelf(self):
-        """Grabs the item from the active shelf slot if Terry is within 65px."""
+        """Grabs the item from the active shelf slot if Terry is within 140px."""
         if not self.active_restock:
             return False
 
@@ -312,7 +314,7 @@ class MarketCatchView(StageView):
         slot_y = self.active_restock["y"]
         dist = math.hypot(self.player.center_x - slot_x, self.player.center_y - slot_y)
 
-        if dist <= 65:
+        if dist <= 140:
             item_name = self.active_restock["item_name"]
             self.collected_status[item_name] = True
             audio.play("ingredient_get")
@@ -368,6 +370,11 @@ class MarketCatchView(StageView):
             self.block_cooldown = max(0.0, self.block_cooldown - delta_time)
         if self.spin_cooldown > 0:
             self.spin_cooldown = max(0.0, self.spin_cooldown - delta_time)
+        if self.invuln_timer > 0:
+            self.invuln_timer = max(0.0, self.invuln_timer - delta_time)
+            self.player.alpha = 130 if int(self.invuln_timer * 14) % 2 == 0 else 255
+        else:
+            self.player.alpha = 255
 
         # Screenshake update
         if self.shake_timer > 0:
@@ -523,7 +530,7 @@ class MarketCatchView(StageView):
                 shopper.reset_pos(
                     rush_speed=self.shopper_rush_speed,
                     player_pos=(self.player.center_x, self.player.center_y),
-                    min_dist=240
+                    min_dist=200
                 )
                 if self.lives <= 0:
                     self.show_retry_prompt()
@@ -532,7 +539,7 @@ class MarketCatchView(StageView):
             # Check if rushing shopper reached the active shelf slot before Terry
             if self.active_restock and shopper.state == STATE_RUSHING_SHELF:
                 dist_shelf = math.hypot(shopper.center_x - self.active_restock["x"], shopper.center_y - self.active_restock["y"])
-                if dist_shelf < 42:
+                if dist_shelf < 125:
                     claimed_name = self.active_restock["item_name"]
                     claimed_tex = self.active_restock["texture"]
                     shopper.claim_item(claimed_name, claimed_tex)
@@ -672,43 +679,88 @@ class MarketCatchView(StageView):
                 t_max = self.active_restock["max_timer"]
                 anim_t = self.active_restock["anim_timer"]
 
-                # Golden glowing box with alpha oscillation
-                pulse_alpha = int(170 + 80 * math.sin(time.time() * 7.0))
-                slot_w = 54
-                slot_h = 54
-                arcade.draw_rect_filled(arcade.XYWH(rx, ry, slot_w, slot_h), (255, 220, 80, int(pulse_alpha * 0.25)))
-                arcade.draw_rect_outline(arcade.XYWH(rx, ry, slot_w, slot_h), (255, 215, 60, pulse_alpha), border_width=3)
+                # 1. Floor Light Projection Beam
+                # Soft, semi-translucent light cone (70px wide, RGBA(255, 220, 80, 40..90))
+                # extending outward from crate into the checkered floor
+                beam_alpha = int(40 + 50 * (0.5 + 0.5 * math.sin(time.time() * 7.0)))
+                beam_color = (255, 220, 80, beam_alpha)
+                if rx < 640:
+                    # Left wall shelf: projects rightward across aisle floor
+                    beam_origin_x = rx + 70  # right edge of crate
+                    beam_end_x = beam_origin_x + 300
+                    beam_pts = [
+                        (beam_origin_x, ry - 35),
+                        (beam_origin_x, ry + 35),
+                        (beam_end_x, ry + 48),
+                        (beam_end_x, ry - 48)
+                    ]
+                else:
+                    # Right wall shelf: projects leftward across aisle floor
+                    beam_origin_x = rx - 70  # left edge of crate
+                    beam_end_x = beam_origin_x - 300
+                    beam_pts = [
+                        (beam_origin_x, ry - 35),
+                        (beam_origin_x, ry + 35),
+                        (beam_end_x, ry + 48),
+                        (beam_end_x, ry - 48)
+                    ]
+                arcade.draw_polygon_filled(beam_pts, beam_color)
 
-                # Pop-in scale animation (0.0 to 1.0)
+                # 2. Backdrop Plate & Pulsing Golden Highlight Box (140 x 80 px)
+                crate_w = 140
+                crate_h = 80
+                pulse_alpha = int(155 + 85 * math.sin(time.time() * 7.0))  # 70..240
+
+                # Dark golden backing rectangle over crate art
+                arcade.draw_rect_filled(arcade.XYWH(rx, ry, crate_w, crate_h), (35, 22, 12, 215))
+                arcade.draw_rect_filled(arcade.XYWH(rx, ry, crate_w - 6, crate_h - 6), (75, 48, 22, 170))
+                # Pulsing outline with warm golden hue
+                arcade.draw_rect_outline(arcade.XYWH(rx, ry, crate_w, crate_h), (255, 205, 55, pulse_alpha), border_width=3)
+                arcade.draw_rect_outline(arcade.XYWH(rx, ry, crate_w + 4, crate_h + 4), (255, 230, 110, int(pulse_alpha * 0.35)), border_width=1)
+
+                # 3. Floating Target Item Sprite inside Crate with subtle sine-wave bobbing (+/- 4px)
                 pop_scale = min(1.0, anim_t / 0.25)
-                target_size = 46.0 * pop_scale
+                bob_y = math.sin(time.time() * 5.0) * 4.0
+                target_size = 52.0 * pop_scale
                 if target_size > 1.0:
-                    arcade.draw_texture_rect(tex, arcade.XYWH(rx, ry, target_size, target_size))
+                    arcade.draw_texture_rect(tex, arcade.XYWH(rx, ry + bob_y, target_size, target_size))
 
-                # Mini Urgency Progress Bar above shelf slot
-                bar_w = 46
-                bar_h = 6
-                bar_y = ry + 36
+                # 4. Urgency Progress Bar directly above crate (110 x 8 px)
+                bar_w = 110
+                bar_h = 8
+                bar_y = ry + 49
                 arcade.draw_rect_filled(arcade.XYWH(rx, bar_y, bar_w, bar_h), (20, 16, 12, 230))
                 arcade.draw_rect_outline(arcade.XYWH(rx, bar_y, bar_w, bar_h), (50, 42, 34), 1)
 
                 pct = max(0.0, min(1.0, t_left / t_max))
                 fill_w = max(2.0, (bar_w - 2) * pct)
                 fill_x = (rx - (bar_w - 2) / 2) + fill_w / 2
-                bar_col = (110, 240, 120) if pct > 0.5 else (255, 215, 60) if pct > 0.25 else (255, 75, 75)
+                if pct > 0.5:
+                    bar_col = (100, 240, 110)
+                elif pct > 0.25:
+                    bar_col = (255, 215, 60)
+                else:
+                    bar_col = (255, 60, 60) if int(time.time() * 8) % 2 == 0 else (180, 25, 25)
                 arcade.draw_rect_filled(arcade.XYWH(fill_x, bar_y, fill_w, bar_h - 2), bar_col)
 
-                # Pulsing "[ENTER] GRAB" prompt when Terry is within 65px
+                # 5. Context-Sensitive Beacon Prompt right above urgency bar
+                tag_y = bar_y + 17 + (math.sin(time.time() * 6.0) * 2.0)
                 dist_to_player = math.hypot(self.player.center_x - rx, self.player.center_y - ry)
-                if dist_to_player <= 65:
-                    prompt_alpha = int(200 + 55 * math.sin(time.time() * 9.0))
-                    prompt_x = rx + (58 if rx < 640 else -58)
-                    prompt_y = ry
-                    pill_w = 98
-                    pill_h = 24
-                    arcade.draw_rect_filled(arcade.XYWH(prompt_x, prompt_y, pill_w, pill_h), (25, 18, 12, 230))
-                    arcade.draw_rect_outline(arcade.XYWH(prompt_x, prompt_y, pill_w, pill_h), (255, 220, 90, prompt_alpha), 2)
-                    arcade.draw_text("[ENTER] GRAB", prompt_x, prompt_y - 4, (255, 240, 150, prompt_alpha), 10, bold=True, anchor_x="center")
+
+                if dist_to_player > 140:
+                    # Far away (>140px): Red warning badge "⚡ FRESH DROP"
+                    badge_w = 114
+                    badge_h = 22
+                    arcade.draw_rect_filled(arcade.XYWH(rx, tag_y, badge_w, badge_h), (55, 14, 14, 230))
+                    arcade.draw_rect_outline(arcade.XYWH(rx, tag_y, badge_w, badge_h), (255, 75, 75, pulse_alpha), border_width=2)
+                    arcade.draw_text("⚡ FRESH DROP", rx, tag_y - 4, (255, 225, 225), 10, bold=True, anchor_x="center")
+                else:
+                    # In range (<=140px): Bright green interaction badge "[E] GRAB!"
+                    badge_w = 98
+                    badge_h = 22
+                    arcade.draw_rect_filled(arcade.XYWH(rx, tag_y, badge_w, badge_h), (18, 65, 28, 240))
+                    arcade.draw_rect_outline(arcade.XYWH(rx, tag_y, badge_w, badge_h), (100, 255, 140, pulse_alpha), border_width=2)
+                    arcade.draw_text("[E] GRAB!", rx, tag_y - 4, (240, 255, 220), 11, bold=True, anchor_x="center")
 
             # Draw floor dropped items, shoppers, and player
             self.dropped_items.draw()
@@ -765,29 +817,49 @@ class MarketCatchView(StageView):
             arcade.draw_rect_outline(arcade.XYWH(hp_x, hp_y, hp_w, hp_h), (42, 22, 10), 2)
             self.hearts.draw()
 
-            # --- Shopping Checklist Board on the Right ---
-            if self.mode in ("veg", "meat"):
-                board_w = 255
-                board_h = 44 + (len(self.active_keys) * 30)
-                board_x = PLAY_RIGHT - (board_w / 2) - 8
-                board_y = HEIGHT - (board_h / 2) - 15
+            # --- Top-Right Horizontal Shopping Checklist Ribbon ---
+            if self.mode in ("veg", "meat") and self.active_keys:
+                item_count = len(self.active_keys)
+                slot_step = 42
+                ribbon_w = (item_count * slot_step) + 16
+                ribbon_h = 46
+                ribbon_x = WIDTH - (ribbon_w / 2) - 18
+                ribbon_y = HEIGHT - 35
 
-                arcade.draw_rect_filled(arcade.XYWH(board_x, board_y, board_w, board_h), (85, 48, 24, 240))
-                arcade.draw_rect_filled(arcade.XYWH(board_x, board_y, board_w - 8, board_h - 8), (138, 88, 48, 245))
-                arcade.draw_rect_outline(arcade.XYWH(board_x, board_y, board_w, board_h), (50, 28, 14), 3)
-                arcade.draw_text("SHOPPING LIST:", board_x - (board_w / 2) + 14, board_y + (board_h / 2) - 22, (255, 240, 195), 13, bold=True)
+                # Semi-translucent dark pill with subtle wooden border
+                arcade.draw_rect_filled(arcade.XYWH(ribbon_x, ribbon_y, ribbon_w, ribbon_h), (25, 15, 10, 190))
+                arcade.draw_rect_outline(arcade.XYWH(ribbon_x, ribbon_y, ribbon_w, ribbon_h), (180, 140, 90, 200), border_width=2)
 
-                draw_y = board_y + (board_h / 2) - 50
-                for name in self.active_keys:
+                start_slot_x = (ribbon_x - ribbon_w / 2) + 21
+                for i, name in enumerate(self.active_keys):
+                    slot_cx = start_slot_x + (i * slot_step)
+                    slot_cy = ribbon_y
                     collected = self.collected_status.get(name, False)
                     tex = self.all_ingredients.get(name)
-                    if tex:
-                        icon_col = (255, 255, 255, 255) if collected else (95, 90, 85, 140)
-                        arcade.draw_texture_rect(tex, arcade.XYWH(board_x - (board_w / 2) + 26, draw_y, 24, 24), color=arcade.types.Color(*icon_col))
-                    txt_col = (130, 255, 150) if collected else (210, 190, 170)
-                    sym = "✔" if collected else "○"
-                    arcade.draw_text(f"{sym} {name}", board_x - (board_w / 2) + 48, draw_y - 7, txt_col, 13, bold=True)
-                    draw_y -= 30
+
+                    if collected:
+                        # Collected: subtle green backdrop circle + full opacity icon + bright green checkmark badge
+                        arcade.draw_circle_filled(slot_cx, slot_cy, 16, (40, 120, 60, 220))
+                        arcade.draw_circle_outline(slot_cx, slot_cy, 16, (90, 210, 110, 200), border_width=1.5)
+                        if tex:
+                            arcade.draw_texture_rect(tex, arcade.XYWH(slot_cx, slot_cy, 24, 24))
+
+                        # Checkmark badge at bottom-right of circle
+                        chk_x = slot_cx + 10
+                        chk_y = slot_cy - 10
+                        arcade.draw_circle_filled(chk_x, chk_y, 7, (20, 75, 30, 255))
+                        arcade.draw_circle_outline(chk_x, chk_y, 7, (120, 255, 150, 255), border_width=1)
+                        arcade.draw_text("✔", chk_x, chk_y - 5, (130, 255, 150), 8, bold=True, anchor_x="center")
+                    else:
+                        # Uncollected: dark circular slot backdrop + icon at reduced opacity (alpha=110)
+                        arcade.draw_circle_filled(slot_cx, slot_cy, 16, (18, 12, 10, 190))
+                        arcade.draw_circle_outline(slot_cx, slot_cy, 16, (60, 48, 38, 140), border_width=1)
+                        if tex:
+                            arcade.draw_texture_rect(
+                                tex,
+                                arcade.XYWH(slot_cx, slot_cy, 22, 22),
+                                color=arcade.types.Color(160, 150, 140, 110)
+                            )
 
             # --- Floating popups (pickups, deflections, etc.) ---
             for popup in self.floating_popups:
@@ -809,7 +881,7 @@ class MarketCatchView(StageView):
                 block_status = "READY" if self.block_cooldown <= 0 else "RECHARGING"
                 status_col = (130, 240, 160) if self.block_cooldown <= 0 else (240, 180, 100)
                 arcade.draw_text(
-                    f"WASD: Move   |   [ENTER]: Grab Shelf   |   SPACE: Block [{block_status}]   |   Hold Shift: Speed Boost",
+                    f"WASD: Move   |   [E] Grab Shelf   |   SPACE: Block [{block_status}]   |   Hold Shift: Speed Boost",
                     WIDTH / 2 - 40, 25, status_col, 13, anchor_x="center", bold=True
                 )
             elif self.mode == "defend":
@@ -931,8 +1003,9 @@ class MarketCatchView(StageView):
             self.window.close()
 
     def take_damage(self):
-        if self.lives <= 0:
+        if self.lives <= 0 or self.invuln_timer > 0:
             return
+        self.invuln_timer = 1.0
         audio.play("get_snatched")
         audio.play("hp_reduced")
         self.lives -= 1

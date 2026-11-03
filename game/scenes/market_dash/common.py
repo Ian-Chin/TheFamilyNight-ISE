@@ -59,8 +59,8 @@ PLAY_BOTTOM = 45
 PLAY_TOP = 675
 
 # 16 Wall-Shelf slot anchor coordinates corresponding to the wooden shelf cubbies
-SHELF_LEFT_X = 168
-SHELF_RIGHT_X = 1112
+SHELF_LEFT_X = 85
+SHELF_RIGHT_X = 1195
 SHELF_Y_LEVELS = [68, 148, 232, 314, 398, 480, 562, 644]
 SHELF_SLOTS = [(SHELF_LEFT_X, y) for y in SHELF_Y_LEVELS] + [(SHELF_RIGHT_X, y) for y in SHELF_Y_LEVELS]
 
