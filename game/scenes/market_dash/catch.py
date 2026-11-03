@@ -674,23 +674,25 @@ class MarketCatchView(StageView):
                     if self.lives <= 0:
                         return
                 else:
-                    # In Veg & Meat modes: HP reduction when an ingredient is lost off-screen
-                    self.take_damage()
+                    # In Veg & Meat modes: Reduce time from total time duration when an item is lost off-screen
+                    time_penalty = 5.0
+                    self.time_left = max(0.0, self.time_left - time_penalty)
+                    audio.play("hp_reduced")
                     self.floating_popups.append({
-                        "text": "ITEM LOST!",
+                        "text": f"-{int(time_penalty)}s ITEM LOST!",
                         "x": self.player.center_x,
                         "y": self.player.center_y + 65,
-                        "timer": 0.85,
-                        "max_timer": 0.85,
-                        "color": (255, 90, 90)
+                        "timer": 0.9,
+                        "max_timer": 0.9,
+                        "color": (255, 140, 60)
                     })
                     shopper.reset_pos(
                         rush_speed=self.shopper_rush_speed,
                         player_pos=(self.player.center_x, self.player.center_y),
                         min_dist=200
                     )
-                    if self.lives <= 0:
-                        self.show_retry_prompt("Out of HP! Shoppers snatched too many ingredients.")
+                    if self.time_left <= 0:
+                        self.show_retry_prompt("Time's up! Ingredients were not gathered in time.")
                         return
 
             # Check if rushing shopper reached the active shelf slot before Terry
@@ -820,21 +822,22 @@ class MarketCatchView(StageView):
                         # Touching any shopper slows Terry's movement speed by 50%
                         self.touching_crowd_timer = 0.18
 
-                        # If the shopper is actively RUSHING the shelf, Terry gets RAMMED and loses HP!
-                        if shopper.state == STATE_RUSHING_SHELF:
-                            if shopper.ram_cooldown <= 0:
-                                shopper.ram_cooldown = 1.2
-                                self.take_damage()
-                                self.floating_popups.append({
-                                    "text": "RAMMED!",
-                                    "x": self.player.center_x,
-                                    "y": self.player.center_y + 65,
-                                    "timer": 0.6,
-                                    "max_timer": 0.6,
-                                    "color": (255, 70, 70)
-                                })
-                                if self.lives <= 0:
-                                    return
+                        # Touching or ramming into shoppers reduces HP!
+                        if shopper.ram_cooldown <= 0:
+                            shopper.ram_cooldown = 1.2
+                            self.take_damage()
+                            popup_text = "RAMMED!" if shopper.state == STATE_RUSHING_SHELF else "OUCH!"
+                            self.floating_popups.append({
+                                "text": popup_text,
+                                "x": self.player.center_x,
+                                "y": self.player.center_y + 65,
+                                "timer": 0.6,
+                                "max_timer": 0.6,
+                                "color": (255, 70, 70)
+                            })
+                            if self.lives <= 0:
+                                self.show_retry_prompt("Out of HP! Terry was overwhelmed by shoppers.")
+                                return
 
     def complete_game_mode(self):
         audio.play("game_success")
