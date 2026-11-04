@@ -511,6 +511,35 @@ ACHIEVEMENT_SCENES = ("Market Dash", "Bumpy Bus", "Backyard BBQ", "Chaos Dinner"
 # (key, scene, title, how to get it, hidden). A hidden one shows as "???"
 # until it is unlocked. Unlocks are saved under "achievements" in settings.json.
 ACHIEVEMENTS = (
+    # Market Dash
+    ("market_veg", "Market Dash", "Fresh Greens",
+     "Gather all 5 vegetables.", False),
+    ("market_meat", "Market Dash", "Prime Cuts",
+     "Gather all 5 meat items.", False),
+    ("market_checkout", "Market Dash", "Checkout Run",
+     "Escape through the exit doors.", False),
+    ("market_done", "Market Dash", "Dinner Saved",
+     "Clear all three market stages.", False),
+    ("market_speed", "Market Dash", "Quick Hands",
+     "Clear any stage with 20s+ left.", False),
+    ("market_full_cart", "Market Dash", "Full Cart",
+     "Escape with all 5 items intact.", False),
+    ("market_fish_slap", "Market Dash", "Fish Slap",
+     "Stun 10 shoppers with mackerel.", False),
+    ("market_solid_guard", "Market Dash", "Solid Guard",
+     "Block 5 rushing shoppers.", False),
+    ("market_strike", "Market Dash", "Strike!",
+     "Hit 3 shoppers in one swing.", False),
+    ("market_mine_now", "Market Dash", "Mine Now!",
+     "Reclaim a dropped item from a thief.", False),
+    ("egg_clean_escape", "Market Dash", "Clean Escape",
+     "Exit without swinging the fish.", True),
+    ("egg_auntie_rush", "Market Dash", "Auntie Rush",
+     "Bump into 10 shoppers.", True),
+    ("egg_last_second", "Market Dash", "Last Second",
+     "Escape with under 3s remaining.", True),
+
+    # Chaos Dinner
     ("dinner_family", "Chaos Dinner", "Family Reunion",
      "Talk to everyone in the garden before dinner.", False),
     ("dinner_seated", "Chaos Dinner", "Seat Patrol",
