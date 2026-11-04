@@ -397,7 +397,7 @@ class MarketCatchView(StageView):
         def do_give_up():
             self.retry_modal.close()
             from .stage import MarketStageView
-            self.window.show_view(MarketStageView(veg_done=self.veg_done, meat_done=self.meat_done))
+            self.window.show_view(MarketStageView(veg_done=self.veg_done, meat_done=self.meat_done, last_completed="defend_retry" if self.mode == "defend" else None))
 
         mode_name = "Fresh Vegetables" if self.mode == "veg" else "Prime Meats" if self.mode == "meat" else "Basket Defense"
         if reason is None:
