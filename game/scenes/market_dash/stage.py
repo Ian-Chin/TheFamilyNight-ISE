@@ -70,12 +70,12 @@ class MarketStageView(StageView):
         self.bg_texture = textures.background("market-dash/Scene 2.4 - market interior.jpg")
 
         # 3. Calculate spawn coordinates FIRST
-        if last_completed == "veg" or (self.veg_done and not self.meat_done):
+        if self.defend_unlocked:
+            spawn_x, spawn_y = 630, 90
+        elif last_completed == "veg" or (self.veg_done and not self.meat_done):
             spawn_x, spawn_y = 1050, 75
         elif last_completed == "meat" or (self.meat_done and not self.veg_done):
             spawn_x, spawn_y = 210, 335
-        elif self.defend_unlocked:
-            spawn_x, spawn_y = 630, 90
         else:
             spawn_x, spawn_y = 495, 180
 
@@ -92,7 +92,7 @@ class MarketStageView(StageView):
             self.terry_portrait = self.terry.texture
 
         try:
-            self.shopper_portrait = textures.character("Dave.png")
+            self.shopper_portrait = textures.character("Unc John.png")
         except Exception:
             self.shopper_portrait = None
 
@@ -131,8 +131,18 @@ class MarketStageView(StageView):
         self.defend_lock.center_y = self.defend_lock.base_y
         self.indicators.append(self.defend_lock)
 
-        self.lock_animating = False
-        self.lock_anim_timer = 0.0
+        self.played_unlock_sound = False
+        if last_completed == "defend_retry":
+            self.lock_animating = False
+            self.lock_anim_timer = 0.0
+            if self.defend_lock in self.indicators:
+                self.indicators.remove(self.defend_lock)
+        elif self.defend_unlocked:
+            self.lock_animating = True
+            self.lock_anim_timer = 3.6
+        else:
+            self.lock_animating = False
+            self.lock_anim_timer = 0.0
 
         self.stage_dialogue_queue = []
         self.stage_dialogue_callback = None
@@ -224,18 +234,22 @@ class MarketStageView(StageView):
                     self.indicators.remove(self.defend_lock)
 
                 pre_defend_dialogue = [
-                    ("Terry", "Wait... why is the whole aisle going dead silent? Why is everyone staring at me?"),
-                    ("Desperate Shopper", "LOOK! He's got the last prime steaks AND the fresh produce! DON'T LET HIM LEAVE!"),
-                    ("Terry", "Oh no, no, no... they're completely swarming the checkout counters!"),
-                    ("Terry", "I fought tooth and nail for tonight's dinner—there's no way I'm handing this basket over!"),
-                    ("Terry", "Think, Terry, think... what do I have in here that can keep them at bay?"),
+                    ("Terry", "Phew! That's the last item on the list. Time to head to the counter."),
+                    ("Cashier", "Beep... beep... That'll be—wait, congratulations young man!"),
+                    ("Cashier", "You grabbed our lucky clearance bundle! That's a 50 percent discount on your entire basket!"),
+                    ("Terry", "Fifty percent off?! Half price for all this prime meat and fresh veg?! Today is my lucky day!"),
+                    ("Terry", "Paid and packed. All that's left is to walk out those front doors..."),
+                    ("Terry", "Wait a minute... look at that crowd in front of the exit doors."),
+                    ("Terry", "They're still in a complete frenzy, fighting over every scrap in the aisles!"),
+                    ("Terry", "If I rush in recklessly and crash into them, my groceries are going to spill everywhere..."),
+                    ("Terry", "And with all these shoppers around, someone will definitely scoop up my fallen groceries in the chaos!"),
                     (
                         "Terry",
-                        "Wait... the frozen Pacific Mackerel! Solid as iron, aerodynamic, and ice-cold.",
+                        "Good thing I kept this frozen Pacific Mackerel handy. Solid as iron, ice-cold, and ready for action.",
                         textures.background("market-dash/fish obtained.jpg")
                     ),
-                    ("Terry", "Mum’s going to kill me when she finds out I used dinner as a blunt weapon..."),
-                    ("Terry", "No choice now.")
+                    ("Terry", "I just need to weave past the mob, keep my basket safe, and break through the exit doors!"),
+                    ("Terry", "Alright, let's get out of here in one piece!")
                 ]
 
                 def start_defend_game():
@@ -260,11 +274,18 @@ class MarketStageView(StageView):
                 self.defend_lock.scale = 0.22
                 self.defend_lock.center_y = self.defend_lock.base_y
 
-            else:
+            elif self.lock_anim_timer <= 3.0:
+                if not self.played_unlock_sound:
+                    self.played_unlock_sound = True
+                    audio.play("unlocked_sound")
                 progress = 3.0 - self.lock_anim_timer
                 pop_curve = math.sin(progress * math.pi)
                 self.defend_lock.scale = 0.22 + (pop_curve * 0.08)
                 self.defend_lock.center_y = self.defend_lock.base_y + (pop_curve * 18.0)
+
+            else:
+                self.defend_lock.scale = 0.22
+                self.defend_lock.center_y = self.defend_lock.base_y
 
             return
 
@@ -427,9 +448,9 @@ class MarketStageView(StageView):
                     return
                 else:
                     self.held.clear()
-                    audio.play("unlocked_sound")
-                    self.lock_animating = True
-                    self.lock_anim_timer = 3.0
+                    self.stop_ambience()
+                    from .catch import MarketCatchView
+                    self.window.show_view(MarketCatchView(mode="defend", veg_done=self.veg_done, meat_done=self.meat_done))
                     return
 
         if key == arcade.key.SPACE:

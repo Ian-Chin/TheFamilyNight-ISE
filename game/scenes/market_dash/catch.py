@@ -5,8 +5,12 @@ import time
 import arcade
 
 from .prep_sprites import run_prep
-from ...core import textures
-from ...core import audio
+from ...core import achievements, audio, textures
+
+# Cumulative metrics across attempts/stages
+_TOTAL_BUMPS = 0
+_TOTAL_BLOCKS = 0
+_TOTAL_MACKEREL_STUNS = 0
 from ...config import HEIGHT, WIDTH
 from ...core.dialogue import DialogBox
 from ...core.options import SettingsPanel
@@ -102,6 +106,13 @@ class MarketCatchView(StageView):
         self.shake_timer = 0.0
         self.shake_intensity = 0.0
 
+        # Achievement metrics
+        self.swung_fish = False
+        self.current_swing_hits = 0
+        self.mackerel_stuns = 0
+        self.blocked_shoppers = 0
+        self.shopper_bumps = 0
+
         # Load Terry Sprites
         tex_without_fish = arcade.load_texture(str(TERRY_GAME_DIR / "sprite without fish.png"))
         tex_holding_fish = arcade.load_texture(str(TERRY_GAME_DIR / "sprite holding fish.png"))
@@ -113,8 +124,10 @@ class MarketCatchView(StageView):
 
         active_tex = self.terry_tex_defend if self.mode == "defend" else self.terry_tex_normal
         self.player_scale = 0.15
+        self.facing_angle = 180.0
+        self.swing_base_angle = 180.0
         self.player = arcade.Sprite(active_tex, scale=self.player_scale)
-        self.player.angle = 180  
+        self.player.angle = self.facing_angle  
         if self.mode == "defend":
             self.player.center_x = 640
             self.player.center_y = 95
@@ -260,8 +273,11 @@ class MarketCatchView(StageView):
         """Spins 180 degrees clockwise to stun and knock back shoppers in Defend mode."""
         if self.swinging or self.spin_cooldown > 0:
             return False
+        self.swung_fish = True
+        self.current_swing_hits = 0
         audio.play("swing_sword")
         self.swinging = True
+        self.swing_base_angle = self.facing_angle
         self.swing_duration = 0.30
         self.swing_timer = self.swing_duration
         self.spin_cooldown = 0.45
@@ -273,6 +289,15 @@ class MarketCatchView(StageView):
         for shopper in self.snatchers_list:
             dist = math.hypot(shopper.center_x - self.player.center_x, shopper.center_y - self.player.center_y)
             if dist <= swing_radius:
+                self.current_swing_hits += 1
+                self.mackerel_stuns += 1
+                global _TOTAL_MACKEREL_STUNS
+                _TOTAL_MACKEREL_STUNS += 1
+                if self.mackerel_stuns >= 10 or _TOTAL_MACKEREL_STUNS >= 10:
+                    achievements.unlock("market_fish_slap")
+                if self.current_swing_hits >= 3:
+                    achievements.unlock("market_strike")
+
                 dropped = shopper.trigger_stun(self.player.center_x, self.player.center_y, is_defending=True)
                 # Knockback 110px away from Terry
                 angle = math.atan2(shopper.center_y - self.player.center_y, shopper.center_x - self.player.center_x)
@@ -293,6 +318,7 @@ class MarketCatchView(StageView):
                 if dropped:
                     drop_name, drop_tex = dropped
                     floor_item = DroppedIngredient(drop_name, drop_tex, shopper.center_x, shopper.center_y, persists_indefinitely=True)
+                    floor_item.from_thief = True
                     self.dropped_items.append(floor_item)
                     self.floating_popups.append({
                         "text": f"RECOVERED: {drop_name}!",
@@ -371,7 +397,7 @@ class MarketCatchView(StageView):
         def do_give_up():
             self.retry_modal.close()
             from .stage import MarketStageView
-            self.window.show_view(MarketStageView(veg_done=self.veg_done, meat_done=self.meat_done))
+            self.window.show_view(MarketStageView(veg_done=self.veg_done, meat_done=self.meat_done, last_completed="defend_retry" if self.mode == "defend" else None))
 
         mode_name = "Fresh Vegetables" if self.mode == "veg" else "Prime Meats" if self.mode == "meat" else "Basket Defense"
         if reason is None:
@@ -537,23 +563,28 @@ class MarketCatchView(StageView):
         if self.swinging:
             self.swing_timer -= delta_time
             self.player.texture = self.terry_tex_action
-            # 180 degree clockwise spin during attack
+            # 180 degree clockwise spin during attack starting from current facing angle
             progress = max(0.0, min(1.0, 1.0 - (self.swing_timer / self.swing_duration)))
-            self.player.angle = 180.0 - (progress * 180.0)
+            self.player.angle = self.swing_base_angle - (progress * 180.0)
             if self.swing_timer <= 0:
                 self.swinging = False
-                self.player.angle = 180.0
+                self.player.angle = self.facing_angle
                 self.player.texture = self.terry_tex_defend if self.mode == "defend" else self.terry_tex_normal
         elif self.blocking:
             self.block_timer -= delta_time
             self.player.texture = self.terry_tex_action
-            self.player.angle = 180.0
+            self.player.angle = self.facing_angle
             if self.block_timer <= 0:
                 self.blocking = False
                 self.player.texture = self.terry_tex_defend if self.mode == "defend" else self.terry_tex_normal
         else:
-            self.player.angle = 180.0
+            self.player.angle = self.facing_angle
             self.player.texture = self.terry_tex_defend if self.mode == "defend" else self.terry_tex_normal
+
+        # Orient character to face towards the movement direction (Left: 90°, Right: 270°, Up: 180°, Down: 0°)
+        if not self.swinging and (self.player_move_x != 0 or self.player_move_y != 0):
+            self.facing_angle = (math.degrees(math.atan2(self.player_move_y, -self.player_move_x)) + 90) % 360
+            self.player.angle = self.facing_angle
 
         # 2D Top-Down Movement with diagonal normalization, Shift speed boost, and crowd slowdown
         step = delta_time * 60.0
@@ -571,11 +602,9 @@ class MarketCatchView(StageView):
         self.player.center_x = max(AISLE_MIN_X, min(AISLE_MAX_X, self.player.center_x))
         self.player.center_y = max(AISLE_MIN_Y, min(AISLE_MAX_Y, self.player.center_y))
 
-        # Horizontal facing orientation
-        if self.player_move_x < 0:
-            self.player.scale_x = -abs(self.player_scale)
-        elif self.player_move_x > 0:
-            self.player.scale_x = abs(self.player_scale)
+        # Positive scale (direction is naturally handled by angle rotation)
+        self.player.scale_x = abs(self.player_scale)
+        self.player.scale_y = abs(self.player_scale)
 
         # Shopper wave increase by duration phase (Veg & Meat Modes)
         # Initial 3 shoppers, increasing by 1 or 2 every 10 seconds up to max 8 shoppers
@@ -675,6 +704,8 @@ class MarketCatchView(StageView):
             else:
                 dist_item = math.hypot(self.player.center_x - item.center_x, self.player.center_y - item.center_y)
                 if arcade.check_for_collision(self.player, item) or dist_item < 55:
+                    if getattr(item, "from_thief", False):
+                        achievements.unlock("market_mine_now")
                     audio.play("ingredient_get")
                     if self.mode == "defend":
                         self.basket_items.append(item.item_name)
@@ -704,6 +735,7 @@ class MarketCatchView(StageView):
 
         # 5. Shopper Behavior, Shelf Claim, and Collisions
         for shopper in list(self.snatchers_list):
+            shopper.bump_cooldown = max(0.0, getattr(shopper, "bump_cooldown", 0.0) - delta_time)
             shopper.update_behavior(delta_time, self.player.center_y, self.player.center_x, dropped_items=self.dropped_items)
 
             # Check if shopper successfully fled off screen with a stolen ingredient
@@ -782,6 +814,14 @@ class MarketCatchView(StageView):
                 # Terry Block / Parry (no screen shake when blocking)
                 if self.blocking and self.mode in ("veg", "meat") and (is_colliding or dist_total < 80):
                     audio.play("block")
+                    if not getattr(shopper, "block_registered", False):
+                        shopper.block_registered = True
+                        self.blocked_shoppers += 1
+                        global _TOTAL_BLOCKS
+                        _TOTAL_BLOCKS += 1
+                        if self.blocked_shoppers >= 5 or _TOTAL_BLOCKS >= 5:
+                            achievements.unlock("market_solid_guard")
+
                     dropped = shopper.trigger_stun(self.player.center_x, self.player.center_y)
                     self.floating_popups.append({
                         "text": "DEFLECTED!",
@@ -795,6 +835,7 @@ class MarketCatchView(StageView):
                     if dropped:
                         drop_name, drop_tex = dropped
                         floor_item = DroppedIngredient(drop_name, drop_tex, shopper.center_x, shopper.center_y)
+                        floor_item.from_thief = True
                         self.dropped_items.append(floor_item)
                         self.floating_popups.append({
                             "text": f"DROPPED: {drop_name}!",
@@ -807,6 +848,15 @@ class MarketCatchView(StageView):
 
                 # Mackerel Swing active hit in Defend mode
                 elif self.swinging and self.mode == "defend" and is_colliding:
+                    self.current_swing_hits += 1
+                    self.mackerel_stuns += 1
+                    global _TOTAL_MACKEREL_STUNS
+                    _TOTAL_MACKEREL_STUNS += 1
+                    if self.mackerel_stuns >= 10 or _TOTAL_MACKEREL_STUNS >= 10:
+                        achievements.unlock("market_fish_slap")
+                    if self.current_swing_hits >= 3:
+                        achievements.unlock("market_strike")
+
                     dropped = shopper.trigger_stun(self.player.center_x, self.player.center_y, is_defending=True)
                     self.floating_popups.append({
                         "text": "SMACK!",
@@ -819,6 +869,7 @@ class MarketCatchView(StageView):
                     if dropped:
                         drop_name, drop_tex = dropped
                         floor_item = DroppedIngredient(drop_name, drop_tex, shopper.center_x, shopper.center_y, persists_indefinitely=True)
+                        floor_item.from_thief = True
                         self.dropped_items.append(floor_item)
 
                 # Unblocked Collision
@@ -829,6 +880,14 @@ class MarketCatchView(StageView):
                     # Shaking effect triggers when touching or ramming into shopper
                     self.shake_timer = 0.2
                     self.shake_intensity = 5.0
+
+                    if getattr(shopper, "bump_cooldown", 0.0) <= 0:
+                        shopper.bump_cooldown = 0.8
+                        self.shopper_bumps += 1
+                        global _TOTAL_BUMPS
+                        _TOTAL_BUMPS += 1
+                        if self.shopper_bumps >= 10 or _TOTAL_BUMPS >= 10:
+                            achievements.unlock("egg_auntie_rush")
 
                     if self.mode == "defend" and shopper.ram_cooldown <= 0:
                         shopper.ram_cooldown = 1.0
@@ -908,7 +967,11 @@ class MarketCatchView(StageView):
 
     def complete_game_mode(self):
         audio.play("game_success")
+        if self.time_left >= 20.0:
+            achievements.unlock("market_speed")
+
         if self.mode == "veg":
+            achievements.unlock("market_veg")
             dialogue = [
                 ("Terry", "Phew! All fresh vegetables secured!"),
                 ("Terry", "These look crisp and fresh. Mum will be pleased."),
@@ -920,6 +983,7 @@ class MarketCatchView(StageView):
             self.trigger_wave_dialogue(dialogue, to_stage)
 
         elif self.mode == "meat":
+            achievements.unlock("market_meat")
             dialogue = [
                 ("Terry", "Got the prime meats! Those shoppers were aggressive!"),
                 ("Terry", "The steaks and ribs are safely in our basket."),
@@ -931,6 +995,15 @@ class MarketCatchView(StageView):
             self.trigger_wave_dialogue(dialogue, to_stage)
 
         elif self.mode == "defend":
+            achievements.unlock("market_checkout")
+            if not self.swung_fish:
+                achievements.unlock("egg_clean_escape")
+            if len(self.basket_items) >= 5:
+                achievements.unlock("market_full_cart")
+            if 0 < self.time_left < 3.0:
+                achievements.unlock("egg_last_second")
+            if self.veg_done and self.meat_done:
+                achievements.unlock("market_done")
             dialogue = [
                 ("Terry", "I made it through the checkout exit doors!"),
                 ("Terry", "The groceries survived the mob unscratched!"),

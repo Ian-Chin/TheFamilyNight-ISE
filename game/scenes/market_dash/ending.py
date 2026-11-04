@@ -1,8 +1,7 @@
 from pathlib import Path
 import arcade
 
-from ...core import textures
-from ...core import audio
+from ...core import achievements, audio, textures
 from ...config import HEIGHT, WIDTH
 from ...core.dialogue import DialogBox
 from ...core.options import SettingsPanel
@@ -63,6 +62,7 @@ class MarketEndingView(StageView):
         self.relayout()
 
     def on_show_view(self):
+        achievements.unlock("market_done")
         self.in_wave_dialogue = True
         if self.dialogue_queue:
             item = self.dialogue_queue.pop(0)
