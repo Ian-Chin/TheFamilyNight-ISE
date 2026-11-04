@@ -517,8 +517,8 @@ class InstructionModal:
 
         cx = WIDTH / 2
         cy = HEIGHT / 2
-        box_w = 720
-        box_h = 490
+        box_w = 760
+        box_h = 500
 
         # Outer drop shadow & rich wooden frame
         arcade.draw_rect_filled(arcade.XYWH(cx, cy - 4, box_w + 10, box_h + 10), (12, 6, 3, 190))
@@ -532,74 +532,84 @@ class InstructionModal:
         if self.mode == "veg":
             title = "🥕 HOW TO PLAY: FRESH VEGETABLES 🥦"
             obj_title = "OBJECTIVE:"
-            obj_desc = "Catch all 5 vegetables from the wall shelves before time runs out! Touching or getting rammed by shoppers reduces HP (-1 HP). If a thief escapes with food, you lose time (-5s)!"
+            obj_desc = "Catch all 5 vegetables from the crates before time runs out! Touching shoppers slows you down. Prevents shoppers leave with foods"
         elif self.mode == "meat":
             title = "🥩 HOW TO PLAY: PRIME MEATS 🍖"
             obj_title = "OBJECTIVE:"
-            obj_desc = "Secure all 5 meat cuts from the wall shelves before time runs out! Touching or getting rammed by shoppers reduces HP (-1 HP). If a thief escapes with food, you lose time (-5s)!"
+            obj_desc = "Secure all 5 meat cuts from the crates before time runs out! Touching shoppers slows you down. Prevents shoppers leave with foods"
         else:
             title = "🛒 HOW TO PLAY: CHECKOUT ESCAPE 🚪"
             obj_title = "OBJECTIVE:"
-            obj_desc = "Escort your basket with all 5 ingredients to the CHECKOUT EXIT DOORS at the top! Bumps from shoppers will spill items onto the floor—retrieve them all before exiting!"
+            obj_desc = "Escort your basket with all 5 ingredients to the CHECKOUT EXIT DOORS at the top! Bumps from shoppers spill items far into the aisle—recover them all before exiting!"
 
         # Title text
         arcade.draw_text(
-            title, cx, cy + 195, (255, 235, 175), 16, bold=True,
+            title, cx, cy + 200, (255, 235, 175), 16, bold=True,
             anchor_x="center", anchor_y="center"
         )
         # Decorative divider line
-        arcade.draw_line(cx - 300, cy + 172, cx + 300, cy + 172, (180, 140, 90, 180), 2)
+        arcade.draw_line(cx - 330, cy + 175, cx + 330, cy + 175, (180, 140, 90, 180), 2)
 
         # Objective Banner Box
         obj_box_y = cy + 130
-        arcade.draw_rect_filled(arcade.XYWH(cx, obj_box_y, box_w - 48, 56), (36, 20, 12, 230))
-        arcade.draw_rect_outline(arcade.XYWH(cx, obj_box_y, box_w - 48, 56), (150, 110, 70, 180), 1.5)
-        arcade.draw_text(obj_title, cx - 315, obj_box_y + 11, (255, 215, 110), 11, bold=True)
-        arcade.draw_text(obj_desc, cx - 315, obj_box_y - 18, (230, 225, 215), 10, width=630)
+        obj_box_w = box_w - 48
+        obj_box_h = 60
+        arcade.draw_rect_filled(arcade.XYWH(cx, obj_box_y, obj_box_w, obj_box_h), (36, 20, 12, 230))
+        arcade.draw_rect_outline(arcade.XYWH(cx, obj_box_y, obj_box_w, obj_box_h), (150, 110, 70, 180), 1.5)
+        obj_left = cx - (obj_box_w / 2) + 20
+        arcade.draw_text(obj_title, obj_left, obj_box_y + 14, (255, 215, 110), 11, bold=True, anchor_y="center")
+        arcade.draw_text(obj_desc, obj_left, obj_box_y - 12, (230, 225, 215), 10, width=obj_box_w - 40, anchor_y="center")
 
         # Controls Cards Header
-        arcade.draw_text("CONTROLS & ACTIONS", cx, cy + 80, (255, 215, 110), 12, bold=True, anchor_x="center")
+        arcade.draw_text("CONTROLS & ACTIONS", cx, cy + 78, (255, 215, 110), 12, bold=True, anchor_x="center", anchor_y="center")
 
         # Control Rows
         if self.mode == "defend":
             controls = [
                 ("WASD  /  ARROWS", "Move Terry", "Navigate through the crowded market aisle"),
-                ("LEFT CLICK  /  SPACE", "180° Spin Attack", "Spin 180° clockwise to smack & knock back shoppers; recover food"),
+                ("LEFT CLICK  /  SPACE", "180° Spin Attack", "Spin 180° clockwise to smack shoppers & recover food"),
                 ("[ E ]  or  WALK OVER", "Pick Up Food", "Quickly recover spilled ingredients from the floor"),
                 ("HOLD SHIFT", "Sprint Boost", "Run at high speed toward the checkout exit doors"),
             ]
         else:
             controls = [
-                ("WASD  /  ARROWS", "Move Terry", "Navigate across the aisle toward glowing restock shelves"),
+                ("WASD  /  ARROWS", "Move Terry", "Navigate across aisle toward glowing restock shelves"),
                 ("[ E ]  or  ENTER", "Grab Shelf Item", "Take the active ingredient from shelf crate when nearby"),
                 ("SPACE  /  LEFT CLICK", "Shield Block", "Block & deflect aggressive shoppers; make them drop items"),
-                ("HOLD SHIFT", "Sprint Boost", "Run at high speed to beat rushing shoppers to the shelf"),
+                ("HOLD SHIFT", "Sprint Boost", "Run at high speed to beat rushing shoppers to shelf"),
             ]
 
-        row_start_y = cy + 50
-        row_h = 44
+        row_start_y = cy + 46
+        row_h = 42
+        row_w = box_w - 48
+        row_left = cx - (row_w / 2)
+
         for idx, (badge_text, act_label, desc_text) in enumerate(controls):
             ry = row_start_y - (idx * row_h)
             # Subtle row backdrop
-            arcade.draw_rect_filled(arcade.XYWH(cx, ry, box_w - 48, 36), (42, 24, 14, 180))
-            arcade.draw_rect_outline(arcade.XYWH(cx, ry, box_w - 48, 36), (90, 60, 40, 140), 1)
+            arcade.draw_rect_filled(arcade.XYWH(cx, ry, row_w, 34), (42, 24, 14, 180))
+            arcade.draw_rect_outline(arcade.XYWH(cx, ry, row_w, 34), (90, 60, 40, 140), 1)
 
-            # Key Badge pill
-            badge_w = 175
-            badge_x = cx - 225
-            arcade.draw_rect_filled(arcade.XYWH(badge_x, ry, badge_w, 26), (22, 14, 8, 255))
-            arcade.draw_rect_outline(arcade.XYWH(badge_x, ry, badge_w, 26), (210, 160, 90, 220), 1.5)
-            arcade.draw_text(badge_text, badge_x, ry - 5, (255, 240, 200), 10, bold=True, anchor_x="center")
+            # Key Badge pill (Column 1)
+            badge_w = 170
+            badge_h = 24
+            badge_x = row_left + 14 + (badge_w / 2)
+            arcade.draw_rect_filled(arcade.XYWH(badge_x, ry, badge_w, badge_h), (22, 14, 8, 255))
+            arcade.draw_rect_outline(arcade.XYWH(badge_x, ry, badge_w, badge_h), (210, 160, 90, 220), 1.5)
+            arcade.draw_text(badge_text, badge_x, ry, (255, 240, 200), 10, bold=True, anchor_x="center", anchor_y="center")
 
-            # Action Label
-            arcade.draw_text(act_label, cx - 120, ry - 5, (255, 220, 130), 11, bold=True)
+            # Action Label (Column 2)
+            act_x = row_left + 14 + badge_w + 16
+            arcade.draw_text(act_label, act_x, ry, (255, 220, 130), 11, bold=True, anchor_x="left", anchor_y="center")
 
-            # Description
-            arcade.draw_text(desc_text, cx + 55, ry - 5, (225, 220, 210), 10)
+            # Description (Column 3) - well spaced with ample width to prevent any overflow
+            desc_x = act_x + 130
+            desc_w = (row_left + row_w - 14) - desc_x
+            arcade.draw_text(desc_text, desc_x, ry, (225, 220, 210), 10, anchor_x="left", anchor_y="center", width=int(desc_w))
 
         # OK / START Button
         btn_w, btn_h = 180, 42
-        btn_y = cy - 185
+        btn_y = cy - 188
         btn_x = cx
 
         # Pulsing gold/green button
@@ -613,12 +623,12 @@ class InstructionModal:
         arcade.draw_rect_outline(arcade.XYWH(btn_x, btn_y, btn_w, btn_h), border_col, 2.5)
 
         arcade.draw_text(
-            "OK - START!", btn_x, btn_y - 6, (255, 255, 255), 13, bold=True,
-            anchor_x="center"
+            "OK - START!", btn_x, btn_y, (255, 255, 255), 13, bold=True,
+            anchor_x="center", anchor_y="center"
         )
         arcade.draw_text(
-            "(Press ENTER or SPACE to begin)", btn_x, btn_y - 32, (200, 185, 160), 9,
-            anchor_x="center"
+            "(Press ENTER or SPACE to begin)", btn_x, btn_y - 28, (200, 185, 160), 9,
+            anchor_x="center", anchor_y="center"
         )
 
     def handle_mouse_press(self, mouse_x, mouse_y):
@@ -628,7 +638,7 @@ class InstructionModal:
         cx = WIDTH / 2
         cy = HEIGHT / 2
         btn_w, btn_h = 180, 42
-        btn_y = cy - 185
+        btn_y = cy - 188
         btn_x = cx
 
         if (btn_x - btn_w / 2 <= mouse_x <= btn_x + btn_w / 2) and \
