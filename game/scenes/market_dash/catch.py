@@ -113,8 +113,10 @@ class MarketCatchView(StageView):
 
         active_tex = self.terry_tex_defend if self.mode == "defend" else self.terry_tex_normal
         self.player_scale = 0.15
+        self.facing_angle = 180.0
+        self.swing_base_angle = 180.0
         self.player = arcade.Sprite(active_tex, scale=self.player_scale)
-        self.player.angle = 180  
+        self.player.angle = self.facing_angle  
         if self.mode == "defend":
             self.player.center_x = 640
             self.player.center_y = 95
@@ -262,6 +264,7 @@ class MarketCatchView(StageView):
             return False
         audio.play("swing_sword")
         self.swinging = True
+        self.swing_base_angle = self.facing_angle
         self.swing_duration = 0.30
         self.swing_timer = self.swing_duration
         self.spin_cooldown = 0.45
@@ -537,23 +540,28 @@ class MarketCatchView(StageView):
         if self.swinging:
             self.swing_timer -= delta_time
             self.player.texture = self.terry_tex_action
-            # 180 degree clockwise spin during attack
+            # 180 degree clockwise spin during attack starting from current facing angle
             progress = max(0.0, min(1.0, 1.0 - (self.swing_timer / self.swing_duration)))
-            self.player.angle = 180.0 - (progress * 180.0)
+            self.player.angle = self.swing_base_angle - (progress * 180.0)
             if self.swing_timer <= 0:
                 self.swinging = False
-                self.player.angle = 180.0
+                self.player.angle = self.facing_angle
                 self.player.texture = self.terry_tex_defend if self.mode == "defend" else self.terry_tex_normal
         elif self.blocking:
             self.block_timer -= delta_time
             self.player.texture = self.terry_tex_action
-            self.player.angle = 180.0
+            self.player.angle = self.facing_angle
             if self.block_timer <= 0:
                 self.blocking = False
                 self.player.texture = self.terry_tex_defend if self.mode == "defend" else self.terry_tex_normal
         else:
-            self.player.angle = 180.0
+            self.player.angle = self.facing_angle
             self.player.texture = self.terry_tex_defend if self.mode == "defend" else self.terry_tex_normal
+
+        # Orient character to face towards the movement direction (Left: 90°, Right: 270°, Up: 180°, Down: 0°)
+        if not self.swinging and (self.player_move_x != 0 or self.player_move_y != 0):
+            self.facing_angle = (math.degrees(math.atan2(self.player_move_y, -self.player_move_x)) + 90) % 360
+            self.player.angle = self.facing_angle
 
         # 2D Top-Down Movement with diagonal normalization, Shift speed boost, and crowd slowdown
         step = delta_time * 60.0
@@ -571,11 +579,9 @@ class MarketCatchView(StageView):
         self.player.center_x = max(AISLE_MIN_X, min(AISLE_MAX_X, self.player.center_x))
         self.player.center_y = max(AISLE_MIN_Y, min(AISLE_MAX_Y, self.player.center_y))
 
-        # Horizontal facing orientation
-        if self.player_move_x < 0:
-            self.player.scale_x = -abs(self.player_scale)
-        elif self.player_move_x > 0:
-            self.player.scale_x = abs(self.player_scale)
+        # Positive scale (direction is naturally handled by angle rotation)
+        self.player.scale_x = abs(self.player_scale)
+        self.player.scale_y = abs(self.player_scale)
 
         # Shopper wave increase by duration phase (Veg & Meat Modes)
         # Initial 3 shoppers, increasing by 1 or 2 every 10 seconds up to max 8 shoppers
