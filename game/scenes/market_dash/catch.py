@@ -236,7 +236,7 @@ class MarketCatchView(StageView):
         if self.mode in ("veg", "meat"):
             count = 8 #Intitial shoppers for gathering game
         else:
-            count = 15 # Intitial shoppers for defend game
+            count = 10 # Intitial shoppers for defend game
 
         if self.mode == "veg":
             self.shopper_rush_speed = 4.6 # veg shoppers rush speed
@@ -376,15 +376,15 @@ class MarketCatchView(StageView):
         mode_name = "Fresh Vegetables" if self.mode == "veg" else "Prime Meats" if self.mode == "meat" else "Basket Defense"
         if reason is None:
             if self.lives <= 0:
-                reason = "Out of HP! Terry was overwhelmed by shoppers."
+                reason = "Terry was overwhelmed by shoppers."
             else:
-                reason = "Time's up! Ingredients were not gathered in time."
+                reason = "You failed to gather all the ingredients."
 
         self.retry_modal.open(
             on_retry=do_retry,
             on_give_up=do_give_up,
             title=f"{mode_name.upper()} FAILED!",
-            message=f"{reason} Would you like to try again or return to market?"
+            message=f"{reason}\nWould you like to try again or return to market?"
         )
 
     def try_grab_shelf(self):

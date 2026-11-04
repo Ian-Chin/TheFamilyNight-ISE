@@ -283,7 +283,7 @@ class RetryModal:
 
         cx = WIDTH / 2
         cy = HEIGHT / 2
-        box_w = 480
+        box_w = 560
         box_h = 240
 
         # Wooden Box
@@ -293,21 +293,22 @@ class RetryModal:
 
         # Title Text
         arcade.draw_text(
-            self.title, cx, cy + 65, (235, 75, 75), 16, bold=True,
+            self.title, cx, cy + 68, (235, 75, 75), 16, bold=True,
             anchor_x="center", anchor_y="center"
         )
 
-        # Message Text
+        # Message Text (multiline & bounded to prevent exceeding box borders)
         arcade.draw_text(
-            self.message, cx, cy + 20, (240, 230, 215), 11,
-            anchor_x="center", anchor_y="center"
+            self.message, cx, cy + 16, (240, 230, 215), 11,
+            width=box_w - 60, align="center", anchor_x="center", anchor_y="center",
+            multiline=True
         )
 
         # Buttons
-        btn_w, btn_h = 130, 38
-        btn_y = cy - 45
-        retry_x = cx - 80
-        giveup_x = cx + 80
+        btn_w, btn_h = 136, 38
+        btn_y = cy - 50
+        retry_x = cx - 85
+        giveup_x = cx + 85
 
         # "TRY AGAIN" button
         arcade.draw_rect_filled(arcade.XYWH(retry_x, btn_y, btn_w, btn_h), (40, 140, 65, 230))
@@ -323,12 +324,12 @@ class RetryModal:
         if not self.visible:
             return False
 
-        btn_w, btn_h = 130, 38
+        btn_w, btn_h = 136, 38
         cx = WIDTH / 2
         cy = HEIGHT / 2
-        btn_y = cy - 45
-        retry_x = cx - 80
-        giveup_x = cx + 80
+        btn_y = cy - 50
+        retry_x = cx - 85
+        giveup_x = cx + 85
 
         # Hit test for "TRY AGAIN"
         if (retry_x - btn_w / 2 <= mouse_x <= retry_x + btn_w / 2) and \
@@ -540,7 +541,7 @@ class InstructionModal:
         else:
             title = "🛒 HOW TO PLAY: CHECKOUT ESCAPE 🚪"
             obj_title = "OBJECTIVE:"
-            obj_desc = "Escort your basket with all 5 ingredients to the CHECKOUT EXIT DOORS at the top! Bumps from shoppers spill items far into the aisle—recover them all before exiting!"
+            obj_desc = "Escort your basket with all ingredients to the exit door!"
 
         # Title text
         arcade.draw_text(
