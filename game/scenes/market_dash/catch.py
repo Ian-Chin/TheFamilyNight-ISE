@@ -75,9 +75,9 @@ class MarketCatchView(StageView):
 
         # Shelf restock cycle timers & active slot
         self.active_restock = None  # Dict of restock state when an ingredient is on shelf
-        self.restock_interval = 4.5 if self.mode == "veg" else 3.8
+        self.restock_interval = 4.5 if self.mode == "veg" else 3.8 # next ingredients spawn time interval
         self.restock_timer = 1.2    # Initial delay before first restock
-        self.shopper_rush_speed = 5.0 if self.mode == "veg" else 6.5
+        self.shopper_rush_speed = 4.6 if self.mode == "veg" else 4.6 # shoppers rush speed
 
         # Terry Action Mechanics (Defend mode Spin Attack / Gathering Block)
         self.swinging = False
@@ -219,9 +219,9 @@ class MarketCatchView(StageView):
         self.active_restock = None
         self.upcoming_restock = None
         self.time_left = self.duration
-        self.restock_timer = 4.0
-        self.phase_spawn_timer = 10.0
-        self.max_shoppers = 8
+        self.restock_timer = 4.0 
+        self.phase_spawn_timer = 8.0 # spawn new shoppers
+        self.max_shoppers = 15 # maximum shoppers on screen at once
         self.invuln_timer = 0.0
         self.touching_crowd_timer = 0.0
 
@@ -234,14 +234,14 @@ class MarketCatchView(StageView):
             self.exit_warn_timer = 0.0
 
         if self.mode in ("veg", "meat"):
-            count = 3
+            count = 8 #Intitial shoppers for gathering game
         else:
-            count = 8
+            count = 10 # Intitial shoppers for defend game
 
         if self.mode == "veg":
-            self.shopper_rush_speed = 3.2
+            self.shopper_rush_speed = 4.6 # veg shoppers rush speed
         elif self.mode == "meat":
-            self.shopper_rush_speed = 3.6
+            self.shopper_rush_speed = 4.6 # meat shoppers rush speed
         else:
             self.shopper_rush_speed = 4.5
 
@@ -257,18 +257,18 @@ class MarketCatchView(StageView):
             self.snatchers_list.append(shopper)
 
     def trigger_mackerel_swing(self):
-        """Spins 360 degrees clockwise to stun and knock back shoppers in Defend mode."""
+        """Spins 180 degrees clockwise to stun and knock back shoppers in Defend mode."""
         if self.swinging or self.spin_cooldown > 0:
             return False
         audio.play("swing_sword")
         self.swinging = True
-        self.swing_duration = 0.35
+        self.swing_duration = 0.30
         self.swing_timer = self.swing_duration
         self.spin_cooldown = 0.45
         self.shake_timer = 0.15
         self.shake_intensity = 4.0
 
-        swing_radius = 95.0
+        swing_radius = 85.0
 
         for shopper in self.snatchers_list:
             dist = math.hypot(shopper.center_x - self.player.center_x, shopper.center_y - self.player.center_y)
@@ -376,15 +376,15 @@ class MarketCatchView(StageView):
         mode_name = "Fresh Vegetables" if self.mode == "veg" else "Prime Meats" if self.mode == "meat" else "Basket Defense"
         if reason is None:
             if self.lives <= 0:
-                reason = "Out of HP! Terry was overwhelmed by shoppers."
+                reason = "Terry was overwhelmed by shoppers."
             else:
-                reason = "Time's up! Ingredients were not gathered in time."
+                reason = "You failed to gather all the ingredients."
 
         self.retry_modal.open(
             on_retry=do_retry,
             on_give_up=do_give_up,
             title=f"{mode_name.upper()} FAILED!",
-            message=f"{reason} Would you like to try again or return to market?"
+            message=f"{reason}\nWould you like to try again or return to market?"
         )
 
     def try_grab_shelf(self):
@@ -537,9 +537,9 @@ class MarketCatchView(StageView):
         if self.swinging:
             self.swing_timer -= delta_time
             self.player.texture = self.terry_tex_action
-            # 360 degree clockwise spin during attack
+            # 180 degree clockwise spin during attack
             progress = max(0.0, min(1.0, 1.0 - (self.swing_timer / self.swing_duration)))
-            self.player.angle = 180.0 - (progress * 360.0)
+            self.player.angle = 180.0 - (progress * 180.0)
             if self.swing_timer <= 0:
                 self.swinging = False
                 self.player.angle = 180.0
@@ -557,8 +557,11 @@ class MarketCatchView(StageView):
 
         # 2D Top-Down Movement with diagonal normalization, Shift speed boost, and crowd slowdown
         step = delta_time * 60.0
-        crowd_slow = 0.50 if (self.mode in ("veg", "meat") and self.touching_crowd_timer > 0) else 1.0
-        current_speed = (self.boost_speed if self.speed_boosted else self.base_speed) * crowd_slow
+        if self.touching_crowd_timer > 0:
+            crowd_slow = 0.40  # Heavy slowdown when touching/ramming shoppers
+            current_speed = self.base_speed * crowd_slow  # Break sprint boost and slow Terry down
+        else:
+            current_speed = self.boost_speed if self.speed_boosted else self.base_speed
         norm = 0.7071 if (self.player_move_x != 0 and self.player_move_y != 0) else 1.0
 
         self.player.center_x += self.player_move_x * current_speed * norm * step
@@ -579,7 +582,7 @@ class MarketCatchView(StageView):
         if self.mode in ("veg", "meat") and not self.completed:
             self.phase_spawn_timer -= delta_time
             if self.phase_spawn_timer <= 0:
-                self.phase_spawn_timer = 10.0
+                self.phase_spawn_timer = 6.0
                 if len(self.snatchers_list) < self.max_shoppers:
                     needed = min(random.randint(1, 2), self.max_shoppers - len(self.snatchers_list))
                     for _ in range(needed):
@@ -619,7 +622,7 @@ class MarketCatchView(StageView):
                     self.restock_timer -= delta_time
 
                     # 3 seconds before restock: determine upcoming shelf slot & item for hint
-                    if self.restock_timer <= 3.0:
+                    if self.restock_timer <= 1.0: # restock hint seconds
                         if self.upcoming_restock is None:
                             pick_name = random.choice(candidates)
                             slot_x, slot_y = pick_weighted_shelf_slot()
@@ -658,7 +661,7 @@ class MarketCatchView(StageView):
 
                         # Trigger shoppers on that side to rush the shelf with reaction delay
                         for shopper in self.snatchers_list:
-                            delay = random.uniform(1.4, 2.2)
+                            delay = random.uniform(0.1, 0.3) # reactive delay before rushing to shelf
                             if slot_x < 640 and shopper.center_x < 640:
                                 shopper.trigger_rush(slot_x, slot_y, pick_name, item_tex, delay=delay)
                             elif slot_x >= 640 and shopper.center_x >= 640:
@@ -705,9 +708,9 @@ class MarketCatchView(StageView):
 
             # Check if shopper successfully fled off screen with a stolen ingredient
             if shopper.has_fled_with_item:
+                lost_item = shopper.carried_item or "Ingredient"
                 if self.mode == "defend":
-                    lost_item = shopper.carried_item or "Ingredient"
-                    self.take_damage()
+                    self.take_damage(ignore_invuln=True)
                     self.floating_popups.append({
                         "text": f"PERMANENTLY LOST: {lost_item}!",
                         "x": self.player.center_x,
@@ -728,25 +731,22 @@ class MarketCatchView(StageView):
                     if self.lives <= 0:
                         return
                 else:
-                    # In Veg & Meat modes: Reduce time from total time duration when an item is lost off-screen
-                    time_penalty = 5.0
-                    self.time_left = max(0.0, self.time_left - time_penalty)
-                    audio.play("hp_reduced")
+                    # In Veg & Meat modes: Reduce 1 HP when shopper flees outside the scene with an ingredient (no time reduction)
+                    self.take_damage(ignore_invuln=True)
                     self.floating_popups.append({
-                        "text": f"-{int(time_penalty)}s ITEM LOST!",
+                        "text": f"-1 HP! {lost_item} LOST!",
                         "x": self.player.center_x,
                         "y": self.player.center_y + 65,
-                        "timer": 0.9,
-                        "max_timer": 0.9,
-                        "color": (255, 140, 60)
+                        "timer": 1.0,
+                        "max_timer": 1.0,
+                        "color": (255, 60, 60)
                     })
                     shopper.reset_pos(
                         rush_speed=self.shopper_rush_speed,
                         player_pos=(self.player.center_x, self.player.center_y),
                         min_dist=200
                     )
-                    if self.time_left <= 0:
-                        self.show_retry_prompt("Time's up! Ingredients were not gathered in time.")
+                    if self.lives <= 0:
                         return
 
             # Check if rushing shopper reached the active shelf slot before Terry
@@ -779,11 +779,9 @@ class MarketCatchView(StageView):
             is_colliding = arcade.check_for_collision(self.player, shopper) or (dist_total < 55)
 
             if shopper.state != STATE_STUNNED:
-                # Terry Block / Parry
+                # Terry Block / Parry (no screen shake when blocking)
                 if self.blocking and self.mode in ("veg", "meat") and (is_colliding or dist_total < 80):
                     audio.play("block")
-                    self.shake_timer = 0.25
-                    self.shake_intensity = 6.0
                     dropped = shopper.trigger_stun(self.player.center_x, self.player.center_y)
                     self.floating_popups.append({
                         "text": "DEFLECTED!",
@@ -825,6 +823,13 @@ class MarketCatchView(StageView):
 
                 # Unblocked Collision
                 elif is_colliding:
+                    # Character speed is reduced when touching or ramming into shoppers
+                    self.touching_crowd_timer = 0.4
+
+                    # Shaking effect triggers when touching or ramming into shopper
+                    self.shake_timer = 0.2
+                    self.shake_intensity = 5.0
+
                     if self.mode == "defend" and shopper.ram_cooldown <= 0:
                         shopper.ram_cooldown = 1.0
                         # Stumble backward slightly with 0.8s invulnerability
@@ -836,21 +841,35 @@ class MarketCatchView(StageView):
                         self.invuln_timer = 0.8
 
                         if self.basket_items:
-                            # Spill 1 item from basket onto the floor
+                            # Spill 1 item from basket onto the floor - drop far away
                             spilled_idx = random.randrange(len(self.basket_items))
                             spilled_item = self.basket_items.pop(spilled_idx)
-                            scatter_x = self.player.center_x + random.uniform(-35, 35)
-                            scatter_y = self.player.center_y + random.uniform(-35, 35)
-                            scatter_x = max(AISLE_MIN_X + 15, min(AISLE_MAX_X - 15, scatter_x))
-                            scatter_y = max(AISLE_MIN_Y + 15, min(AISLE_MAX_Y - 15, scatter_y))
-                            spilled_tex = self.all_ingredients.get(spilled_item)
 
+                            scatter_x, scatter_y = self.player.center_x, self.player.center_y
+                            for _ in range(12):
+                                drop_angle = random.uniform(0, 2 * math.pi)
+                                drop_dist = random.uniform(160.0, 240.0)
+                                cand_x = self.player.center_x + math.cos(drop_angle) * drop_dist
+                                cand_y = self.player.center_y + math.sin(drop_angle) * drop_dist
+                                cand_x = max(AISLE_MIN_X + 25, min(AISLE_MAX_X - 25, cand_x))
+                                cand_y = max(AISLE_MIN_Y + 25, min(AISLE_MAX_Y - 25, cand_y))
+                                if math.hypot(cand_x - self.player.center_x, cand_y - self.player.center_y) >= 120.0:
+                                    scatter_x, scatter_y = cand_x, cand_y
+                                    break
+                            else:
+                                center_aisle_x = (AISLE_MIN_X + AISLE_MAX_X) / 2
+                                center_aisle_y = (AISLE_MIN_Y + AISLE_MAX_Y) / 2
+                                to_center_angle = math.atan2(center_aisle_y - self.player.center_y, center_aisle_x - self.player.center_x)
+                                scatter_x = self.player.center_x + math.cos(to_center_angle) * 180.0
+                                scatter_y = self.player.center_y + math.sin(to_center_angle) * 180.0
+                                scatter_x = max(AISLE_MIN_X + 25, min(AISLE_MAX_X - 25, scatter_x))
+                                scatter_y = max(AISLE_MIN_Y + 25, min(AISLE_MAX_Y - 25, scatter_y))
+
+                            spilled_tex = self.all_ingredients.get(spilled_item)
                             floor_item = DroppedIngredient(spilled_item, spilled_tex, scatter_x, scatter_y, persists_indefinitely=True)
                             self.dropped_items.append(floor_item)
 
                             audio.play("get_snatched")
-                            self.shake_timer = 0.2
-                            self.shake_intensity = 5.0
                             self.floating_popups.append({
                                 "text": f"-1 {spilled_item} DROPPED!",
                                 "x": self.player.center_x,
@@ -874,25 +893,18 @@ class MarketCatchView(StageView):
                                 return
 
                     elif self.mode in ("veg", "meat"):
-                        # Touching any shopper slows Terry's movement speed by 50%
-                        self.touching_crowd_timer = 0.18
-
-                        # Touching or ramming into shoppers reduces HP!
+                        # Touching or ramming into shoppers slows character speed with screen shake (no HP lost)
                         if shopper.ram_cooldown <= 0:
-                            shopper.ram_cooldown = 1.2
-                            self.take_damage()
-                            popup_text = "RAMMED!" if shopper.state == STATE_RUSHING_SHELF else "OUCH!"
+                            shopper.ram_cooldown = 0.8
+                            popup_text = "RAMMED!" if shopper.state == STATE_RUSHING_SHELF else "BUMP!"
                             self.floating_popups.append({
                                 "text": popup_text,
                                 "x": self.player.center_x,
                                 "y": self.player.center_y + 65,
-                                "timer": 0.6,
-                                "max_timer": 0.6,
-                                "color": (255, 70, 70)
+                                "timer": 0.5,
+                                "max_timer": 0.5,
+                                "color": (255, 180, 80)
                             })
-                            if self.lives <= 0:
-                                self.show_retry_prompt("Out of HP! Terry was overwhelmed by shoppers.")
-                                return
 
     def complete_game_mode(self):
         audio.play("game_success")
@@ -1034,7 +1046,7 @@ class MarketCatchView(StageView):
                     arcade.draw_text("[E] GRAB!", rx, tag_y - 4, (240, 255, 220), 11, bold=True, anchor_x="center")
 
             # 3-Second Warning Hint (Blinking Exclamation Mark) before Food Drops on Shelf
-            elif self.mode in ("veg", "meat") and getattr(self, "upcoming_restock", None) is not None and self.restock_timer <= 3.0:
+            elif self.mode in ("veg", "meat") and getattr(self, "upcoming_restock", None) is not None and self.restock_timer <= 1.0: # restock hint seconds
                 ux = self.upcoming_restock["x"]
                 uy = self.upcoming_restock["y"]
                 crate_w = 140
@@ -1385,8 +1397,8 @@ class MarketCatchView(StageView):
         elif action == "quit":
             self.window.close()
 
-    def take_damage(self):
-        if self.lives <= 0 or self.invuln_timer > 0:
+    def take_damage(self, ignore_invuln: bool = False):
+        if self.lives <= 0 or (self.invuln_timer > 0 and not ignore_invuln):
             return
         self.invuln_timer = 1.0
         audio.play("get_snatched")

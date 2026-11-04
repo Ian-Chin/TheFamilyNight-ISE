@@ -74,7 +74,7 @@ class SnatcherSprite(arcade.Sprite):
 
         self.state = STATE_WANDERING
         self.rush_speed = rush_speed
-        self.flee_speed = 2.8
+        self.flee_speed = 5.2 # shopper flee speed when carrying an item
         self.rush_reaction_timer = 0.0
         self.wander_speed = random.uniform(2.0, 3.2)
         self.chase_speed = random.uniform(2.5, 3.4)
@@ -100,7 +100,7 @@ class SnatcherSprite(arcade.Sprite):
         self.target_floor_item = None
         self.has_fled_with_item = False
         self.rush_reaction_timer = 0.0
-        self.flee_speed = 2.8
+        self.flee_speed = 5.2 # shopper flee speed when carrying an item
         self.stun_timer = 0.0
         self.ram_cooldown = 0.0
         self.knockback_vx = 0.0
@@ -109,8 +109,8 @@ class SnatcherSprite(arcade.Sprite):
         self.alpha = 255
         if rush_speed is not None:
             self.rush_speed = rush_speed
-        self.wander_speed = random.uniform(2.0, 3.2)
-        self.chase_speed = random.uniform(2.5, 3.4)
+        self.wander_speed = random.uniform(2.0, 3.2) # wander speed when roaming the floor
+        self.chase_speed = random.uniform(2.5, 3.4) # chase speed when pursuing dropped items
 
         if custom_x is not None and custom_y is not None:
             self.center_x = custom_x
@@ -183,7 +183,7 @@ class SnatcherSprite(arcade.Sprite):
             self.carried_item = None
             self.carried_texture = None
             self.target_floor_item = None
-            self.rush_reaction_timer = delay if delay is not None else random.uniform(1.4, 2.2)
+            self.rush_reaction_timer = delay if delay is not None else random.uniform(0.5, 0.8) # reaction delay before rushing to shelf
 
     def cancel_rush(self):
         if self.state == STATE_RUSHING_SHELF:
@@ -334,7 +334,7 @@ class SnatcherSprite(arcade.Sprite):
         # 3. FLEEING_WITH_ITEM
         elif self.state == STATE_FLEEING_WITH_ITEM:
             dy = self.target_y - self.center_y
-            flee_speed = getattr(self, "flee_speed", 2.8)
+            flee_speed = getattr(self, "flee_speed", 5.2) # flee speed when carrying an item
             step_y = (1.0 if dy > 0 else -1.0) * flee_speed * step
             self.center_y += step_y
             self.update_animation(delta_time, 0, is_action=True, fast=True)
