@@ -271,7 +271,7 @@ class MarketCatchView(StageView):
         if self.mode in ("veg", "meat"):
             count = 8 #Intitial shoppers for gathering game
         else:
-            count = 10 # Intitial shoppers for defend game
+            count = 13 # Intitial shoppers for defend game
 
         if self.mode == "veg":
             self.shopper_rush_speed = 4.6 # veg shoppers rush speed
