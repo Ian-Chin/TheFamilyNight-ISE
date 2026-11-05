@@ -174,19 +174,41 @@ class MarketCatchView(StageView):
 
         self.collected_status = {k: False for k in self.active_keys}
 
-        # Load Snatchers
+        # Load Snatchers (supports 16-frame collections: walk, walk_right, rush, rush_right, grab)
         self.snatcher_types = []
         if SNATCHERS_BASE_DIR.exists():
             for folder in sorted([p for p in SNATCHERS_BASE_DIR.iterdir() if p.is_dir()]):
-                falls = [arcade.load_texture(str(folder / f"fall_{i}.png")) for i in range(6) if (folder / f"fall_{i}.png").exists()]
-                grabs = [arcade.load_texture(str(folder / f"grab_{i}.png")) for i in range(6) if (folder / f"grab_{i}.png").exists()]
-                if falls and grabs:
-                    self.snatcher_types.append((falls, grabs))
+                walks = [arcade.load_texture(str(folder / f"walk_{i}.png")) for i in range(16) if (folder / f"walk_{i}.png").exists()]
+                walks_right = [arcade.load_texture(str(folder / f"walk_right_{i}.png")) for i in range(16) if (folder / f"walk_right_{i}.png").exists()]
+                rushes = [arcade.load_texture(str(folder / f"rush_{i}.png")) for i in range(16) if (folder / f"rush_{i}.png").exists()]
+                rushes_right = [arcade.load_texture(str(folder / f"rush_right_{i}.png")) for i in range(16) if (folder / f"rush_right_{i}.png").exists()]
+                grabs = [arcade.load_texture(str(folder / f"grab_{i}.png")) for i in range(16) if (folder / f"grab_{i}.png").exists()]
+
+                # Fallback to legacy 6-frame sets if 16-frame sets are not present
+                if not walks:
+                    walks = [arcade.load_texture(str(folder / f"fall_{i}.png")) for i in range(6) if (folder / f"fall_{i}.png").exists()]
+                if not grabs:
+                    grabs = [arcade.load_texture(str(folder / f"grab_{i}.png")) for i in range(6) if (folder / f"grab_{i}.png").exists()]
+
+                if walks and grabs:
+                    anim_dict = {
+                        "walk": walks,
+                        "walk_right": walks_right if walks_right else walks,
+                        "rush": rushes if rushes else walks,
+                        "rush_right": rushes_right if rushes_right else (rushes if rushes else walks),
+                        "grab": grabs,
+                    }
+                    self.snatcher_types.append(anim_dict)
 
         if not self.snatcher_types:
-            dummy_fall = [arcade.make_circle_texture(32, (200, 40, 40))] * 6
-            dummy_grab = [arcade.make_circle_texture(32, (240, 20, 20))] * 6
-            self.snatcher_types.append((dummy_fall, dummy_grab))
+            dummy_tex = [arcade.make_circle_texture(32, (200, 40, 40))] * 16
+            self.snatcher_types.append({
+                "walk": dummy_tex,
+                "walk_right": dummy_tex,
+                "rush": dummy_tex,
+                "rush_right": dummy_tex,
+                "grab": dummy_tex,
+            })
 
         self.snatchers_list = arcade.SpriteList()
         self.dropped_items = arcade.SpriteList()
@@ -259,10 +281,9 @@ class MarketCatchView(StageView):
             self.shopper_rush_speed = 4.5
 
         for _ in range(count):
-            falls, grabs = random.choice(self.snatcher_types)
+            anim_data = random.choice(self.snatcher_types)
             shopper = SnatcherSprite(
-                falls,
-                grabs,
+                anim_data,
                 rush_speed=self.shopper_rush_speed,
                 player_pos=(self.player.center_x, self.player.center_y),
                 min_dist=200
@@ -615,10 +636,9 @@ class MarketCatchView(StageView):
                 if len(self.snatchers_list) < self.max_shoppers:
                     needed = min(random.randint(1, 2), self.max_shoppers - len(self.snatchers_list))
                     for _ in range(needed):
-                        falls, grabs = random.choice(self.snatcher_types)
+                        anim_data = random.choice(self.snatcher_types)
                         new_shopper = SnatcherSprite(
-                            falls,
-                            grabs,
+                            anim_data,
                             rush_speed=self.shopper_rush_speed,
                             player_pos=(self.player.center_x, self.player.center_y),
                             min_dist=200
@@ -1171,6 +1191,10 @@ class MarketCatchView(StageView):
                 arcade.draw_rect_filled(arcade.XYWH(exit_cx, label_y, 190, 22), (12, 45, 22, 230))
                 arcade.draw_rect_outline(arcade.XYWH(exit_cx, label_y, 190, 22), (100, 255, 150, pulse_a), border_width=1.5)
                 arcade.draw_text("CHECKOUT EXIT DOORS", exit_cx, label_y - 5, (230, 255, 230), 10, bold=True, anchor_x="center")
+
+            # Draw ground shadows beneath shoppers
+            for s in self.snatchers_list:
+                s.draw_shadow()
 
             # Draw floor dropped items, shoppers, and player
             self.dropped_items.draw()
