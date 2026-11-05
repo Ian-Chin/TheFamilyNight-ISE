@@ -2,6 +2,7 @@ from pathlib import Path
 import arcade
 
 from ...core import achievements, audio, textures
+from ...core.backdrop import Backdrop
 from ...config import HEIGHT, WIDTH
 from ...core.dialogue import DialogBox
 from ...core.options import SettingsPanel
@@ -17,7 +18,7 @@ class MarketEndingView(StageView):
 
     def __init__(self):
         super().__init__()
-        self.bg_texture = textures.background("market-dash/Scene 2.4 - market interior.jpg")
+        self.backdrop = Backdrop("market-dash/Scene 2.4 - market interior.jpg")
 
         self.dialog = DialogBox()
         self.pause_menu = PauseMenu()
@@ -91,12 +92,18 @@ class MarketEndingView(StageView):
             self.in_wave_dialogue = False
             self.finish_scene()
 
+    def on_hide_view(self):
+        self.backdrop.stop()
+
     def finish_scene(self):
+        self.backdrop.stop()
         self.window.show_view(BumpyBusView())
 
     def on_update(self, delta_time):
         if self.pause_menu.visible or self.settings_panel.visible:
             return
+
+        self.backdrop.update(delta_time)
 
         if self.in_wave_dialogue:
             if self.dialog.visible:
@@ -117,9 +124,9 @@ class MarketEndingView(StageView):
                 self.dialogue_bg,
                 arcade.XYWH(WIDTH / 2, HEIGHT / 2, WIDTH, HEIGHT)
             )
-        elif self.bg_texture:
+        elif self.backdrop:
             arcade.draw_texture_rect(
-                self.bg_texture,
+                self.backdrop.texture,
                 arcade.XYWH(WIDTH / 2, HEIGHT / 2, WIDTH, HEIGHT)
             )
 

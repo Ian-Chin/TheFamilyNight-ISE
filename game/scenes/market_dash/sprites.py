@@ -64,11 +64,36 @@ IngredientDrop = DroppedIngredient
 class SnatcherSprite(arcade.Sprite):
     """2D floor NPC with 4 AI states: WANDERING, RUSHING_SHELF, FLEEING_WITH_ITEM, STUNNED."""
 
-    def __init__(self, fall_textures, grab_textures, initial_x=None, initial_y=None, rush_speed=5.2, player_pos=None, min_dist=200):
+    def __init__(self, anim_data_or_falls, grab_textures=None, initial_x=None, initial_y=None, rush_speed=5.2, player_pos=None, min_dist=200):
         self.base_scale = 0.38
-        super().__init__(fall_textures[0], scale=self.base_scale)
-        self.fall_textures = fall_textures
-        self.grab_textures = grab_textures
+
+        # Support both 16-frame animation dictionary and legacy (fall_textures, grab_textures)
+        if isinstance(anim_data_or_falls, dict):
+            self.animations = anim_data_or_falls
+            self.walk_textures = self.animations.get("walk", [])
+            self.walk_right_textures = self.animations.get("walk_right", self.walk_textures)
+            self.rush_textures = self.animations.get("rush", self.walk_textures)
+            self.rush_right_textures = self.animations.get("rush_right", self.rush_textures)
+            self.grab_textures = self.animations.get("grab", self.walk_textures)
+        else:
+            self.walk_textures = list(anim_data_or_falls)
+            self.walk_right_textures = self.walk_textures
+            self.grab_textures = list(grab_textures) if grab_textures is not None else self.walk_textures
+            self.rush_textures = self.grab_textures
+            self.rush_right_textures = self.grab_textures
+            self.animations = {
+                "walk": self.walk_textures,
+                "walk_right": self.walk_right_textures,
+                "rush": self.rush_textures,
+                "rush_right": self.rush_right_textures,
+                "grab": self.grab_textures,
+            }
+
+        self.fall_textures = self.walk_textures
+        first_tex = self.walk_textures[0] if self.walk_textures else (
+            self.grab_textures[0] if self.grab_textures else arcade.make_circle_texture(32, (200, 40, 40))
+        )
+        super().__init__(first_tex, scale=self.base_scale)
         self.frame_timer = 0.0
         self.cur_frame = 0
 
@@ -212,6 +237,7 @@ class SnatcherSprite(arcade.Sprite):
         self.carried_texture = None
         self.target_floor_item = None
         self.state = STATE_STUNNED
+        self.angle = 0
         self.stun_timer = 1.8
         self.ram_cooldown = 1.8
 
@@ -224,19 +250,49 @@ class SnatcherSprite(arcade.Sprite):
 
         return dropped
 
-    def update_animation(self, delta_time, move_dx, is_action=False, fast=False):
-        anim_speed = 0.08 if fast else 0.12
+    def update_animation(self, delta_time, move_dx, is_action=False, fast=False, anim_type=None):
+        # Smooth 16-frame playback speed
+        anim_speed = 0.05 if fast else 0.07
         self.frame_timer += delta_time
+
+        if anim_type is None:
+            anim_type = "grab" if (is_action and self.state == STATE_FLEEING_WITH_ITEM) else ("rush" if is_action else "walk")
+
+        is_moving_right = move_dx > 0.1
+        is_moving_left = move_dx < -0.1
+
+        if anim_type == "rush":
+            if is_moving_right:
+                active_list = self.rush_right_textures
+                self.scale_x = abs(self.base_scale)
+            elif is_moving_left:
+                active_list = self.rush_right_textures
+                self.scale_x = -abs(self.base_scale)
+            else:
+                active_list = self.rush_textures
+        elif anim_type == "grab":
+            active_list = self.grab_textures
+            if is_moving_left:
+                self.scale_x = -abs(self.base_scale)
+            elif is_moving_right:
+                self.scale_x = abs(self.base_scale)
+        else:
+            if is_moving_right:
+                active_list = self.walk_right_textures
+                self.scale_x = abs(self.base_scale)
+            elif is_moving_left:
+                active_list = self.walk_right_textures
+                self.scale_x = -abs(self.base_scale)
+            else:
+                active_list = self.walk_textures
+
+        if not active_list:
+            return
+
         if self.frame_timer >= anim_speed:
             self.frame_timer = 0.0
-            active_list = self.grab_textures if is_action else self.fall_textures
             self.cur_frame = (self.cur_frame + 1) % len(active_list)
             self.texture = active_list[self.cur_frame]
-
-        if move_dx < -0.1:
-            self.scale_x = -abs(self.base_scale)
-        elif move_dx > 0.1:
-            self.scale_x = abs(self.base_scale)
 
     def update_behavior(self, delta_time, player_y, player_x, dropped_items=None, is_wave_3=False, **kwargs):
         step = delta_time * 60.0
@@ -290,7 +346,7 @@ class SnatcherSprite(arcade.Sprite):
                     move_dist = min(dist, self.wander_speed * step)
                     self.center_x += (dx / dist) * move_dist
                     self.center_y += (dy / dist) * move_dist
-                    self.update_animation(delta_time, dx, is_action=False, fast=False)
+                    self.update_animation(delta_time, dx, is_action=False, fast=False, anim_type="walk")
 
                 # Clamp shopper within border so they can explore all areas within bounds
                 self.center_x = max(AISLE_MIN_X + 10, min(AISLE_MAX_X - 10, self.center_x))
@@ -311,7 +367,7 @@ class SnatcherSprite(arcade.Sprite):
             if getattr(self, "rush_reaction_timer", 0) > 0:
                 self.rush_reaction_timer -= delta_time
                 dx = self.target_x - self.center_x
-                self.update_animation(delta_time, dx, is_action=False, fast=False)
+                self.update_animation(delta_time, dx, is_action=False, fast=False, anim_type="walk")
                 return
 
             dx = self.target_x - self.center_x
@@ -321,7 +377,7 @@ class SnatcherSprite(arcade.Sprite):
             if dist > 0.1:
                 self.center_x += (dx / dist) * move_dist
                 self.center_y += (dy / dist) * move_dist
-            self.update_animation(delta_time, dx, is_action=True, fast=True)
+            self.update_animation(delta_time, dx, is_action=True, fast=True, anim_type="rush")
 
             # Check if reached target floor item to claim it
             if getattr(self, "target_floor_item", None):
@@ -335,13 +391,29 @@ class SnatcherSprite(arcade.Sprite):
         elif self.state == STATE_FLEEING_WITH_ITEM:
             dy = self.target_y - self.center_y
             flee_speed = getattr(self, "flee_speed", 5.2) # flee speed when carrying an item
-            step_y = (1.0 if dy > 0 else -1.0) * flee_speed * step
+            fleeing_up = dy > 0
+            step_y = (1.0 if fleeing_up else -1.0) * flee_speed * step
             self.center_y += step_y
-            self.update_animation(delta_time, 0, is_action=True, fast=True)
+
+            # Fleeing to upper scene inverts 180 to face backwards/look back; bottom scene uses original walk orientation
+            if fleeing_up:
+                self.angle = 180
+            else:
+                self.angle = 0
+
+            # Use walk animation frames while fleeing with ingredients
+            self.update_animation(delta_time, 0, is_action=False, fast=True, anim_type="walk")
 
             # Exit boundaries check
             if self.center_y > HEIGHT + 60 or self.center_y < -60:
                 self.has_fled_with_item = True
+
+    def draw_shadow(self):
+        """Draws a soft ground contact shadow beneath the shopper's feet."""
+        feet_y = (self.bottom + 6) if self.angle == 180 else (self.center_y - (abs(self.height) / 2) + (10 * abs(self.scale_y)))
+        shadow_w = 46.0 * (abs(self.scale_x) / self.base_scale)
+        shadow_h = 16.0 * (abs(self.scale_y) / self.base_scale)
+        arcade.draw_ellipse_filled(self.center_x, feet_y, shadow_w, shadow_h, (15, 15, 25, 75))
 
     def draw_overlays(self):
         """Draws carried items, reaction alert bubbles, or stun indicators above shopper."""

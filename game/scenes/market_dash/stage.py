@@ -2,6 +2,7 @@ import math
 import arcade
 
 from ...core import textures
+from ...core.backdrop import Backdrop
 from ...core import audio
 from ...config import HEIGHT, WIDTH
 from ...core.dialogue import DialogBox
@@ -67,7 +68,7 @@ class MarketStageView(StageView):
         self.held = set()
         self.time_elapsed = 0.0
 
-        self.bg_texture = textures.background("market-dash/Scene 2.4 - market interior.jpg")
+        self.backdrop = Backdrop("market-dash/Scene 2.4 - market interior.jpg")
 
         # 3. Calculate spawn coordinates FIRST
         if self.defend_unlocked:
@@ -189,6 +190,7 @@ class MarketStageView(StageView):
         
     def on_hide_view(self):
         self.stop_ambience()
+        self.backdrop.stop()
 
     def trigger_stage_dialogue(self, lines, on_finish):
         self.stage_dialogue_queue = list(lines)
@@ -222,6 +224,7 @@ class MarketStageView(StageView):
 
         delta_time = min(delta_time, 1 / 30)
         self.time_elapsed += delta_time
+        self.backdrop.update(delta_time)
 
         # --- STEP 1: LOCK ANIMATION SEQUENCE ---
         if self.lock_animating:
@@ -360,8 +363,8 @@ class MarketStageView(StageView):
 
         if self.dialog.visible and self.stage_dialogue_bg:
             arcade.draw_texture_rect(self.stage_dialogue_bg, arcade.XYWH(WIDTH / 2, HEIGHT / 2, WIDTH, HEIGHT))
-        elif self.bg_texture:
-            arcade.draw_texture_rect(self.bg_texture, arcade.XYWH(WIDTH / 2, HEIGHT / 2, WIDTH, HEIGHT))
+        elif self.backdrop:
+            arcade.draw_texture_rect(self.backdrop.texture, arcade.XYWH(WIDTH / 2, HEIGHT / 2, WIDTH, HEIGHT))
 
         if not (self.dialog.visible and self.stage_dialogue_bg):
             for character in self.sprites:

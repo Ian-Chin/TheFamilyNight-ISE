@@ -302,6 +302,7 @@ BACKGROUND_VIDEOS = {
     "chao-dinner-night.png": "garden-night.mp4",
     "chao-dinner-served.png": "garden-night-dinner.mp4",
     "BBQ-Scene/BBQ_Prep_BG.jpg": "BBQ_Prep_BG.mp4",
+    "market-dash/Scene 2.4 - market interior.jpg": "market-interior.mp4",
     **dict(FEAST_STAGES),
 }
 GRAPHICS_MODES = ("quality", "performance")
