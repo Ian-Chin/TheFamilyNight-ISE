@@ -9,6 +9,7 @@ class BumpyBusView(StageView):
     def __init__(self):
         super().__init__()
         self.engine = Game(ASSETS, self.stage)
+        self.widgets = [self.engine.dialog]   # re-laid out when the window resizes
         self.pointer = (-9999,-9999)
         self.destination = None
 
