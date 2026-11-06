@@ -11,6 +11,7 @@ from .pixel_text import GLYPHS
 from .ring_renderer import RingRenderer
 from .target_rings import RIDE_DURATION, TrackingRing
 from ...core.sprites import Terry
+from ...core.dialogue import DialogBox
 
 W, H = 1280, 720
 INK = (18, 28, 43)
@@ -27,6 +28,11 @@ MENU_PANELS = [('PLAY',[(352,224),(653,241),(653,530),(337,548)],(223,42,76)),
 FIRST_EVENT_DELAY = (2.5, 5.0)
 SOLVED_EVENT_DELAY = (2.0, 4.0)
 REACTION_EVENT_DELAY = (1.5, 3.0)
+# Police officer NPC standing on the pavement in front of the waiting bus.
+POLICE_X, POLICE_HEIGHT, POLICE_RANGE = 400, 112, 120
+POLICE_LINES = ("Halt, citizen! The bus is about to leave.",
+                "Keep an eye on your food on board. Kids, grannies and sneaky workers are everywhere.",
+                "Walk to the arrow and press Enter to get on. Safe trip!")
 KEY_POOL = (arcade.key.F, arcade.key.G, arcade.key.H, arcade.key.I, arcade.key.J,
             arcade.key.K, arcade.key.L, arcade.key.O, arcade.key.U, arcade.key.Y, arcade.key.T)
 
@@ -111,6 +117,9 @@ class Game:
         self.station_layout = json.loads((self.root/'backgrounds/bus-scene/waiting_bus/pasar-layout.json').read_text())
         self.station = self.load('backgrounds/bus-scene/waiting_bus/pasar-station.png')
         self.arrow = self.load('backgrounds/bus-scene/waiting_bus/start-arrow-down.png', trim=True)
+        self.dialog = DialogBox()   # same speech box the other scenes use
+        self.dialog.layout(stage)
+        self.police = self.load('sprites/bus-scene/npcs/police.png', trim=True)
         self.wipe = self.load('sprites/bus-scene/transitions/bus-top-down-right.png', trim=True)
         self.destination = self.load('backgrounds/bus-scene/destination/bbq-background.png')
         ui = self.root/'ui/bus-scene/pixel-v3'
@@ -186,6 +195,8 @@ class Game:
         self.scene_reaction_time = 0.
         self.station_x = float(self.station_layout['heroStartX'])
         self.station_moving = False
+        self.police_line = None
+        self.dialog.close()
         self.jump_y = self.step_time = 0.
         self.station_hero.jump_timer = None
         self.station_hero.center_y = self.station_hero.ground_y = 0
@@ -222,6 +233,30 @@ class Game:
         left, right = self.station_layout['boardZone']
         return self.mode == 'stop' and not self.paused and left <= self.station_x <= right and self.jump_y == 0
 
+    def near_police(self):
+        return (self.mode == 'stop' and not self.paused and self.jump_y == 0
+                and abs(self.station_x-POLICE_X) <= POLICE_RANGE)
+
+    def talk_to_police(self):
+        """Start the conversation, or advance / close it."""
+        if self.police_line is None:
+            if not self.near_police():
+                return False
+            self.police_line = 0
+            self.held.clear()
+            self.facing_left = self.station_x > POLICE_X
+            self.dialog.open('Officer', POLICE_LINES[0])
+        elif self.dialog.typing:
+            self.dialog.finish_typing()
+        else:
+            self.police_line += 1
+            if self.police_line >= len(POLICE_LINES):
+                self.police_line = None
+                self.dialog.close()
+            else:
+                self.dialog.open('Officer', POLICE_LINES[self.police_line])
+        return True
+
     def begin_boarding(self):
         if not self.can_board():
             return False
@@ -236,6 +271,12 @@ class Game:
             self.close_menu() if self.menu_open else self.open_menu()
             return
         if self.menu_open:
+            return
+        if self.police_line is not None and not self.paused:
+            if key in (arcade.key.E, arcade.key.ENTER, arcade.key.NUM_ENTER, arcade.key.SPACE):
+                self.talk_to_police()
+            return
+        if key == arcade.key.E and self.talk_to_police():
             return
         if key == arcade.key.R:
             self.reset()
@@ -289,8 +330,11 @@ class Game:
         if self.paused:
             return
         self.anim += dt
+        self.dialog.update(dt)
         if self.mode == 'stop':
             direction = int(arcade.key.D in self.held)-int(arcade.key.A in self.held)
+            if self.police_line is not None:
+                direction = 0
             old_x = self.station_x
             self.station_x = max(self.station_layout['heroMinX'], min(W-55, old_x+direction*180*dt))
             self.station_moving = self.station_x != old_x
@@ -397,6 +441,14 @@ class Game:
     def draw_stop(self, arrow=True):
         p = self.paint
         p.image(self.station, 0, 0, W, H)
+        feet = self.station_layout['heroFeetY']
+        cop_w = self.police.width*POLICE_HEIGHT/self.police.height
+        bob = abs(math.sin(self.anim*3))*3 if self.police_line is None else 0
+        p.ellipse(POLICE_X,feet-4,cop_w*.8,cop_w*.8*.3,(18,14,10,130))
+        p.image(self.police,POLICE_X-cop_w/2,feet-POLICE_HEIGHT-bob,cop_w,POLICE_HEIGHT)
+        if arrow and self.police_line is None and self.near_police():
+            p.plaque(POLICE_X-62,feet-POLICE_HEIGHT-52,124,34)
+            p.text('E TALK',POLICE_X,feet-POLICE_HEIGHT-35,2,WHITE)
         texture = self.station_hero.texture
         if self.facing_left:
             if texture not in self.mirrored_heroes:
@@ -404,7 +456,6 @@ class Game:
             texture = self.mirrored_heroes[texture]
         height = 118
         width = texture.width*height/texture.height
-        feet = self.station_layout['heroFeetY']
         shrink = 1-.4*min(self.jump_y/70,1)
         p.ellipse(self.station_x,feet-4,width*.58*shrink,width*.58*.34*shrink,(18,14,10,round(150*shrink)))
         p.image(texture,self.station_x-width/2,feet-self.jump_y-height,width,height)
@@ -564,6 +615,7 @@ class Game:
             p.text(EVENT_NAMES[self.event],640,228,2,WHITE)
             message = f'PRESS {chr(self.event_key).upper()} - {self.presses}/{self.required} - {max(1,math.ceil(self.event_left))}S'
             p.text(message,640,269,2,WHITE)
+        self.dialog.draw()
         if self.paused and not self.menu_open:
             p.plaque(420,300,440,110)
             p.text('PAUSED',640,330,5,WHITE)
