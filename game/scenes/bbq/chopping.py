@@ -16,6 +16,7 @@ from ...core.dialogue import DialogBox
 from ...core.stage import StageView
 from .hub import BbqView
 from ...core.widgets import Portraits
+from ...core.pause import PauseMenu
 
 def cover_rect(texture, rect):
     scale = max(rect.width / texture.width, rect.height / texture.height)
@@ -168,6 +169,17 @@ class ChoppingView(StageView):
         self.slice_timer = 0.0
         
         self.dialog = DialogBox()
+
+        # --- NEW: Exit confirmation popup menu ---
+        self.exit_popup = PauseMenu(
+            [
+                ("Resume", "resume_chopping", "play"),
+                ("Exit", "exit_chopping", "book"),
+            ],
+            "Exit Chopping",
+            "Exit without completing the prep?",
+            width=460,
+        )
         
         # Load the base texture and dynamic faces for the dialogue box ONLY
         self.default_face = textures.terry_frames(glow=False)[2][0]
@@ -175,7 +187,7 @@ class ChoppingView(StageView):
         
         self.portraits = Portraits(self.default_face)
         
-        self.widgets = [self.dialog, self.portraits]
+        self.widgets = [self.dialog, self.portraits, self.exit_popup]
         self.typing_player = None
 
         self.camera = arcade.camera.Camera2D(
@@ -238,6 +250,9 @@ class ChoppingView(StageView):
 
     def on_show_view(self):
         self.play_script([("Terry", "Let's prep! Click exactly on the CHOP button. Don't miss, and don't chop too fast!", "happy")])
+
+    def on_hide_view(self):
+        self.stop_typing_sound()
 
     def stop_typing_sound(self):
         if self.typing_player:
@@ -318,6 +333,9 @@ class ChoppingView(StageView):
                 elif 16 <= self.stage_idx < 21: self.stage_idx = 20  
 
     def on_update(self, delta_time):
+        if self.exit_popup.visible:
+            return
+        
         for p in self.particles:
             p.update(delta_time)
         self.particles = [p for p in self.particles if not p.is_dead]
@@ -471,12 +489,24 @@ class ChoppingView(StageView):
         if self.dialog.visible:
             self.portraits.draw(partner=None, speaking="left")
             self.dialog.draw()
-        
+
+        # --- NEW: Draw exit popup if open ---
+        if self.exit_popup.visible:
+            self.exit_popup.draw()
+
+    def on_mouse_motion(self, x, y, dx, dy):
+        canvas_x, canvas_y = self.canvas_point(x, y)
+        self.exit_popup.on_mouse_motion(canvas_x, canvas_y)
+
     def on_mouse_press(self, x, y, button, modifiers):
+        canvas_x, canvas_y = self.canvas_point(x, y)
+        
+        if self.exit_popup.visible:
+            self.run_action(self.exit_popup.on_mouse_press(canvas_x, canvas_y, button))
+            return
+
         if self.dialog.visible:
             return
-            
-        canvas_x, canvas_y = self.stage.to_canvas(x, y)
         
         if button == arcade.MOUSE_BUTTON_LEFT:
             if self.success_timer > 0:
@@ -516,6 +546,16 @@ class ChoppingView(StageView):
                     self.fail_slice(reason="misclick", click_x=canvas_x, click_y=canvas_y)
 
     def on_key_press(self, key, modifiers):
+        if self.exit_popup.visible:
+            self.run_action(self.exit_popup.on_key_press(key))
+            return
+
+        if key == arcade.key.ESCAPE:
+            self.stop_typing_sound()
+            audio.play("ui_click")
+            self.exit_popup.open()
+            return
+        
         if not self.dialog.visible:
             if key in (arcade.key.ENTER, arcade.key.NUM_ENTER, arcade.key.RETURN, arcade.key.SPACE):
                 if self.lives <= 0:
@@ -612,5 +652,15 @@ class ChoppingView(StageView):
                         if not self.button_active:
                             self.spawn_button()
 
-        if key == arcade.key.ESCAPE:
-            self.window.show_view(BbqView(chop_unlocked=True, grill_unlocked=True, grill_completed=False))
+    def run_action(self, action):
+        if action is None:
+            return
+        if action in ("resume_chopping", "resume"):
+            self.exit_popup.close()
+            if self.dialog.visible and self.dialog.typing and self.typing_player is None:
+                self.typing_player = audio.play("dialog_type", loop=True)
+        elif action == "exit_chopping":
+            self.exit_popup.close()
+            self.stop_typing_sound()
+            # Keep chopping station unlocked, but chopping progress is not completed
+            self.window.show_view(BbqView(chop_unlocked=True, grill_unlocked=False, grill_completed=False))

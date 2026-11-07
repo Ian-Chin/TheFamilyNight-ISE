@@ -2,8 +2,9 @@ import math
 import random
 import arcade
 
-# --- NEW: Added achievements to the core imports ---
+# --- NEW: Added achievements and PauseMenu to the core imports ---
 from ...core import achievements, audio, textures
+from ...core.pause import PauseMenu
 from ...config import HEIGHT, WIDTH
 from .config import (
     BURN_100_BG, BURN_10_BG, BURN_20_BG, BURN_50_BG, GRILL_0_BG, GRILL_100_BG,
@@ -171,6 +172,17 @@ class GrillingView(StageView):
 
         self.dialog = DialogBox()
 
+        # --- NEW: Exit confirmation popup menu ---
+        self.exit_popup = PauseMenu(
+            [
+                ("Resume", "resume_grilling", "play"),
+                ("Exit", "exit_grilling", "book"),
+            ],
+            "Exit Grilling",
+            "Exit without completing the grill?",
+            width=460,
+        )
+
         self.terry_faces = textures.terry_faces()
         self.pending_dialog_face = None
         
@@ -180,7 +192,7 @@ class GrillingView(StageView):
             terry_tex = self.terry_portrait.texture
         self.portraits = Portraits(terry_tex)
         
-        self.widgets = [self.dialog, self.portraits]
+        self.widgets = [self.dialog, self.portraits, self.exit_popup]
         self.typing_player = None
         self.grilling_player = None
         
@@ -266,6 +278,9 @@ class GrillingView(StageView):
         return yellow_w, green_w
 
     def on_update(self, delta_time):
+        if self.exit_popup.visible:
+            return
+
         # 1. Always update active visual effects
         for p in self.particles:
             p.update(delta_time)
@@ -298,7 +313,6 @@ class GrillingView(StageView):
             return  
 
         # 3. Block game logic if we are in the "Freeze Frame" dialog delay
-        #    This allows the floating text and fire flashes to animate before dialog blocks the screen.
         if self.dialog_timer > 0:
             self.dialog_timer -= delta_time
             if self.dialog_timer <= 0 and self.pending_dialog:
@@ -350,7 +364,6 @@ class GrillingView(StageView):
                 self.smoke_tier = 0
                 self.smoke_emitters.clear()
                 
-                # --- NEW: Trigger Grease Fire Flash on Overheat ---
                 self.fire_flash_alpha = 200.0
                 self.spawn_burst_smoke(color=(50, 40, 40), count=25)
                 
@@ -369,7 +382,6 @@ class GrillingView(StageView):
                     audio.play("hp_reduced")
                     self.pending_dialog = "The grill flared up because we waited too long! A burn strike added."
                 
-                # Activate the visual delay timer!
                 self.dialog_timer = 0.8
                 return
 
@@ -387,13 +399,13 @@ class GrillingView(StageView):
                 self.arrow_dir = 1
 
 
+    def on_draw(self):
         self.clear()
         
         self.window.default_camera.use()
         current_bg = self.get_current_bg()
         arcade.draw_texture_rect(current_bg, cover_rect(current_bg, self.stage.viewport()))
 
-        # --- MOVED: Draw Overlays here so they scale perfectly with the virtual bounds ---
         self.camera.use()
         
         if not self.game_over and self.temperature >= 200:
@@ -455,76 +467,20 @@ class GrillingView(StageView):
             self.portraits.draw(partner=None, speaking="left")
             self.dialog.draw()
 
-    def on_draw(self):
-        self.clear()
-        
-        self.window.default_camera.use()
-        current_bg = self.get_current_bg()
-        arcade.draw_texture_rect(current_bg, cover_rect(current_bg, self.stage.viewport()))
+        if self.exit_popup.visible:
+            self.exit_popup.draw()
 
-        self.camera.use()
-        
-        if not self.game_over and self.temperature >= 200:
-            heat_alpha = min(150, int((self.temperature - 200) * 1.5))
-            pulse = math.sin(self.time_since_last_action * 4.0) * 25
-            final_alpha = max(0, min(255, int(heat_alpha + pulse)))
-            thickness = 100 
-            vignette_color = (255, 80, 0, final_alpha) 
-            vignette_rect = arcade.XYWH(WIDTH/2, HEIGHT/2, WIDTH - thickness, HEIGHT - thickness)
-            arcade.draw_rect_outline(vignette_rect, vignette_color, border_width=thickness)
-        
-        if self.fire_flash_alpha > 0:
-            flash_rect = arcade.XYWH(WIDTH / 2, HEIGHT / 2, WIDTH, HEIGHT)
-            arcade.draw_rect_filled(flash_rect, (255, 180, 50, int(self.fire_flash_alpha)))
-        
-        for p in self.particles:
-            p.draw()
-            
-        self.portrait_list.draw(pixelated=True)
-        
-        if not self.game_over:
-            self.ui_list.draw(pixelated=True)
-            
-            arcade.draw_text("TEMP", self.temp_bar.center_x, self.temp_bar.top + 50,
-                             arcade.color.WHITE, 20, bold=True, anchor_x="center", font_name="Kenney Pixel Square")
-            
-            temp_color = arcade.color.RED if self.temperature >= 250 else arcade.color.WHITE
-            arcade.draw_text(f"{int(self.temperature)}°C", self.temp_bar.center_x, self.temp_bar.top + 20, 
-                             temp_color, 24, bold=True, anchor_x="center", font_name="Kenney Pixel Square")
-
-            yellow_w, green_w = self.get_zone_widths()
-
-            arcade.draw_rect_filled(arcade.XYWH(self.bar_x, self.bar_y, self.bar_width, self.bar_height), arcade.color.CRIMSON)
-            arcade.draw_rect_filled(arcade.XYWH(self.bar_x, self.bar_y, yellow_w, self.bar_height), arcade.color.GOLD)
-            arcade.draw_rect_filled(arcade.XYWH(self.bar_x, self.bar_y, green_w, self.bar_height), arcade.color.APPLE_GREEN)
-            
-            arcade.draw_rect_outline(arcade.XYWH(self.bar_x, self.bar_y, self.bar_width, self.bar_height), arcade.color.DARK_GRAY, 4)
-            
-            arcade.draw_triangle_filled(
-                self.arrow_x - 15, self.bar_y + 35,
-                self.arrow_x + 15, self.bar_y + 35,
-                self.arrow_x, self.bar_y + 5,
-                arcade.color.WHITE
-            )
-            
-            arcade.draw_text(f"Strikes: {self.burn_strikes}/3", self.bar_x - 180, self.bar_y + 40, arcade.color.RED, 16, bold=True, font_name="Kenney Pixel Square")
-            arcade.draw_text(f"Progress: {self.grill_progress}%", self.bar_x + 30, self.bar_y + 40, arcade.color.WHITE, 16, bold=True, font_name="Kenney Pixel Square")
-            
-            if not self.dialog.visible:
-                self.button_list.draw(pixelated=True)
-                
-        # --- FIX: Moved floating_texts loop OUTSIDE the `if not self.game_over:` block! ---
-        # This ensures the popup text still renders during the 0.8s pause on the final frame.
-        for ft in self.floating_texts:
-            ft.draw()
-            
-        self.window.default_camera.use()
-        if self.dialog.visible:
-            self.portraits.draw(partner=None, speaking="left")
-            self.dialog.draw()
+    def on_mouse_motion(self, x, y, dx, dy):
+        canvas_x, canvas_y = self.stage.to_canvas(x, y)
+        self.exit_popup.on_mouse_motion(canvas_x, canvas_y)
 
     def on_mouse_press(self, x, y, button, modifiers):
-        # --- PREVENT clicks if dialogue is up, game is over, or we are in the freeze-frame delay! ---
+        if self.exit_popup.visible:
+            canvas_x, canvas_y = self.stage.to_canvas(x, y)
+            action = self.exit_popup.on_mouse_press(canvas_x, canvas_y, button)
+            self.run_action(action)
+            return
+
         if self.dialog.visible or self.game_over or self.dialog_timer > 0:
             return
             
@@ -567,7 +523,6 @@ class GrillingView(StageView):
                     audio.play("hp_reduced")
                     self.pending_dialog = "Ouch! Missed the green zone—hit a red area and got a burn strike!"
                     
-                    # Trigger grease fire flash + miss text
                     self.floating_texts.append(FloatingText("MISS!", self.arrow_x, self.bar_y + 40, (255, 50, 50)))
                     self.fire_flash_alpha = 200.0
                     self.spawn_burst_smoke(color=(50, 40, 40), count=25)
@@ -592,10 +547,22 @@ class GrillingView(StageView):
                         self.pending_dialog_face = "nervous"
                         self.pending_dialog = "Well, the food is burned a bit, but extra crunchy I guess?"
 
-                # Set the delay timer so the player can see the floating text/flash!
                 self.dialog_timer = 0.8
 
     def on_key_press(self, key, modifiers):
+        if self.exit_popup.visible:
+            self.run_action(self.exit_popup.on_key_press(key))
+            return
+
+        if key == arcade.key.ESCAPE:
+            self.stop_typing_sound()
+            if self.grilling_player is not None:
+                audio.bank().stop(self.grilling_player)
+                self.grilling_player = None
+            audio.play("ui_click")
+            self.exit_popup.open()
+            return
+
         if self.dialog.visible:
             if key in (arcade.key.ENTER, arcade.key.NUM_ENTER, arcade.key.RETURN, arcade.key.SPACE):
                 self.stop_typing_sound()
@@ -611,7 +578,7 @@ class GrillingView(StageView):
                         else:
                             audio.play("game_success")
                             self.set_emotion("Terry_smile_excited")
-                            self.trigger_dialog("All done! Time to serve the delicious barbecue feast.",dialog_face="happy")
+                            self.trigger_dialog("All done! Time to serve the delicious barbecue feast.", dialog_face="happy")
                     elif self.end_phase == 2:
                         if self.burn_strikes >= 3:
                             achievements.unlock("bbq_charcoal")
@@ -624,5 +591,22 @@ class GrillingView(StageView):
                             self.window.show_view(BbqView(chop_unlocked=True, grill_unlocked=True, grill_completed=True))
             return
 
-        if key == arcade.key.ESCAPE:
+    def run_action(self, action):
+        if action is None:
+            return
+        if action in ("resume_grilling", "resume"):
+            self.exit_popup.close()
+            # Resume grilling sound if gameplay is active
+            if not self.game_over and not self.dialog.visible:
+                if self.grilling_player is None:
+                    self.grilling_player = audio.play("grilling", loop=True)
+            if self.dialog.visible and self.dialog.typing and self.typing_player is None:
+                self.typing_player = audio.play("dialog_type", loop=True)
+        elif action == "exit_grilling":
+            self.exit_popup.close()
+            self.stop_typing_sound()
+            if self.grilling_player is not None:
+                audio.bank().stop(self.grilling_player)
+                self.grilling_player = None
+            # Returns back to hub with chopping completed and grill unlocked
             self.window.show_view(BbqView(chop_unlocked=True, grill_unlocked=True, grill_completed=False))
