@@ -18,60 +18,71 @@ def cover_rect(texture, rect):
     scale = max(rect.width / texture.width, rect.height / texture.height)
     return arcade.XYWH(rect.x, rect.y, texture.width * scale, texture.height * scale)
 
+# --- NEW: Floating Combat/Action Text ---
+class FloatingText:
+    def __init__(self, text, x, y, color):
+        self.text = text
+        self.x = x
+        self.y = y
+        self.color = color
+        self.lifetime = 1.0
+        self.age = 0.0
+        self.vy = 50.0  
+
+    def update(self, dt):
+        self.age += dt
+        self.y += self.vy * dt
+
+    def draw(self):
+        progress = self.age / self.lifetime
+        if progress >= 1.0: return
+        
+        alpha = max(0, int(255 * (1.0 - (progress ** 2))))
+        
+        arcade.draw_text(self.text, self.x + 2, self.y - 2, (0, 0, 0, alpha), 
+                         22, bold=True, anchor_x="center", font_name="Kenney Pixel Square")
+        arcade.draw_text(self.text, self.x, self.y, (*self.color, alpha), 
+                         22, bold=True, anchor_x="center", font_name="Kenney Pixel Square")
+
+    @property
+    def is_dead(self):
+        return self.age >= self.lifetime
+
+
 # --- Customizable Layered Smoke Particle (Bigger & Color-Tinted) ---
 class SmokeParticle:
     def __init__(self, x, y, color=(160, 160, 160)):
         self.x = x + random.uniform(-8, 8)
         self.y = y + random.uniform(-5, 5)
-
         self.vx = random.uniform(-30, 30)
         self.vy = random.uniform(70, 110)
-
         self.radius = random.uniform(14, 24)
         self.max_radius = random.uniform(90, 150)
-
         self.age = 0.0
         self.lifetime = random.uniform(2.5, 4.0)
-
         self.drift = random.uniform(-30, 30)
-        self.color = color  # RGB Tuple (R, G, B)
+        self.color = color 
 
     def update(self, dt):
         self.age += dt
         progress = min(self.age / self.lifetime, 1.0)
-
         self.y += self.vy * dt
         spread = 0.3 + progress
         self.x += (self.vx + self.drift * spread) * dt
         self.radius = 14 + (self.max_radius - 14) * progress
-
         self.drift += random.uniform(-12, 12) * dt
         self.drift = max(-45, min(45, self.drift))
 
     def draw(self):
         progress = min(self.age / self.lifetime, 1.0)
         fade = (1.0 - progress) ** 1.5
-
-        layers = [
-            (1.00, 12),
-            (0.82, 16),
-            (0.64, 20),
-            (0.46, 25),
-            (0.28, 30),
-        ]
-
+        layers = [(1.00, 12), (0.82, 16), (0.64, 20), (0.46, 25), (0.28, 30)]
         r, g, b = self.color
         for scale, base_alpha in layers:
             radius = self.radius * scale
             alpha = int(base_alpha * fade)
-
             if alpha > 0:
-                arcade.draw_circle_filled(
-                    self.x,
-                    self.y,
-                    radius,
-                    (r, g, b, alpha),
-                )
+                arcade.draw_circle_filled(self.x, self.y, radius, (r, g, b, alpha))
 
     @property
     def is_dead(self):
@@ -85,7 +96,7 @@ class SmokeEmitter:
         self.y = y
         self.color = color
         self.emit_timer = 0.0
-        self.emit_interval = 0.18  # Puffs new smoke particles continuously
+        self.emit_interval = 0.18  
 
     def update(self, dt, particles):
         self.emit_timer += dt
@@ -98,26 +109,21 @@ class GrillingView(StageView):
     def __init__(self):
         super().__init__()
         
-        # --- Core Two-Track Game Stats ---
         self.grill_progress = 0   
         self.burn_strikes = 0     
         self.game_over = False
-        self.end_phase = 0  # 0: Playing, 1: Showing Result Food Image, 2: Showing Finish/Fail Scene
-        
+        self.end_phase = 0  
         self.has_spun = False
         
-        # --- Progressive Smoke & Time Tracking ---
         self.time_since_last_action = 0.0
         self.smoke_tier = 0
         self.smoke_emitters = []
         
-        # --- Smoke Spawn Area Bounds ---
         self.smoke_min_x = WIDTH / 2 - 360
         self.smoke_max_x = WIDTH / 2 + 360
         self.smoke_min_y = HEIGHT / 2 - 240
         self.smoke_max_y = HEIGHT / 2 + 220
         
-        # --- Temperature State & Heat Textures ---
         self.temperature = 150.0  
         self.temp_textures = {
             "low": textures.ui_image("Temperature_bar_low_heat.png"),
@@ -125,20 +131,23 @@ class GrillingView(StageView):
             "maxed": textures.ui_image("Temperature_bar_maxed_heat.png"),
         }
         
-        # --- Tachometer Layout ---
         self.bar_width = 400
         self.bar_height = 30
         self.bar_x = WIDTH / 2
         self.bar_y = 100
-        
         self.arrow_x = self.bar_x - (self.bar_width / 2)
         self.arrow_dir = 1
         self.arrow_base_speed = 500.0  
         
-        # Particle System
         self.particles = []
+        self.floating_texts = []         
+        self.fire_flash_alpha = 0.0      
 
-        # --- UI Sprites ---
+        # --- NEW: Dialogue Delay System ---
+        self.pending_dialog = None
+        self.pending_emotion = None
+        self.dialog_timer = 0.0
+
         self.terry_portrait = arcade.Sprite("assets/emotions/Terry_original.png", scale=0.7)
         self.terry_portrait.center_x = 1170
         self.terry_portrait.center_y = 600
@@ -160,7 +169,6 @@ class GrillingView(StageView):
         self.ui_list = arcade.SpriteList()
         self.ui_list.append(self.temp_bar)
 
-        # --- Scene State ---
         self.dialog = DialogBox()
         
         try:
@@ -171,7 +179,6 @@ class GrillingView(StageView):
         
         self.widgets = [self.dialog, self.portraits]
         self.typing_player = None
-        
         self.grilling_player = None
         
         self.camera = arcade.camera.Camera2D(
@@ -198,7 +205,6 @@ class GrillingView(StageView):
         for _ in range(50):
             cx = random.uniform(min_x, max_x)
             cy = random.uniform(min_y, max_y)
-            
             too_close = False
             for em in self.smoke_emitters:
                 if math.hypot(cx - em.x, cy - em.y) < min_dist:
@@ -230,17 +236,12 @@ class GrillingView(StageView):
     def get_current_bg(self):
         if self.game_over:
             if self.end_phase == 1:
-                if self.burn_strikes >= 3:
-                    return textures.background(BURN_100_BG) 
-                elif self.burn_strikes == 2:
-                    return textures.background(BURN_50_BG)  
-                else:
-                    return textures.background(GRILL_100_BG) 
+                if self.burn_strikes >= 3: return textures.background(BURN_100_BG) 
+                elif self.burn_strikes == 2: return textures.background(BURN_50_BG)  
+                else: return textures.background(GRILL_100_BG) 
             elif self.end_phase == 2:
-                if self.burn_strikes >= 3:
-                    return textures.background(GRILL_FAILED_BG) 
-                else:
-                    return textures.background(GRILL_FINISH_BG) 
+                if self.burn_strikes >= 3: return textures.background(GRILL_FAILED_BG) 
+                else: return textures.background(GRILL_FINISH_BG) 
                 
         if self.burn_strikes > 0:
             if self.grill_progress >= 50: return textures.background(BURN_50_BG)
@@ -259,13 +260,22 @@ class GrillingView(StageView):
         return yellow_w, green_w
 
     def on_update(self, delta_time):
+        # 1. Always update active visual effects
         for p in self.particles:
             p.update(delta_time)
         self.particles = [p for p in self.particles if not p.is_dead]
 
+        for ft in self.floating_texts:
+            ft.update(delta_time)
+        self.floating_texts = [ft for ft in self.floating_texts if not ft.is_dead]
+
+        if self.fire_flash_alpha > 0:
+            self.fire_flash_alpha = max(0.0, self.fire_flash_alpha - (400.0 * delta_time))
+
         for emitter in self.smoke_emitters:
             emitter.update(delta_time, self.particles)
 
+        # Ambient grilling sound
         if not self.game_over and not self.dialog.visible:
             if self.grilling_player is None:
                 self.grilling_player = audio.play("grilling", loop=True)
@@ -274,12 +284,26 @@ class GrillingView(StageView):
                 audio.bank().stop(self.grilling_player)
                 self.grilling_player = None
 
+        # 2. Block game logic if dialog is actively visible
         if self.dialog.visible:
             self.dialog.update(delta_time)
             if not self.dialog.typing:
                 self.stop_typing_sound()
             return  
 
+        # 3. Block game logic if we are in the "Freeze Frame" dialog delay
+        #    This allows the floating text and fire flashes to animate before dialog blocks the screen.
+        if self.dialog_timer > 0:
+            self.dialog_timer -= delta_time
+            if self.dialog_timer <= 0 and self.pending_dialog:
+                if self.pending_emotion:
+                    self.set_emotion(self.pending_emotion)
+                    self.pending_emotion = None
+                self.trigger_dialog(self.pending_dialog)
+                self.pending_dialog = None
+            return
+
+        # 4. Standard Game Logic
         if not self.game_over:
             self.temperature = min(300.0, self.temperature + (15.0 * delta_time))
             self.time_since_last_action += delta_time
@@ -287,7 +311,6 @@ class GrillingView(StageView):
             min_x, max_x = self.smoke_min_x, self.smoke_max_x
             min_y, max_y = self.smoke_min_y, self.smoke_max_y
 
-            # --- Progressive Smoke Milestones (2s, 5s, 8s) ---
             if self.smoke_tier == 0 and self.time_since_last_action >= 2.0:
                 x1 = random.uniform(min_x, max_x)
                 y1 = random.uniform(min_y, max_y)
@@ -313,7 +336,6 @@ class GrillingView(StageView):
             if self.temperature >= 300.0:
                 self.burn_strikes += 1
                 
-                # --- NEW: Trigger Staring Contest achievement if they haven't spun ---
                 if not self.has_spun:
                     achievements.unlock("bbq_staredown")
                 
@@ -321,20 +343,26 @@ class GrillingView(StageView):
                 self.time_since_last_action = 0.0
                 self.smoke_tier = 0
                 self.smoke_emitters.clear()
-                self.spawn_burst_smoke(color=(70, 60, 60), count=15)
+                
+                # --- NEW: Trigger Grease Fire Flash on Overheat ---
+                self.fire_flash_alpha = 200.0
+                self.spawn_burst_smoke(color=(50, 40, 40), count=25)
                 
                 if self.burn_strikes >= 3:
                     self.game_over = True
                     self.end_phase = 1
-                    self.set_emotion("Terry_shocked")
+                    self.pending_emotion = "Terry_shocked"
                     if not self.has_spun:
-                        self.trigger_dialog("Note to self: staring blankly at the tachometer doesn't stop the heat.")
+                        self.pending_dialog = "Note to self: staring blankly at the tachometer doesn't stop the heat."
                     else:
-                        self.trigger_dialog("Well... on the bright side, we won't need any charcoal for the next BBQ.")
+                        self.pending_dialog = "Well... on the bright side, we won't need any charcoal for the next BBQ."
                 else:
-                    self.set_emotion("Terry_nervous")
+                    self.pending_emotion = "Terry_nervous"
                     audio.play("hp_reduced")
-                    self.trigger_dialog("The grill flared up because we waited too long! A burn strike added.")
+                    self.pending_dialog = "The grill flared up because we waited too long! A burn strike added."
+                
+                # Activate the visual delay timer!
+                self.dialog_timer = 0.8
                 return
 
             current_speed = self.arrow_base_speed + (self.grill_progress * 3.0) + ((self.temperature - 100) * 0.8)
@@ -350,14 +378,30 @@ class GrillingView(StageView):
                 self.arrow_x = left_edge
                 self.arrow_dir = 1
 
-    def on_draw(self):
+
         self.clear()
         
         self.window.default_camera.use()
         current_bg = self.get_current_bg()
         arcade.draw_texture_rect(current_bg, cover_rect(current_bg, self.stage.viewport()))
-        
+
+        # --- MOVED: Draw Overlays here so they scale perfectly with the virtual bounds ---
         self.camera.use()
+        
+        if not self.game_over and self.temperature >= 200:
+            heat_alpha = min(150, int((self.temperature - 200) * 1.5))
+            pulse = math.sin(self.time_since_last_action * 4.0) * 25
+            final_alpha = max(0, min(255, int(heat_alpha + pulse)))
+            
+            thickness = 100 
+            vignette_color = (255, 80, 0, final_alpha) 
+            vignette_rect = arcade.XYWH(WIDTH/2, HEIGHT/2, WIDTH - thickness, HEIGHT - thickness)
+            
+            arcade.draw_rect_outline(vignette_rect, vignette_color, border_width=thickness)
+        
+        if self.fire_flash_alpha > 0:
+            flash_rect = arcade.XYWH(WIDTH / 2, HEIGHT / 2, WIDTH, HEIGHT)
+            arcade.draw_rect_filled(flash_rect, (255, 180, 50, int(self.fire_flash_alpha)))
         
         for p in self.particles:
             p.draw()
@@ -367,28 +411,78 @@ class GrillingView(StageView):
         if not self.game_over:
             self.ui_list.draw(pixelated=True)
             
-            arcade.draw_text(
-                "TEMP", 
-                self.temp_bar.center_x, 
-                self.temp_bar.top + 50,
-                arcade.color.WHITE, 
-                20, 
-                bold=True, 
-                anchor_x="center", 
-                font_name="Kenney Pixel Square"
-            )
+            arcade.draw_text("TEMP", self.temp_bar.center_x, self.temp_bar.top + 50,
+                             arcade.color.WHITE, 20, bold=True, anchor_x="center", font_name="Kenney Pixel Square")
             
             temp_color = arcade.color.RED if self.temperature >= 250 else arcade.color.WHITE
-            arcade.draw_text(
-                f"{int(self.temperature)}°C", 
-                self.temp_bar.center_x, 
-                self.temp_bar.top + 20, 
-                temp_color, 
-                24, 
-                bold=True, 
-                anchor_x="center", 
-                font_name="Kenney Pixel Square"
+            arcade.draw_text(f"{int(self.temperature)}°C", self.temp_bar.center_x, self.temp_bar.top + 20, 
+                             temp_color, 24, bold=True, anchor_x="center", font_name="Kenney Pixel Square")
+
+            yellow_w, green_w = self.get_zone_widths()
+
+            arcade.draw_rect_filled(arcade.XYWH(self.bar_x, self.bar_y, self.bar_width, self.bar_height), arcade.color.CRIMSON)
+            arcade.draw_rect_filled(arcade.XYWH(self.bar_x, self.bar_y, yellow_w, self.bar_height), arcade.color.GOLD)
+            arcade.draw_rect_filled(arcade.XYWH(self.bar_x, self.bar_y, green_w, self.bar_height), arcade.color.APPLE_GREEN)
+            
+            arcade.draw_rect_outline(arcade.XYWH(self.bar_x, self.bar_y, self.bar_width, self.bar_height), arcade.color.DARK_GRAY, 4)
+            
+            arcade.draw_triangle_filled(
+                self.arrow_x - 15, self.bar_y + 35,
+                self.arrow_x + 15, self.bar_y + 35,
+                self.arrow_x, self.bar_y + 5,
+                arcade.color.WHITE
             )
+            
+            arcade.draw_text(f"Strikes: {self.burn_strikes}/3", self.bar_x - 180, self.bar_y + 40, arcade.color.RED, 16, bold=True, font_name="Kenney Pixel Square")
+            arcade.draw_text(f"Progress: {self.grill_progress}%", self.bar_x + 30, self.bar_y + 40, arcade.color.WHITE, 16, bold=True, font_name="Kenney Pixel Square")
+            
+            for ft in self.floating_texts:
+                ft.draw()
+            
+            if not self.dialog.visible:
+                self.button_list.draw(pixelated=True)
+            
+        self.window.default_camera.use()
+        if self.dialog.visible:
+            self.portraits.draw(partner=None, speaking="left")
+            self.dialog.draw()
+
+    def on_draw(self):
+        self.clear()
+        
+        self.window.default_camera.use()
+        current_bg = self.get_current_bg()
+        arcade.draw_texture_rect(current_bg, cover_rect(current_bg, self.stage.viewport()))
+
+        self.camera.use()
+        
+        if not self.game_over and self.temperature >= 200:
+            heat_alpha = min(150, int((self.temperature - 200) * 1.5))
+            pulse = math.sin(self.time_since_last_action * 4.0) * 25
+            final_alpha = max(0, min(255, int(heat_alpha + pulse)))
+            thickness = 100 
+            vignette_color = (255, 80, 0, final_alpha) 
+            vignette_rect = arcade.XYWH(WIDTH/2, HEIGHT/2, WIDTH - thickness, HEIGHT - thickness)
+            arcade.draw_rect_outline(vignette_rect, vignette_color, border_width=thickness)
+        
+        if self.fire_flash_alpha > 0:
+            flash_rect = arcade.XYWH(WIDTH / 2, HEIGHT / 2, WIDTH, HEIGHT)
+            arcade.draw_rect_filled(flash_rect, (255, 180, 50, int(self.fire_flash_alpha)))
+        
+        for p in self.particles:
+            p.draw()
+            
+        self.portrait_list.draw(pixelated=True)
+        
+        if not self.game_over:
+            self.ui_list.draw(pixelated=True)
+            
+            arcade.draw_text("TEMP", self.temp_bar.center_x, self.temp_bar.top + 50,
+                             arcade.color.WHITE, 20, bold=True, anchor_x="center", font_name="Kenney Pixel Square")
+            
+            temp_color = arcade.color.RED if self.temperature >= 250 else arcade.color.WHITE
+            arcade.draw_text(f"{int(self.temperature)}°C", self.temp_bar.center_x, self.temp_bar.top + 20, 
+                             temp_color, 24, bold=True, anchor_x="center", font_name="Kenney Pixel Square")
 
             yellow_w, green_w = self.get_zone_widths()
 
@@ -410,6 +504,11 @@ class GrillingView(StageView):
             
             if not self.dialog.visible:
                 self.button_list.draw(pixelated=True)
+                
+        # --- FIX: Moved floating_texts loop OUTSIDE the `if not self.game_over:` block! ---
+        # This ensures the popup text still renders during the 0.8s pause on the final frame.
+        for ft in self.floating_texts:
+            ft.draw()
             
         self.window.default_camera.use()
         if self.dialog.visible:
@@ -417,7 +516,8 @@ class GrillingView(StageView):
             self.dialog.draw()
 
     def on_mouse_press(self, x, y, button, modifiers):
-        if self.dialog.visible or self.game_over:
+        # --- PREVENT clicks if dialogue is up, game is over, or we are in the freeze-frame delay! ---
+        if self.dialog.visible or self.game_over or self.dialog_timer > 0:
             return
             
         canvas_x, canvas_y = self.stage.to_canvas(x, y)
@@ -429,7 +529,7 @@ class GrillingView(StageView):
                 self.has_spun = True
                 self.time_since_last_action = 0.0
                 self.smoke_tier = 0
-                self.smoke_emitters.clear()  # Reset smoke sources on spin action
+                self.smoke_emitters.clear()  
                 
                 yellow_w, green_w = self.get_zone_widths()
                 dist_from_center = abs(self.arrow_x - self.bar_x)
@@ -437,43 +537,49 @@ class GrillingView(StageView):
                 if dist_from_center <= (green_w / 2):
                     self.grill_progress = min(100, self.grill_progress + 25)
                     self.spawn_burst_smoke(color=(220, 220, 220), count=8)
-                    self.set_emotion("Terry_excited")
-                    dialog_text = "Flawless timing! The coals are perfectly aerated."
+                    
+                    self.pending_emotion = "Terry_excited"
+                    self.pending_dialog = "Flawless timing! The coals are perfectly aerated."
+                    self.floating_texts.append(FloatingText("PERFECT!", self.arrow_x, self.bar_y + 40, (0, 255, 0)))
                     
                 elif dist_from_center <= (yellow_w / 2):
                     self.grill_progress = min(100, self.grill_progress + 10)
                     self.spawn_burst_smoke(color=(170, 170, 170), count=8)
-                    self.set_emotion("Terry_smile_excited")
-                    dialog_text = "Good spin! Cooking evenly."
+                    
+                    self.pending_emotion = "Terry_smile_excited"
+                    self.pending_dialog = "Good spin! Cooking evenly."
+                    self.floating_texts.append(FloatingText("GOOD", self.arrow_x, self.bar_y + 40, (255, 215, 0)))
                     
                 else:
                     self.burn_strikes += 1
-                    self.spawn_burst_smoke(color=(110, 90, 90), count=12)
-                    self.set_emotion("Terry_nervous")
+                    self.pending_emotion = "Terry_nervous"
                     audio.play("hp_reduced")
-                    dialog_text = "Ouch! Missed the green zone—hit a red area and got a burn strike!"
+                    self.pending_dialog = "Ouch! Missed the green zone—hit a red area and got a burn strike!"
+                    
+                    # Trigger grease fire flash + miss text
+                    self.floating_texts.append(FloatingText("MISS!", self.arrow_x, self.bar_y + 40, (255, 50, 50)))
+                    self.fire_flash_alpha = 200.0
+                    self.spawn_burst_smoke(color=(50, 40, 40), count=25)
 
                 self.temperature = 150.0
 
                 if self.burn_strikes >= 3:
                     self.game_over = True
                     self.end_phase = 1
-                    self.set_emotion("Terry_shocked")
-                    if not self.has_spun:
-                        self.trigger_dialog("Note to self: staring blankly at the tachometer doesn't stop the heat.")
-                    else:
-                        self.trigger_dialog("Well... on the bright side, we won't need any charcoal for the next BBQ.")
+                    self.pending_emotion = "Terry_shocked"
+                    self.pending_dialog = "Well... on the bright side, we won't need any charcoal for the next BBQ."
                 elif self.grill_progress >= 100:
                     self.game_over = True
                     self.end_phase = 1
                     if self.burn_strikes <= 1:
-                        self.set_emotion("Terry_excited")
-                        self.trigger_dialog("Absolute perfection! I should open a roadside stall after this, if I can't get a job after graduated.")
+                        self.pending_emotion = "Terry_excited"
+                        self.pending_dialog = "Absolute perfection! I should open a roadside stall after this, if I can't get a job after graduated."
                     else:
-                        self.set_emotion("Terry_nervous")
-                        self.trigger_dialog("Well, the food is burned a bit, but extra crunchy I guess?")
-                else:
-                    self.trigger_dialog(dialog_text)
+                        self.pending_emotion = "Terry_nervous"
+                        self.pending_dialog = "Well, the food is burned a bit, but extra crunchy I guess?"
+
+                # Set the delay timer so the player can see the floating text/flash!
+                self.dialog_timer = 0.8
 
     def on_key_press(self, key, modifiers):
         if self.dialog.visible:
@@ -493,7 +599,6 @@ class GrillingView(StageView):
                             self.set_emotion("Terry_smile_excited")
                             self.trigger_dialog("All done! Time to serve the delicious barbecue feast.")
                     elif self.end_phase == 2:
-                        # --- NEW: Trigger final result achievements here ---
                         if self.burn_strikes >= 3:
                             achievements.unlock("bbq_charcoal")
                             self.window.show_view(BbqView(chop_unlocked=True, grill_unlocked=True, grill_completed=False))

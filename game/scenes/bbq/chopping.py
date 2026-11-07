@@ -2,7 +2,6 @@ import math
 import random
 import arcade
 
-# --- NEW: Added achievements to the core imports ---
 from ...core import achievements, audio, textures
 from ...config import HEIGHT, WIDTH
 from .config import (
@@ -22,14 +21,57 @@ def cover_rect(texture, rect):
     scale = max(rect.width / texture.width, rect.height / texture.height)
     return arcade.XYWH(rect.x, rect.y, texture.width * scale, texture.height * scale)
 
+# --- NEW: Light Slash Visual Effect ---
+class SlashEffect:
+    def __init__(self, x, y):
+        self.x = x + random.uniform(-15, 15)
+        self.y = y + random.uniform(-15, 15)
+        self.lifetime = 0.15
+        self.age = 0.0
+        
+        # --- FIXED: Restrict angle to match the knife blade ---
+        # Angles between 120 and 150 degrees create a line where the 
+        # left side is higher and the right side is lower!
+        self.angle = random.uniform(120, 150)
+        self.length = random.uniform(120, 160)
+
+    def update(self, dt):
+        self.age += dt
+        self.length += 400 * dt  # The slash expands as it fades
+
+    def draw(self):
+        progress = self.age / self.lifetime
+        if progress >= 1.0:
+            return
+            
+        alpha = max(0, int(255 * (1.0 - progress)))
+        thickness = max(1, int(15 * (1.0 - (progress ** 1.5))))
+        
+        angle_rad = math.radians(self.angle)
+        cos_a = math.cos(angle_rad)
+        sin_a = math.sin(angle_rad)
+        
+        x1 = self.x - cos_a * (self.length / 2)
+        y1 = self.y - sin_a * (self.length / 2)
+        x2 = self.x + cos_a * (self.length / 2)
+        y2 = self.y + sin_a * (self.length / 2)
+        
+        # Draw outer glow, then bright inner core for a "blade of light" look
+        arcade.draw_line(x1, y1, x2, y2, (255, 255, 150, int(alpha * 0.4)), thickness + 8)
+        arcade.draw_line(x1, y1, x2, y2, (255, 255, 255, alpha), thickness)
+
+    @property
+    def is_dead(self):
+        return self.age >= self.lifetime
+
 # --- Food Particle System for Chopping Visual Effects ---
 class FoodParticle:
     def __init__(self, x, y, color):
         self.x = x + random.uniform(-30, 30)
         self.y = y + random.uniform(-10, 20)
         
-        self.vx = random.uniform(-250, 250)
-        self.vy = random.uniform(100, 350)
+        self.vx = random.uniform(-300, 300)
+        self.vy = random.uniform(150, 450)
         
         self.color = color
         self.size = random.uniform(8, 16)
@@ -44,7 +86,7 @@ class FoodParticle:
         
         self.x += self.vx * dt
         self.y += self.vy * dt
-        self.vy -= 1000 * dt  
+        self.vy -= 1200 * dt  # Gravity
         self.angle += self.spin * dt
 
     def draw(self):
@@ -65,37 +107,27 @@ class ChoppingView(StageView):
         super().__init__()
         
         self.backgrounds = [
-            # Meat Sequence (0 - 3)
             textures.background(CHOP_MEAT_BG_1),      # 0
             textures.background(CHOP_MEAT_BG_2),      # 1
             textures.background(CHOP_MEAT_BG_3),      # 2 (Success)
             textures.background(CHOP_MEAT_RUINED),    # 3 (Fail)
-            
-            # Carrot Sequence (4 - 7)
             textures.background(CHOP_CARROT_BG_1),    # 4
             textures.background(CHOP_CARROT_BG_2),    # 5
             textures.background(CHOP_CARROT_BG_3),    # 6 (Success)
             textures.background(CHOP_CARROT_RUINED),  # 7 (Fail)
-            
-            # Onion Sequence (8 - 11)
             textures.background(CHOP_ONION_BG_1),     # 8
             textures.background(CHOP_ONION_BG_2),     # 9
             textures.background(CHOP_ONION_BG_3),     # 10 (Success)
             textures.background(CHOP_ONION_RUINED),   # 11 (Fail)
-            
-            # Green Pepper Sequence (12 - 15)
             textures.background(CHOP_PEPPER_BG_1),    # 12
             textures.background(CHOP_PEPPER_BG_2),    # 13
             textures.background(CHOP_PEPPER_BG_3),    # 14 (Success)
             textures.background(CHOP_PEPPER_RUINED),  # 15 (Fail)
-            
-            # Eggplant Sequence (16 - 20)
             textures.background(CHOP_EGGPLANT_BG_1),  # 16
             textures.background(CHOP_EGGPLANT_BG_2),  # 17
             textures.background(CHOP_EGGPLANT_BG_3),  # 18
             textures.background(CHOP_EGGPLANT_BG_4),  # 19 (Success)
             textures.background(CHOP_EGGPLANT_RUINED),# 20 (Fail)
-            
             textures.background(CHOP_FINISH_BG),      # 21 
             textures.background(CHOP_FAILED_BG),      # 22 
         ]
@@ -109,7 +141,12 @@ class ChoppingView(StageView):
         
         self.success_timer = 0.0  
         self.fail_reason = ""
-        self.board_hits = 0  # --- NEW: Counter for the misclick achievement ---
+        self.board_hits = 0 
+        
+        # --- NEW: Camera Shake and Effect Tracking ---
+        self.shake_timer = 0.0
+        self.shake_intensity = 0.0
+        self.slashes = []
         
         # --- Knife Sprite & Visual Effects ---
         self.particles = []
@@ -174,15 +211,20 @@ class ChoppingView(StageView):
         if hasattr(self, 'camera'):
             self.camera.viewport = self.stage.viewport()
 
+    def trigger_shake(self, intensity, duration):
+        """NEW: Triggers a camera vibration effect."""
+        self.shake_intensity = intensity
+        self.shake_timer = duration
+
     def set_emotion(self, emotion_name):
         self.terry_portrait.texture = arcade.load_texture(f"assets/emotions/{emotion_name}.png")
 
     def spawn_food_particles(self, x, y):
-        if self.stage_idx <= 3: color = (220, 80, 80)        # Meat
-        elif self.stage_idx <= 7: color = (255, 140, 0)      # Carrot 
-        elif self.stage_idx <= 11: color = (230, 200, 240)   # Onion 
-        elif self.stage_idx <= 15: color = (50, 200, 50)     # Pepper 
-        else: color = (100, 50, 120)                         # Eggplant 
+        if self.stage_idx <= 3: color = (220, 80, 80)        
+        elif self.stage_idx <= 7: color = (255, 140, 0)      
+        elif self.stage_idx <= 11: color = (230, 200, 240)   
+        elif self.stage_idx <= 15: color = (50, 200, 50)     
+        else: color = (100, 50, 120)                         
         
         for _ in range(15):
             self.particles.append(FoodParticle(x, y, color))
@@ -202,10 +244,10 @@ class ChoppingView(StageView):
 
     def spawn_button(self):
         safe_zones = [
-            (400, 900, 580, 660),   # Top Center
-            (150, 350, 150, 500),   # Left Side
-            (350, 900, 150, 220),   # Bottom Center
-            (900, 1100, 150, 350),  # Bottom Right
+            (400, 900, 580, 660),   
+            (150, 350, 150, 500),   
+            (350, 900, 150, 220),   
+            (900, 1100, 150, 350),  
         ]
         
         for _ in range(15):
@@ -238,8 +280,8 @@ class ChoppingView(StageView):
         
         if reason == "misclick":
             audio.play("chop_table")
+            self.trigger_shake(12.0, 0.2)  # --- NEW: Heavy shake on misclick ---
             
-            # --- NEW: Check for Watch the Fingers achievement ---
             self.board_hits += 1
             if self.board_hits >= 3:
                 achievements.unlock("bbq_misclick")
@@ -254,7 +296,9 @@ class ChoppingView(StageView):
             self.knife_target_y = HEIGHT / 2 - 50
             self.spawn_food_particles(self.knife_target_x, self.knife_target_y)
             
-            # --- NEW: Trigger Mashed Potatoes achievement ---
+            self.trigger_shake(15.0, 0.25)  # --- NEW: Even heavier shake for destroying food ---
+            self.slashes.append(SlashEffect(self.knife_target_x, self.knife_target_y))
+            
             achievements.unlock("bbq_overchop")
         
         self.breaking_idx = self.max_lives - self.lives - 1
@@ -275,6 +319,20 @@ class ChoppingView(StageView):
         for p in self.particles:
             p.update(delta_time)
         self.particles = [p for p in self.particles if not p.is_dead]
+
+        # --- NEW: Update Slashes ---
+        for slash in self.slashes:
+            slash.update(delta_time)
+        self.slashes = [s for s in self.slashes if not s.is_dead]
+
+        # --- NEW: Update Camera Shake ---
+        if self.shake_timer > 0:
+            self.shake_timer -= delta_time
+            shake_x = random.uniform(-self.shake_intensity, self.shake_intensity)
+            shake_y = random.uniform(-self.shake_intensity, self.shake_intensity)
+            self.camera.position = (WIDTH / 2 + shake_x, HEIGHT / 2 + shake_y)
+        else:
+            self.camera.position = (WIDTH / 2, HEIGHT / 2)
 
         # --- Dynamic Knife Animation ---
         if self.chop_anim_timer > 0:
@@ -373,6 +431,11 @@ class ChoppingView(StageView):
         if self.stage_idx < 21:
             for p in self.particles:
                 p.draw()
+            
+            # --- NEW: Draw Slashes before the knife ---
+            for slash in self.slashes:
+                slash.draw()
+                
             self.knife_list.draw(pixelated=True)
         
         if self.stage_idx != 21:
@@ -439,6 +502,10 @@ class ChoppingView(StageView):
                     self.chop_anim_timer = 0.15
                     self.knife_target_x = WIDTH / 2 - 50
                     self.knife_target_y = HEIGHT / 2 - 50
+                    
+                    # --- NEW: Trigger Screen Shake, Slash Effect, and Particles on successful hit ---
+                    self.trigger_shake(6.0, 0.1)
+                    self.slashes.append(SlashEffect(self.knife_target_x, self.knife_target_y))
                     self.spawn_food_particles(self.knife_target_x, self.knife_target_y)
                     
                     self.streak += 1
@@ -488,7 +555,6 @@ class ChoppingView(StageView):
                     self.trigger_dialog("All ingredients are prepped! Time to fire up the BBQ.")
                     
                 elif self.stage_idx == 21:
-                    # --- NEW: Check for Master Chef achievement on success ---
                     if self.lives == self.max_lives:
                         achievements.unlock("bbq_flawless_chop")
                     
@@ -534,7 +600,6 @@ class ChoppingView(StageView):
                         audio.play("game_success")
                         self.trigger_dialog("All ingredients are prepped! Time to fire up the BBQ.")
                     elif self.stage_idx == 21:
-                        # --- NEW: Check for Master Chef achievement on success (via dialogue skip) ---
                         if self.lives == self.max_lives:
                             achievements.unlock("bbq_flawless_chop")
                             
