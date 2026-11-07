@@ -540,6 +540,24 @@ ACHIEVEMENTS = (
     ("egg_last_second", "Market Dash", "Last Second",
      "Escape with under 3s remaining.", True),
 
+     # Backyard BBQ
+    ("bbq_prep", "Backyard BBQ", "Prep Time!",
+     "Unlock the chopping board to begin prep.", False),
+    ("bbq_flawless_chop", "Backyard BBQ", "Master Chef",
+     "Chop all ingredients without losing a single life.", False),
+    ("bbq_overchop", "Backyard BBQ", "Mashed Potatoes",
+     "Click too fast and mash the food into pieces.", True),
+    ("bbq_misclick", "Backyard BBQ", "Watch the Fingers!",
+     "Miss the food and chop the cutting board 3 times.", True),
+    ("bbq_perfect_grill", "Backyard BBQ", "Flawless Flip",
+     "Grill all the food perfectly without a single burn strike.", False),
+    ("bbq_crunchy", "Backyard BBQ", "Extra Crunchy",
+     "Finish the BBQ with 1 or 2 burn strikes.", False),
+    ("bbq_charcoal", "Backyard BBQ", "Charcoal Maker",
+     "Completely burn the food and fail the BBQ.", True),
+    ("bbq_staredown", "Backyard BBQ", "Staring Contest",
+     "Let the grill overheat because you forgot to press SPIN.", True),
+
     # Chaos Dinner
     ("dinner_family", "Chaos Dinner", "Family Reunion",
      "Talk to everyone in the garden before dinner.", False),

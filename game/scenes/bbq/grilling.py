@@ -2,7 +2,8 @@ import math
 import random
 import arcade
 
-from ...core import audio, textures
+# --- NEW: Added achievements to the core imports ---
+from ...core import achievements, audio, textures
 from ...config import HEIGHT, WIDTH
 from .config import (
     BURN_100_BG, BURN_10_BG, BURN_20_BG, BURN_50_BG, GRILL_0_BG, GRILL_100_BG,
@@ -162,7 +163,6 @@ class GrillingView(StageView):
         # --- Scene State ---
         self.dialog = DialogBox()
         
-        # --- NEW: Initialize Portraits using Terry-idle.png just like bbq_scene.py ---
         try:
             terry_tex = arcade.load_texture("assets/sprites/Terry-idle.png")
         except Exception:
@@ -212,8 +212,9 @@ class GrillingView(StageView):
         self.trigger_dialog("Click SPIN when the arrow hits the green zone! Watch the heat so we don't burn the skewers!")
 
     def on_hide_view(self):
-        audio.bank().stop(self.grilling_player)
-        self.grilling_player = None
+        if self.grilling_player is not None:
+            audio.bank().stop(self.grilling_player)
+            self.grilling_player = None
         self.stop_typing_sound()
 
     def trigger_dialog(self, text):
@@ -311,6 +312,11 @@ class GrillingView(StageView):
             # --- 300°C OVERHEAT / BURN STRIKE CHECK ---
             if self.temperature >= 300.0:
                 self.burn_strikes += 1
+                
+                # --- NEW: Trigger Staring Contest achievement if they haven't spun ---
+                if not self.has_spun:
+                    achievements.unlock("bbq_staredown")
+                
                 self.temperature = 150.0  
                 self.time_since_last_action = 0.0
                 self.smoke_tier = 0
@@ -487,9 +493,15 @@ class GrillingView(StageView):
                             self.set_emotion("Terry_smile_excited")
                             self.trigger_dialog("All done! Time to serve the delicious barbecue feast.")
                     elif self.end_phase == 2:
+                        # --- NEW: Trigger final result achievements here ---
                         if self.burn_strikes >= 3:
+                            achievements.unlock("bbq_charcoal")
                             self.window.show_view(BbqView(chop_unlocked=True, grill_unlocked=True, grill_completed=False))
                         else:
+                            if self.burn_strikes == 0:
+                                achievements.unlock("bbq_perfect_grill")
+                            elif self.burn_strikes in (1, 2):
+                                achievements.unlock("bbq_crunchy")
                             self.window.show_view(BbqView(chop_unlocked=True, grill_unlocked=True, grill_completed=True))
             return
 

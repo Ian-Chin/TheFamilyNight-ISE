@@ -2,7 +2,8 @@ import math
 import random
 import arcade
 
-from ...core import audio, textures
+# --- NEW: Added achievements to the core imports ---
+from ...core import achievements, audio, textures
 from ...config import HEIGHT, WIDTH
 from .config import (
     CHOP_CARROT_BG_1, CHOP_CARROT_BG_2, CHOP_CARROT_BG_3, CHOP_CARROT_RUINED,
@@ -108,6 +109,7 @@ class ChoppingView(StageView):
         
         self.success_timer = 0.0  
         self.fail_reason = ""
+        self.board_hits = 0  # --- NEW: Counter for the misclick achievement ---
         
         # --- Knife Sprite & Visual Effects ---
         self.particles = []
@@ -201,9 +203,9 @@ class ChoppingView(StageView):
     def spawn_button(self):
         safe_zones = [
             (400, 900, 580, 660),   # Top Center
-            (150, 350, 150, 500),   # Left Side (adjusted away from edge)
-            (350, 900, 150, 220),   # Bottom Center (adjusted away from edge)
-            (900, 1100, 150, 350),  # Bottom Right (adjusted away from edge)
+            (150, 350, 150, 500),   # Left Side
+            (350, 900, 150, 220),   # Bottom Center
+            (900, 1100, 150, 350),  # Bottom Right
         ]
         
         for _ in range(15):
@@ -215,7 +217,6 @@ class ChoppingView(StageView):
             if dist > 200:
                 break
                 
-        # --- Bound clamping to guarantee the button never goes out of screen ---
         button_radius = 90
         new_x = max(button_radius, min(WIDTH - button_radius, new_x))
         new_y = max(button_radius, min(HEIGHT - button_radius, new_y))
@@ -237,6 +238,11 @@ class ChoppingView(StageView):
         
         if reason == "misclick":
             audio.play("chop_table")
+            
+            # --- NEW: Check for Watch the Fingers achievement ---
+            self.board_hits += 1
+            if self.board_hits >= 3:
+                achievements.unlock("bbq_misclick")
         
         if reason == "misclick" and click_x is not None and click_y is not None:
             self.chop_anim_timer = 0.15
@@ -247,6 +253,9 @@ class ChoppingView(StageView):
             self.knife_target_x = WIDTH / 2 - 50
             self.knife_target_y = HEIGHT / 2 - 50
             self.spawn_food_particles(self.knife_target_x, self.knife_target_y)
+            
+            # --- NEW: Trigger Mashed Potatoes achievement ---
+            achievements.unlock("bbq_overchop")
         
         self.breaking_idx = self.max_lives - self.lives - 1
         if 0 <= self.breaking_idx < self.max_lives:
@@ -479,6 +488,10 @@ class ChoppingView(StageView):
                     self.trigger_dialog("All ingredients are prepped! Time to fire up the BBQ.")
                     
                 elif self.stage_idx == 21:
+                    # --- NEW: Check for Master Chef achievement on success ---
+                    if self.lives == self.max_lives:
+                        achievements.unlock("bbq_flawless_chop")
+                    
                     self.window.show_view(BbqView(chop_unlocked=True, grill_unlocked=True, grill_completed=False, play_grill_unlock=True))
 
                 else:
@@ -521,6 +534,10 @@ class ChoppingView(StageView):
                         audio.play("game_success")
                         self.trigger_dialog("All ingredients are prepped! Time to fire up the BBQ.")
                     elif self.stage_idx == 21:
+                        # --- NEW: Check for Master Chef achievement on success (via dialogue skip) ---
+                        if self.lives == self.max_lives:
+                            achievements.unlock("bbq_flawless_chop")
+                            
                         self.window.show_view(BbqView(chop_unlocked=True, grill_unlocked=True, grill_completed=False, play_grill_unlock=True))
                     else:
                         if not self.button_active:

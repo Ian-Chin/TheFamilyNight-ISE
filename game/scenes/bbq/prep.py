@@ -1,6 +1,7 @@
 import arcade
 
-from ...core import audio, textures
+# --- NEW: Added achievements to the core imports ---
+from ...core import achievements, audio, textures
 from ...config import HEIGHT, WIDTH
 from .config import BBQ_PREP_SCENE_BG
 from ...core.dialogue import DialogBox
@@ -58,7 +59,7 @@ class BBQPrepView(StageView):
         self.typing_player = audio.play("dialog_type", loop=True)
 
     def on_hide_view(self):
-        self.backdrop.stop()  # --- Stops video decoding when leaving the scene ---
+        self.backdrop.stop()
         self.stop_typing_sound()
 
     def stop_typing_sound(self):
@@ -114,4 +115,8 @@ class BBQPrepView(StageView):
         if button == arcade.MOUSE_BUTTON_LEFT:
             if self.start_button.collides_with_point((canvas_x, canvas_y)):
                 audio.play("click_button")
+                
+                # --- NEW: Trigger the prep achievement! ---
+                achievements.unlock("bbq_prep")
+                
                 self.window.show_view(BbqView(chop_unlocked=True, play_chop_unlock=True))
