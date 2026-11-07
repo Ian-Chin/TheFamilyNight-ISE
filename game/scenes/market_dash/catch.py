@@ -302,8 +302,6 @@ class MarketCatchView(StageView):
         self.swing_duration = 0.30
         self.swing_timer = self.swing_duration
         self.spin_cooldown = 0.45
-        self.shake_timer = 0.15
-        self.shake_intensity = 4.0
 
         swing_radius = 85.0
 
