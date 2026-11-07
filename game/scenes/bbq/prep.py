@@ -1,6 +1,5 @@
 import arcade
 
-# --- NEW: Added achievements to the core imports ---
 from ...core import achievements, audio, textures
 from ...config import HEIGHT, WIDTH
 from .config import BBQ_PREP_SCENE_BG
@@ -27,14 +26,14 @@ class BBQPrepView(StageView):
         self.start_button.center_y = 60
         self.button_list.append(self.start_button)
         
-        # --- Setup Dialogue and Portraits ---
+        # --- Setup Dialogue and Portraits using your friend's method ---
         self.dialog = DialogBox()
         
-        try:
-            terry_tex = arcade.load_texture("assets/sprites/Terry-idle.png")
-        except Exception:
-            terry_tex = None
-        self.portraits = Portraits(terry_tex)
+        # Load your friend's optimized texture dictionary for dynamic emotions
+        self.default_face = textures.terry_frames(glow=False)[2][0]
+        self.terry_faces = textures.terry_faces()
+        
+        self.portraits = Portraits(self.default_face)
         
         self.widgets = [self.dialog, self.portraits]
         self.typing_player = None
@@ -47,6 +46,33 @@ class BBQPrepView(StageView):
         )
         self.relayout()
 
+    # --- Dialogue Management Methods matching chopping.py ---
+    def play_script(self, lines, then=None):
+        self.script = list(lines[1:])
+        self.after_script = then
+        self.start_dialog(*lines[0])
+
+    def start_dialog(self, speaker, text, face=None):
+        side = "left" if speaker == "Terry" else "right"
+        if speaker == "Terry":
+            self.portraits.terry = self.terry_faces.get(face, self.default_face)
+            
+        audio.play("dialog_open")
+        self.dialog.open(speaker, text, side)
+        self.typing_player = audio.play("dialog_type", loop=True)
+
+    def advance_dialog(self):
+        self.stop_typing_sound()
+        if not self.dialog.advance():
+            return
+        if hasattr(self, 'script') and self.script:
+            self.start_dialog(*self.script.pop(0))
+            return
+        then = getattr(self, 'after_script', None)
+        self.after_script = None
+        if then is not None:
+            then()
+
     def relayout(self):
         super().relayout()
         if hasattr(self, 'camera'):
@@ -54,9 +80,8 @@ class BBQPrepView(StageView):
 
     def on_show_view(self):
         audio.ambience().start()
-        audio.play("dialog_open")
-        self.dialog.open("Terry", "Hmm, there is a lot of food. I need to chop it first...")
-        self.typing_player = audio.play("dialog_type", loop=True)
+        # Uses play_script with an emotion key ("unimpressed" or whichever you prefer)
+        self.play_script([("Terry", "Hmm, there is a lot of food. I need to chop it first...", "unimpressed")])
 
     def on_hide_view(self):
         self.backdrop.stop()
@@ -99,8 +124,7 @@ class BBQPrepView(StageView):
     def on_key_press(self, key, modifiers):
         if self.dialog.visible:
             if key in (arcade.key.ENTER, arcade.key.NUM_ENTER, arcade.key.SPACE):
-                self.stop_typing_sound()
-                self.dialog.advance()
+                self.advance_dialog()
             return
 
         if key == arcade.key.ESCAPE:
@@ -115,8 +139,5 @@ class BBQPrepView(StageView):
         if button == arcade.MOUSE_BUTTON_LEFT:
             if self.start_button.collides_with_point((canvas_x, canvas_y)):
                 audio.play("click_button")
-                
-                # --- NEW: Trigger the prep achievement! ---
                 achievements.unlock("bbq_prep")
-                
                 self.window.show_view(BbqView(chop_unlocked=True, play_chop_unlock=True))

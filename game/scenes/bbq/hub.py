@@ -91,9 +91,11 @@ class BbqView(StageView):
         self.grill_unlocked = grill_unlocked
         self.grill_completed = grill_completed
         
-        # --- NEW: Flags for the ending sequence when BBQ is fully completed ---
+        # --- Flags for the ending sequence and smooth exit fade ---
         self.ending_sequence_triggered = False
         self.walking_to_top = False
+        self.fading_out = False
+        self.exit_fade_clock = 0.0
         
         self.board_unlock_sound_played = False
         self.grill_unlock_sound_played = False
@@ -142,19 +144,16 @@ class BbqView(StageView):
                 self.grill_lock.alpha = 0
             
             self.indicators.append(self.grill_lock)
-
-        self.board_lock = arcade.Sprite(textures.ui_image("Lock Symbol.png"), scale=0.2)
-        self.board_lock.center_x = 1000 
-        self.board_lock.base_y = 330
-        self.board_lock.center_y = self.board_lock.base_y
+            
+        # --- FIX: Create board_lock if not yet unlocked OR if playing the unlock animation from prep ---
+        if not self.chop_unlocked or play_chop_unlock:
+            self.board_lock = arcade.Sprite(textures.ui_image("Lock Symbol.png"), scale=0.2)
+            self.board_lock.center_x = 1000 
+            self.board_lock.base_y = 330
+            self.board_lock.center_y = self.board_lock.base_y
         
-        if play_chop_unlock:
-            self.board_lock_timer = 5.0 
-            self.indicators.append(self.board_lock)
-        elif self.chop_unlocked:
-            self.board_lock.alpha = 0
-            self.indicators.append(self.board_lock)
-        else:
+            if play_chop_unlock:
+                self.board_lock_timer = 5.0 
             self.indicators.append(self.board_lock)
 
         self.footsteps = Footsteps(CHAO_STONE_AREAS)
@@ -170,11 +169,10 @@ class BbqView(StageView):
         self.pause_menu = PauseMenu()
         self.settings_panel = SettingsPanel()
         
-        try:
-            terry_tex = arcade.load_texture("assets/sprites/Terry-idle.png")
-        except Exception:
-            terry_tex = self.terry.texture
-        self.portraits = Portraits(terry_tex)
+        # --- Setup dynamic emotion portraits matching chopping.py/grilling.py ---
+        self.default_face = textures.terry_frames(glow=False)[2][0]
+        self.terry_faces = textures.terry_faces()
+        self.portraits = Portraits(self.default_face)
         
         self.table_prompt = InteractPrompt("View")
         self.board_prompt = InteractPrompt("Start")
@@ -220,6 +218,34 @@ class BbqView(StageView):
         )
         self.relayout()
 
+    # --- Dialogue Management Methods matching chopping.py/grilling.py ---
+    def play_script(self, lines, then=None):
+        self.script = list(lines[1:])
+        self.after_script = then
+        self.portraits.terry = self.default_face
+        self.start_dialog(*lines[0])
+
+    def start_dialog(self, speaker, text, face=None):
+        side = "left" if speaker == "Terry" else "right"
+        if speaker == "Terry":
+            self.portraits.terry = self.terry_faces.get(face, self.default_face)
+            
+        audio.play("dialog_open")
+        self.dialog.open(speaker, text, side)
+        self.typing_player = audio.play("dialog_type", loop=True)
+
+    def advance_dialog(self):
+        self.stop_typing_sound()
+        if not self.dialog.advance():
+            return
+        if hasattr(self, 'script') and self.script:
+            self.start_dialog(*self.script.pop(0))
+            return
+        then = getattr(self, 'after_script', None)
+        self.after_script = None
+        if then is not None:
+            then()
+
     def on_show_view(self):
         audio.ambience().start()
 
@@ -249,6 +275,14 @@ class BbqView(StageView):
         if self.fade_clock >= CHAO_FADE_IN:
             return 0
         return round(255 * (1 - self.fade_clock / CHAO_FADE_IN))
+
+    @property
+    def exit_fade_alpha(self):
+        if not self.fading_out:
+            return 0
+        EXIT_FADE_TIME = 0.6
+        progress = min(self.exit_fade_clock / EXIT_FADE_TIME, 1.0)
+        return round(255 * progress)
 
     def update_dust(self, delta_time, moving, dx, dy):
         feet_y = self.terry.ground_y - abs(self.terry.height) / 2
@@ -292,7 +326,7 @@ class BbqView(StageView):
             
             self.quest_panel.draw()
 
-        alpha = self.fade_alpha
+        alpha = max(self.fade_alpha, self.exit_fade_alpha)
         if alpha:
             arcade.draw_rect_filled(
                 arcade.LBWH(0, 0, self.window.width, self.window.height),
@@ -315,16 +349,15 @@ class BbqView(StageView):
 
     @property
     def playing(self):
-        return not self.walking_in and not self.dialog.visible and not self.walking_to_top
+        return not self.walking_in and not self.dialog.visible and not self.walking_to_top and not self.fading_out
 
     def start_opening_dialog(self):
-        audio.play("dialog_open")
-        self.dialog.open(*BBQ_OPENING_DIALOG)
-        self.typing_player = audio.play("dialog_type", loop=True)
+        self.play_script([BBQ_OPENING_DIALOG + ("happy",)])
 
     def stop_typing_sound(self):
-        audio.bank().stop(self.typing_player)
-        self.typing_player = None
+        if self.typing_player:
+            audio.bank().stop(self.typing_player)
+            self.typing_player = None
 
     def on_update(self, delta_time):
         self.backdrop.update(delta_time)
@@ -356,8 +389,15 @@ class BbqView(StageView):
             if self.active_notification.finished:
                 self.active_notification = None
 
-        # --- NEW: Handle Terry walking to the top after completing the game ---
+        # --- Handle Terry walking to the top, then smooth fade out ---
         if self.walking_to_top:
+            if self.fading_out:
+                self.exit_fade_clock += delta_time
+                EXIT_FADE_TIME = 0.6
+                if self.exit_fade_clock >= EXIT_FADE_TIME:
+                    self.window.show_view(ChaoDinnerView())
+                return
+
             self.terry.update_movement(
                 delta_time, 0, 1, (0, WIDTH, 0, HEIGHT + 120), CHAO_OBSTACLES,
             )
@@ -367,9 +407,9 @@ class BbqView(StageView):
             self.update_dust(delta_time, True, 0, 1)
             self.sort_by_depth()
             
-            # Once Terry reaches the top of the screen, transition to next scene (e.g., MenuView or credits)
             if self.terry.ground_y >= HEIGHT + 50:
-                self.window.show_view(ChaoDinnerView())
+                self.fading_out = True
+                self.exit_fade_clock = 0.0
             return
 
         if self.dialog.visible:
@@ -379,15 +419,12 @@ class BbqView(StageView):
                 self.stop_typing_sound()
             return
 
-        # --- NEW: Trigger first-person completion dialog once title card finishes if grill is completed ---
+        # --- Trigger completion dialog with an emotion ("happy") ---
         if self.grill_completed and not self.show_title_card and not self.ending_sequence_triggered:
             self.ending_sequence_triggered = True
-            audio.play("dialog_open")
-            self.dialog.open(
-                "Terry", 
-                "Whew! I've finally completed and prepared the BBQ dinner. Now I'm just waiting for the family to come!"
-            )
-            self.typing_player = audio.play("dialog_type", loop=True)
+            self.play_script([
+                ("Terry", "Whew! I've finally completed and prepared the BBQ dinner. Now I'm just waiting for the family to come!", "happy")
+            ])
             return
 
         if self.walking_in:
@@ -402,6 +439,7 @@ class BbqView(StageView):
             if self.terry.ground_y <= CHAO_STOP_Y:
                 self.terry.ground_y = CHAO_STOP_Y
                 self.walking_in = False
+                self.sort_by_depth()
                 self.start_opening_dialog()
             self.sort_by_depth()
             return
@@ -429,7 +467,7 @@ class BbqView(StageView):
                 self.table_marker.center_y = self.table_marker.base_y + bob_offset
             
             if not self.active_notification:
-                if hasattr(self, 'board_lock_timer') and self.board_lock_timer > 0:
+                if hasattr(self, 'board_lock') and hasattr(self, 'board_lock_timer') and self.board_lock_timer > 0:
                     self.board_lock_timer -= delta_time
                     
                     if self.board_lock_timer <= 4.0 and not self.board_unlock_sound_played:
@@ -473,11 +511,7 @@ class BbqView(StageView):
                         self.grill_lock.scale = 0.2
                         self.grill_lock.center_y = self.grill_lock.base_y
                     else:
-                        self.grill_lock.alpha = 255
-                        progress = 5.0 - self.grill_lock_timer 
-                        pop_curve = math.sin(progress * math.pi)
-                        self.grill_lock.scale = 0.2 + (pop_curve * 0.08)
-                        self.grill_lock.center_y = self.grill_lock.base_y + (pop_curve * 15.0)
+                        pass
 
             in_table_x = 90 <= self.terry.center_x <= 368
             in_table_y = 208 <= self.terry.ground_y <= 595
@@ -565,11 +599,9 @@ class BbqView(StageView):
                     self.window.show_view(GrillingView())
                     return
 
-        # --- UPDATED: When ending dialog is skipped/closed, start walking to the top ---
         if self.dialog.visible:
             if key in (arcade.key.ENTER, arcade.key.NUM_ENTER, arcade.key.SPACE):
-                self.stop_typing_sound()
-                self.dialog.advance()
+                self.advance_dialog()  
                 if not self.dialog.visible and self.ending_sequence_triggered:
                     self.walking_to_top = True
             return

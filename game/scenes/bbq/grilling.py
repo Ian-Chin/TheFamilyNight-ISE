@@ -170,6 +170,9 @@ class GrillingView(StageView):
         self.ui_list.append(self.temp_bar)
 
         self.dialog = DialogBox()
+
+        self.terry_faces = textures.terry_faces()
+        self.pending_dialog_face = None
         
         try:
             terry_tex = arcade.load_texture("assets/sprites/Terry-idle.png")
@@ -215,7 +218,7 @@ class GrillingView(StageView):
         return random.uniform(min_x, max_x), random.uniform(min_y, max_y)
 
     def on_show_view(self):
-        self.trigger_dialog("Click SPIN when the arrow hits the green zone! Watch the heat so we don't burn the skewers!")
+        self.trigger_dialog("Click SPIN when the arrow hits the green zone! Watch the heat so we don't burn the skewers!", dialog_face="happy")
 
     def on_hide_view(self):
         if self.grilling_player is not None:
@@ -223,7 +226,10 @@ class GrillingView(StageView):
             self.grilling_player = None
         self.stop_typing_sound()
 
-    def trigger_dialog(self, text):
+    def trigger_dialog(self, text, dialog_face=None):
+        if dialog_face and dialog_face in self.terry_faces:
+            self.portraits.terry = self.terry_faces[dialog_face]
+            
         audio.play("dialog_open")
         self.dialog.open("Terry", text)
         self.typing_player = audio.play("dialog_type", loop=True)
@@ -299,7 +305,7 @@ class GrillingView(StageView):
                 if self.pending_emotion:
                     self.set_emotion(self.pending_emotion)
                     self.pending_emotion = None
-                self.trigger_dialog(self.pending_dialog)
+                self.trigger_dialog(self.pending_dialog, dialog_face=self.pending_dialog_face)
                 self.pending_dialog = None
             return
 
@@ -352,12 +358,14 @@ class GrillingView(StageView):
                     self.game_over = True
                     self.end_phase = 1
                     self.pending_emotion = "Terry_shocked"
+                    self.pending_dialog_face = "unimpressed"
                     if not self.has_spun:
                         self.pending_dialog = "Note to self: staring blankly at the tachometer doesn't stop the heat."
                     else:
                         self.pending_dialog = "Well... on the bright side, we won't need any charcoal for the next BBQ."
                 else:
                     self.pending_emotion = "Terry_nervous"
+                    self.pending_dialog_face = "nervous"
                     audio.play("hp_reduced")
                     self.pending_dialog = "The grill flared up because we waited too long! A burn strike added."
                 
@@ -539,6 +547,7 @@ class GrillingView(StageView):
                     self.spawn_burst_smoke(color=(220, 220, 220), count=8)
                     
                     self.pending_emotion = "Terry_excited"
+                    self.pending_dialog_face = "happy"
                     self.pending_dialog = "Flawless timing! The coals are perfectly aerated."
                     self.floating_texts.append(FloatingText("PERFECT!", self.arrow_x, self.bar_y + 40, (0, 255, 0)))
                     
@@ -547,12 +556,14 @@ class GrillingView(StageView):
                     self.spawn_burst_smoke(color=(170, 170, 170), count=8)
                     
                     self.pending_emotion = "Terry_smile_excited"
+                    self.pending_dialog_face = "happy"
                     self.pending_dialog = "Good spin! Cooking evenly."
                     self.floating_texts.append(FloatingText("GOOD", self.arrow_x, self.bar_y + 40, (255, 215, 0)))
                     
                 else:
                     self.burn_strikes += 1
                     self.pending_emotion = "Terry_nervous"
+                    self.pending_dialog_face = "nervous"
                     audio.play("hp_reduced")
                     self.pending_dialog = "Ouch! Missed the green zone—hit a red area and got a burn strike!"
                     
@@ -567,15 +578,18 @@ class GrillingView(StageView):
                     self.game_over = True
                     self.end_phase = 1
                     self.pending_emotion = "Terry_shocked"
+                    self.pending_dialog_face = "unimpressed"
                     self.pending_dialog = "Well... on the bright side, we won't need any charcoal for the next BBQ."
                 elif self.grill_progress >= 100:
                     self.game_over = True
                     self.end_phase = 1
                     if self.burn_strikes <= 1:
                         self.pending_emotion = "Terry_excited"
+                        self.pending_dialog_face = "happy"
                         self.pending_dialog = "Absolute perfection! I should open a roadside stall after this, if I can't get a job after graduated."
                     else:
                         self.pending_emotion = "Terry_nervous"
+                        self.pending_dialog_face = "nervous"
                         self.pending_dialog = "Well, the food is burned a bit, but extra crunchy I guess?"
 
                 # Set the delay timer so the player can see the floating text/flash!
@@ -593,11 +607,11 @@ class GrillingView(StageView):
                         if self.burn_strikes >= 3:
                             audio.play("game_failed")
                             self.set_emotion("Terry_sad")
-                            self.trigger_dialog("Total failure at the grill... Time to clean up and head back.")
+                            self.trigger_dialog("Total failure at the grill... Time to clean up and head back.", dialog_face="nervous")
                         else:
                             audio.play("game_success")
                             self.set_emotion("Terry_smile_excited")
-                            self.trigger_dialog("All done! Time to serve the delicious barbecue feast.")
+                            self.trigger_dialog("All done! Time to serve the delicious barbecue feast.",dialog_face="happy")
                     elif self.end_phase == 2:
                         if self.burn_strikes >= 3:
                             achievements.unlock("bbq_charcoal")
