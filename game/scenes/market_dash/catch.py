@@ -269,7 +269,7 @@ class MarketCatchView(StageView):
             self.exit_warn_timer = 0.0
 
         if self.mode in ("veg", "meat"):
-            count = 8 #Intitial shoppers for gathering game
+            count = 5 #Intitial shoppers for gathering game
         else:
             count = 13 # Intitial shoppers for defend game
 
@@ -627,7 +627,7 @@ class MarketCatchView(StageView):
         self.player.scale_y = abs(self.player_scale)
 
         # Shopper wave increase by duration phase (Veg & Meat Modes)
-        # Initial 3 shoppers, increasing by 1 or 2 every 10 seconds up to max 8 shoppers
+        # Initial 5 shoppers, increasing by 1 or 2 every 8 seconds up to max 8 shoppers
         if self.mode in ("veg", "meat") and not self.completed:
             self.phase_spawn_timer -= delta_time
             if self.phase_spawn_timer <= 0:

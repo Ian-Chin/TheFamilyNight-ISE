@@ -99,7 +99,7 @@ class SnatcherSprite(arcade.Sprite):
 
         self.state = STATE_WANDERING
         self.rush_speed = rush_speed
-        self.flee_speed = 5.2 # shopper flee speed when carrying an item
+        self.flee_speed = 3.6 # shopper flee speed when carrying an item
         self.rush_reaction_timer = 0.0
         self.wander_speed = random.uniform(2.0, 3.2)
         self.chase_speed = random.uniform(2.5, 3.4)
@@ -125,7 +125,7 @@ class SnatcherSprite(arcade.Sprite):
         self.target_floor_item = None
         self.has_fled_with_item = False
         self.rush_reaction_timer = 0.0
-        self.flee_speed = 5.2 # shopper flee speed when carrying an item
+        self.flee_speed = 3.6 # shopper flee speed when carrying an item
         self.stun_timer = 0.0
         self.ram_cooldown = 0.0
         self.knockback_vx = 0.0
@@ -390,7 +390,7 @@ class SnatcherSprite(arcade.Sprite):
         # 3. FLEEING_WITH_ITEM
         elif self.state == STATE_FLEEING_WITH_ITEM:
             dy = self.target_y - self.center_y
-            flee_speed = getattr(self, "flee_speed", 5.2) # flee speed when carrying an item
+            flee_speed = getattr(self, "flee_speed", 3.6) # flee speed when carrying an item
             fleeing_up = dy > 0
             step_y = (1.0 if fleeing_up else -1.0) * flee_speed * step
             self.center_y += step_y

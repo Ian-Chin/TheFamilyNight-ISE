@@ -64,8 +64,7 @@ PLAY_TOP = 675
 SHELF_LEFT_X = 85
 SHELF_RIGHT_X = 1195
 SHELF_Y_LEVELS = [68, 148, 232, 314, 398, 480, 562, 644]
-# Probability weights biasing restocks towards the middle row area (~75% middle vs ~25% top/bottom)
-SHELF_Y_WEIGHTS = [1.0, 1.5, 3.5, 4.0, 4.0, 3.5, 1.5, 1.0]
+SHELF_Y_WEIGHTS = [0.0, 1.6, 4.0, 4.4, 4.4, 4.0, 1.6, 0.0]
 
 SHELF_SLOTS = [(SHELF_LEFT_X, y) for y in SHELF_Y_LEVELS] + [(SHELF_RIGHT_X, y) for y in SHELF_Y_LEVELS]
 SHELF_SLOT_WEIGHTS = SHELF_Y_WEIGHTS + SHELF_Y_WEIGHTS
