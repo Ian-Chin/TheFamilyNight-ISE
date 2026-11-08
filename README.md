@@ -201,7 +201,7 @@ In every scene, **Esc** opens a pause overlay (resume, settings, main menu) whil
 
 ## Achievements
 
-Achievements are saved the moment they unlock and announced with a popup that draws over whatever scene is on screen. Scenes can call `achievements.unlock(key)` every frame the condition holds; only the first call counts.
+Achievements last for the current session only (every launch starts fresh, for demos). Each unlock is announced with a popup that draws over whatever scene is on screen. Scenes can call `achievements.unlock(key)` every frame the condition holds; only the first call counts.
 
 | Achievement | How to earn it |
 |---|---|
@@ -314,7 +314,7 @@ game/
       spritesheet.py      frame slicing for Terry
       parts.py            head, hands and shoes; blinking and chewing faces
       widgets.py          procedural smoked-glass UI art
-    achievements.py     unlock, save and popup over any view
+    achievements.py     unlock and popup over any view
     artcache.py         disk cache for expensive cut-outs (assets/.cache)
     audio.py            shared sound bank and volume mixing
     backdrop.py         looping video backgrounds (quality) or stills (performance)

@@ -1,8 +1,9 @@
-"""Achievements: what has been unlocked, saved, and announced.
+"""Achievements: what has been unlocked and announced.
 
-Scenes call `unlock(key)` when the player earns one. The first unlock is
-saved straight to settings.json and queues a popup; later calls for the same
-key do nothing, so a scene can call it every time the condition is met.
+Unlocks live in memory only, so each launch starts fresh (demo build).
+Scenes call `unlock(key)` when the player earns one. The first unlock
+queues a popup; later calls for the same key do nothing, so a scene can
+call it every time the condition is met.
 
 The popup is drawn over whatever view is showing: `attach(window)` puts a
 draw handler under the views on pyglet's handler stack, so it runs after the
@@ -12,7 +13,6 @@ view has drawn its frame.
 import arcade
 
 from . import audio, textures
-from .settings import _read, _write
 from .ui import Stage
 from ..config import (
     ACHIEVEMENT_SOUND, ACHIEVEMENT_TOAST_TIME, ACHIEVEMENTS, HEIGHT, PLANK_PAD,
@@ -22,14 +22,7 @@ from ..config import (
 BY_KEY = {entry[0]: entry for entry in ACHIEVEMENTS}
 
 
-def _load():
-    stored = _read().get("achievements", [])
-    if not isinstance(stored, list):
-        return set()
-    return {key for key in stored if key in BY_KEY}
-
-
-_unlocked = _load()
+_unlocked = set()   # session only: every launch starts with none unlocked
 _queue = []   # keys waiting for their popup
 
 
@@ -52,7 +45,6 @@ def unlock(key):
     if key not in BY_KEY or key in _unlocked:
         return False
     _unlocked.add(key)
-    _write("achievements", sorted(_unlocked))
     _queue.append(key)
     return True
 

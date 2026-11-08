@@ -510,7 +510,7 @@ TITLE_BAND_ALPHA = 170
 # before it has any achievements of its own.
 ACHIEVEMENT_SCENES = ("Market Dash", "Bumpy Bus", "Backyard BBQ", "Chaos Dinner")
 # (key, scene, title, how to get it, hidden). A hidden one shows as "???"
-# until it is unlocked. Unlocks are saved under "achievements" in settings.json.
+# until it is unlocked. Unlocks last for the current session only.
 ACHIEVEMENTS = (
     # Market Dash
     ("market_veg", "Market Dash", "Fresh Greens",
