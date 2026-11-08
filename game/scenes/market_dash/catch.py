@@ -269,7 +269,7 @@ class MarketCatchView(StageView):
             self.exit_warn_timer = 0.0
 
         if self.mode in ("veg", "meat"):
-            count = 8 #Intitial shoppers for gathering game
+            count = 5 #Intitial shoppers for gathering game
         else:
             count = 13 # Intitial shoppers for defend game
 
@@ -521,6 +521,7 @@ class MarketCatchView(StageView):
             self.player.alpha = 130 if int(self.invuln_timer * 14) % 2 == 0 else 255
         else:
             self.player.alpha = 255
+
         if self.touching_crowd_timer > 0:
             self.touching_crowd_timer = max(0.0, self.touching_crowd_timer - delta_time)
 
@@ -626,7 +627,7 @@ class MarketCatchView(StageView):
         self.player.scale_y = abs(self.player_scale)
 
         # Shopper wave increase by duration phase (Veg & Meat Modes)
-        # Initial 3 shoppers, increasing by 1 or 2 every 10 seconds up to max 8 shoppers
+        # Initial 5 shoppers, increasing by 1 or 2 every 8 seconds up to max 8 shoppers
         if self.mode in ("veg", "meat") and not self.completed:
             self.phase_spawn_timer -= delta_time
             if self.phase_spawn_timer <= 0:
@@ -829,7 +830,7 @@ class MarketCatchView(StageView):
             is_colliding = arcade.check_for_collision(self.player, shopper) or (dist_total < 55)
 
             if shopper.state != STATE_STUNNED:
-                # Terry Block / Parry (no screen shake when blocking)
+                # Terry Block / Parry 
                 if self.blocking and self.mode in ("veg", "meat") and (is_colliding or dist_total < 80):
                     audio.play("block")
                     if not getattr(shopper, "block_registered", False):
@@ -1376,7 +1377,12 @@ class MarketCatchView(StageView):
 
         # Red damage flash
         if self.damage_alpha > 0:
-            flash_rect = arcade.XYWH(self.window.width / 2, self.window.height / 2, self.window.width, self.window.height)
+            flash_rect = arcade.XYWH(
+                self.window.width / 2, 
+                self.window.height / 2, 
+                self.window.width, 
+                self.window.height
+                )
             arcade.draw_rect_filled(flash_rect, (255, 30, 30, int(self.damage_alpha)))
 
         # Dialogue

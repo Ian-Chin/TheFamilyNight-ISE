@@ -27,6 +27,7 @@ class MarketStageView(StageView):
         self.meat_done = meat_done
         self.defend_unlocked = self.veg_done and self.meat_done
         self.ambience_player = None
+        self.walking_player = None
 
         # 1. Title Card on first entry
         self.show_title_card = not (self.veg_done or self.meat_done)
@@ -188,9 +189,12 @@ class MarketStageView(StageView):
         self.relayout()
         self.start_ambience()
         
-    def on_hide_view(self):
-        self.stop_ambience()
-        self.backdrop.stop()
+    def on_hide_view(self):                                                                                      
+        if self.walking_player is not None:                                                                      
+            audio.stop(self.walking_player)                                                                      
+            self.walking_player = None                                                                           
+        self.stop_ambience()                                                                                     
+        self.backdrop.stop() 
 
     def trigger_stage_dialogue(self, lines, on_finish):
         self.stage_dialogue_queue = list(lines)
@@ -292,10 +296,13 @@ class MarketStageView(StageView):
 
             return
 
-        # --- STEP 2: DIALOGUE UPDATE ---
-        if self.dialog.visible:
-            self.dialog.update(delta_time)
-            return
+        # --- STEP 2: DIALOGUE UPDATE ---                                                                        
+        if self.dialog.visible:                                                                                  
+            if self.walking_player is not None:                                                                  
+                audio.stop(self.walking_player)                                                                  
+                self.walking_player = None                                                                       
+            self.dialog.update(delta_time)                                                                       
+            return 
 
         # Player Movement
         dx = (arcade.key.D in self.held) - (arcade.key.A in self.held)
@@ -305,9 +312,13 @@ class MarketStageView(StageView):
         )
         
         moving = bool(dx or dy) and not self.terry.jumping
-        self.footsteps.update(
-            delta_time, moving, self.terry.center_x, self.terry.ground_y
-        )
+        if moving:
+            if self.walking_player is None:
+                self.walking_player = audio.play("walking", loop=True)
+        else:
+            if self.walking_player is not None:
+                audio.stop(self.walking_player)
+                self.walking_player = None
 
 
         if dy:
