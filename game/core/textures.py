@@ -11,10 +11,9 @@ import PIL.Image
 import PIL.ImageFilter
 
 from .art.keying import add_rim, key_out_paper, key_out_white, solid_bbox, to_art_height, trim
-from .art.parts import face_frames, morsel, pale_edge, split_parts
 from .art.spritesheet import (
     carry_group_sizes, group_sizes, load_carry_frames, load_idle_frames,
-    load_kid_frames, load_terry_frames, terry_idle_cells,
+    load_kid_frames, load_terry_frames,
 )
 from .art.widgets import (
     draw_card, draw_dialog_box, draw_disc, draw_hud_plate, draw_keycap,
@@ -23,7 +22,7 @@ from .art.widgets import (
 from .artcache import baked
 from ..config import (
     BACKGROUND_DIR, CARRY_DIR, CARRY_IDLE_FILES, CARRY_JUMP_FILES, CARRY_WALK_FILES,
-    CHAO_FACES, CHARACTER_DIR, DAYCYCLE_SHEET, DAY_BADGE_BOXES, ICON_DIR, IDLE_SHEET,
+    CHAO_DINER_DIR, CHAO_SHEET_COLS, CHAO_SHEET_ROWS, CHARACTER_DIR, DAYCYCLE_SHEET, DAY_BADGE_BOXES, ICON_DIR, IDLE_SHEET,
     IDLE_SHEETS, KID_CAUGHT_FRAMES, KID_RUN_FRAMES, KID_SHEETS, MOVEMENT_SHEET,
     SPRITE_DIR, TERRY_FACES, TERRY_SHOCKED, UI_DIR,
 )
@@ -198,63 +197,23 @@ def character(filename, glow=True):
     return _texture(baked(name, [source], build))
 
 
-class DinerParts:
-    """A character taken apart to sit at the table.
+@functools.lru_cache(maxsize=None)
+def diner_frames(name, kind):
+    """`name`'s seated "eat" or "talk" frames, left to right, top to bottom.
 
-    `faces` maps (eyes shut, mouth) to a head texture, `hands` and `feet` are
-    (left, right) textures, and every `*_at` is a part's centre in art pixels
-    measured from the middle of the whole figure, y up.
+    Every cell of the sheet is the same size with the stool at its middle,
+    so the frames are cut on a plain grid and never trimmed.
     """
-
-    def __init__(self, art_height, faces, head_at, hands, hands_at, feet,
-                 feet_at, mouth_at):
-        self.art_height = art_height
-        self.faces = faces
-        self.head_at = head_at
-        self.hands = hands
-        self.hands_at = hands_at
-        self.feet = feet
-        self.feet_at = feet_at
-        self.mouth_at = mouth_at
-
-
-@functools.lru_cache(maxsize=8)
-def diner_parts(art):
-    """`art` is "Terry" or a family member's art file, as in CHAO_FACES."""
-    if art == "Terry":
-        image = terry_idle_cells()[0]
-    else:
-        image = PIL.Image.open(CHARACTER_DIR / art)
-        if not (image.mode == "RGBA" and image.getchannel("A").getextrema()[0] < 255):
-            image = key_out_white(image)
-    whole, = to_art_height([trim(image.convert("RGBA"))])
-    head, hands, feet = split_parts(whole)
-
-    def placed(x, y):
-        return (x - whole.width / 2, whole.height / 2 - y)
-
-    def on_head(box):
-        """A box on the whole figure, in the head's own pixels."""
-        return (box[0] - head.left, box[1] - head.top,
-                box[2] - head.left, box[3] - head.top)
-
-    eyes, mouth = CHAO_FACES[art]
-    faces = face_frames(head.image, [on_head(box) for box in eyes], on_head(mouth))
-    return DinerParts(
-        whole.height,
-        {key: _texture(add_rim(face, glow=False)) for key, face in faces.items()},
-        placed(*head.center),
-        tuple(_texture(add_rim(hand.image, glow=False)) for hand in hands),
-        tuple(placed(*hand.center) for hand in hands),
-        tuple(_texture(pale_edge(add_rim(foot.image, glow=False))) for foot in feet),
-        tuple(placed(*foot.center) for foot in feet),
-        placed((mouth[0] + mouth[2]) / 2, (mouth[1] + mouth[3]) / 2),
-    )
-
-
-@functools.lru_cache(maxsize=1)
-def morsel_texture():
-    return _texture(morsel(48))
+    sheet = PIL.Image.open(SPRITE_DIR / CHAO_DINER_DIR / f"{name.lower()}-{kind}-sheet.png")
+    sheet = sheet.convert("RGBA")
+    width = sheet.width // CHAO_SHEET_COLS
+    height = sheet.height // CHAO_SHEET_ROWS
+    return [
+        _texture(sheet.crop((col * width, row * height,
+                             (col + 1) * width, (row + 1) * height)))
+        for row in range(CHAO_SHEET_ROWS)
+        for col in range(CHAO_SHEET_COLS)
+    ]
 
 
 @functools.lru_cache(maxsize=16)

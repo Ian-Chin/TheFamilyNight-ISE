@@ -103,10 +103,9 @@ class ChaoDinnerView(StageView):
         super().__init__()
         self.backdrop = Backdrop(CHAO_DINNER_BG)
         self.served = Backdrop(CHAO_DINNER_SERVED_BG)
-        # Cut everyone into seated parts now, not under the dip to black.
-        seated_art = {name: art for name, art, *_ in CHAO_NPCS}
-        for name, *_ in CHAO_SEATS:
-            textures.diner_parts(seated_art.get(name, name))
+        # Cut everyone's seated frames now, not under the dip to black.
+        for name, _, _, _, eating in CHAO_SEATS:
+            textures.diner_frames(name, "eat" if eating else "talk")
         self.blurred = textures.blurred_background(CHAO_DINNER_BG, CHAO_TITLE_BLUR)
         self.sky = textures.background(CHAO_SKY_BG)
         self.sky_blurred = textures.blurred_background(CHAO_SKY_BG, CHAO_TITLE_BLUR)
@@ -776,14 +775,9 @@ class ChaoDinnerView(StageView):
 
     def seat_family(self):
         """Swap the people standing about for the family sat at the table."""
-        art = {name: art_file for name, art_file, *_ in CHAO_NPCS}
-        middle = (TABLE[0] + TABLE[1]) / 2
         self.diner_by_name = {}
         for index, (name, x, y, height, eating) in enumerate(CHAO_SEATS):
-            toward = 1 if x < middle else -1
-            self.diner_by_name[name] = Diner(
-                art.get(name, name), x, y, height, eating, toward, index * 0.7,
-            )
+            self.diner_by_name[name] = Diner(name, x, y, height, eating, index * 0.7)
         self.diners = list(self.diner_by_name.values())
         self.kids = KidsGame(self.diner_by_name)
         # Under the black, so the cut comes up already close on the table.

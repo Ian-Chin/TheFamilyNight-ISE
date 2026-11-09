@@ -151,24 +151,21 @@ CHAO_STONE_AREAS = (
 )
 
 
-# Seated, the head rests just above the middle of the stool, and the shoes
-# tuck in just under the head, shifted toward the table as if the legs go
-# under it.
-CHAO_SEAT_LIFT = 4       # stool middle to the bottom of the head
-CHAO_FEET_DROP = 8       # stool middle to the middle of the shoes
-CHAO_FEET_SHIFT = 20     # how far the shoes sit toward the table
-CHAO_FEET_SWING = 1.5    # canvas units the shoes swing as the legs dangle
-CHAO_FEET_SWING_TIME = 1.7
-# Where each face's eyes and mouth are, as (left, top, right, bottom) boxes in
-# pixels of the cut-out at CHARACTER_ART_HEIGHT, measured off the art. Blinks
-# and chewing are painted over these.
-CHAO_FACES = {
-    "Dave.png": (((77, 140, 108, 164), (157, 140, 189, 164)), (101, 184, 171, 220)),
-    "Christine.png": (((76, 147, 115, 168), (162, 147, 201, 168)), (114, 190, 164, 213)),
-    "jess.png": (((112, 120, 155, 146), (204, 120, 248, 146)), (152, 166, 207, 195)),
-    "tom.png": (((79, 145, 111, 170), (164, 145, 196, 170)), (112, 183, 165, 213)),
-    "Terry": (((99, 154, 108, 203), (156, 154, 164, 203)), (116, 216, 146, 232)),
-}
+# Seated at the table, everyone plays a frame sheet under assets/sprites:
+# "<name>-eat-sheet.png" for those eating, "<name>-talk-sheet.png" for those
+# chatting. Each sheet is 4 x 3 equal cells read left to right, top to bottom,
+# with the stool at the exact middle of every cell.
+CHAO_DINER_DIR = "chao-diner-frames"
+CHAO_SHEET_COLS = 4
+CHAO_SHEET_ROWS = 3
+CHAO_SHEET_RES = 4       # sheet pixels per canvas unit
+CHAO_HEAD_RISE = 0.47    # stool to the middle of the head, as a share of height
+# Seconds each frame stays up. Eating: reach for the plate (3), lift the bite
+# (3), chew (4), rest, blink. Talking: mouth flaps (8), then quiet with a blink.
+CHAO_EAT_FRAME_TIMES = (0.2, 0.2, 0.2, 0.15, 0.12, 0.12,
+                        0.13, 0.13, 0.13, 0.13, 1.1, 0.15)
+CHAO_TALK_FRAME_TIMES = (0.14,) * 8 + (0.5, 0.15, 0.5, 0.5)
+
 # Terry's face when he arrives and the whole family is already there. It
 # replaces his sprite with a few hops, then the opening lines start.
 TERRY_SHOCKED = "terry-shocked.png"
@@ -196,29 +193,6 @@ KID_SHEET_COLS = 5
 KID_SHEET_ROWS = 2
 KID_RUN_FRAMES = 7
 KID_CAUGHT_FRAMES = 3
-
-# Eating, one bite at a time: the hand on the table side reaches for the
-# plate, brings a morsel up to the mouth, and the mouth chews it while the
-# hand settles back. Then a pause before the next bite.
-CHAO_REACH_TIME = 0.45   # seconds out to the plate, and again up to the mouth
-CHAO_CHEW_TIME = 0.26    # seconds per chew
-CHAO_CHEWS = 4
-CHAO_BITE_GAP = 1.3      # seconds of rest between one bite and the next
-CHAO_PLATE_REACH = 22    # canvas units past the head's side the plate is
-CHAO_CHEW_BOB = 2.5      # canvas units a chew lifts the head
-CHAO_CHEW_SQUASH = 0.04  # share of the head's height a chew squashes away
-CHAO_BITE_LEAN = 6       # degrees leaned toward the table over a bite
-CHAO_MORSEL = 9          # canvas units across the bite of food
-# Those not eating chat: the mouth flaps in bursts and the hands gesture.
-CHAO_TALK_FLAP = 0.14    # seconds per mouth open or shut while talking
-CHAO_TALK_BURST = 1.6    # seconds of talking, then the same again quiet
-CHAO_GESTURE = 3         # canvas units the hands bob while talking
-CHAO_SWAY_TIME = 2.8
-CHAO_SWAY_ANGLE = 2.5
-CHAO_SWAY_BOB = 1.2
-# Everyone blinks every few seconds, each on their own beat.
-CHAO_BLINK_EVERY = 3.4
-CHAO_BLINK_TIME = 0.13
 
 CHAO_PROMPT_LABEL = "Interact"
 CHAO_PROMPT_KEY = "Enter"
