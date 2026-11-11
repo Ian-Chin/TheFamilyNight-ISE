@@ -420,6 +420,26 @@ SOUND_FILES = {
     "chao_clock": ("chao-clock", "sound", 0.6),
     "chao_swoosh": ("chao-swoosh", "sound", 0.6),
 
+    # bus highway (round 2); the clips are shared with the ride inside the bus
+    "bus_music": ("bus-scene/bgm/arcade-rush-bgm", "music", 0.8),
+    "bus_engine": ("bus-scene/sfx/bus-drive", "sound", 0.3),
+    "bus_horn": ("bus-scene/sfx/bus-horn", "sound", 0.7),
+    "bus_crash": ("bus-scene/target-rings/cannon", "sound", 0.7),
+    "bus_swish": ("bus-scene/sfx/swish", "sound", 0.55),
+    # the bus station and the ride inside the bus
+    "bus_jump": ("bus-scene/sfx/jump", "sound", 0.58),
+    "bus_land": ("bus-scene/sfx/land", "sound", 0.55),
+    "bus_warning": ("bus-scene/sfx/warning", "sound", 0.5),
+    "bus_protect": ("bus-scene/sfx/protect", "sound", 0.55),
+    "bus_fail": ("bus-scene/sfx/fail", "sound", 0.55),
+    "bus_cane_hit": ("bus-scene/sfx/cane-hit", "sound", 0.77),
+    "bus_paper": ("bus-scene/sfx/paper", "sound", 0.4),
+    "bus_chew": ("bus-scene/sfx/chew", "sound", 0.55),
+    "bus_fart": ("bus-scene/sfx/fart", "sound", 0.65),
+    "bus_gas_fade": ("bus-scene/sfx/gas-fade", "sound", 0.1),
+    "bus_scare": ("bus-scene/sfx/scare", "sound", 0.68),
+    "bus_food_spill": ("bus-scene/sfx/food-spill", "sound", 0.55),
+
     "chop_meat": ("Chop_meat", "sfx", 1.2),
     "chop_table": ("Chop_table", "sfx", 1.0),
     "chop_vege_1": ("Chop_vege_1", "sfx", 2.2),
@@ -514,6 +534,24 @@ ACHIEVEMENTS = (
      "Bump into 10 shoppers.", True),
     ("egg_last_second", "Market Dash", "Last Second",
      "Escape with under 3s remaining.", True),
+
+    # Bumpy Bus
+    ("bus_board", "Bumpy Bus", "All Aboard",
+     "Board the bus at the station.", False),
+    ("bus_brakes", "Bumpy Bus", "Brace Yourself",
+     "Ride out 4 hard brakes without falling.", False),
+    ("bus_surfer", "Bumpy Bus", "Bus Surfer",
+     "Finish the ride without falling over once.", False),
+    ("bus_guard", "Bumpy Bus", "Food Guardian",
+     "Finish the ride with all the shopping untouched.", False),
+    ("bus_dodger", "Bumpy Bus", "Road Warrior",
+     "Get through the traffic without a single crash.", False),
+    ("bus_arrive", "Bumpy Bus", "Special Delivery",
+     "Reach the BBQ with the shopping.", False),
+    ("egg_bus_officer", "Bumpy Bus", "Law Abiding",
+     "Hear the officer out before boarding.", True),
+    ("egg_bus_close", "Bumpy Bus", "Paint Scraper",
+     "Squeeze past 3 vehicles with a near miss.", True),
 
      # Backyard BBQ
     ("bbq_prep", "Backyard BBQ", "Prep Time!",

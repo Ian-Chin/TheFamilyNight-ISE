@@ -26,6 +26,7 @@ SCENES = [
     ("Scene 2: Bumpy Bus", "game.scenes.bumpy_bus", "BumpyBusView", {}),
     ("Scene 3: Backyard BBQ", "game.scenes.bbq", "BbqView", {}),
     ("Scene 4: Chaos Dinner", "game.scenes.chao_dinner", "ChaoDinnerView", {}),
+    ("Scene 2, round 2: Highway", "game.scenes.bumpy_bus", "BusHighwayView", {}),
 ]
 
 ROW_H = 52
