@@ -391,10 +391,10 @@ class MarketStageView(StageView):
         # Only draw the quest checklist when Terry is walking around (hide during dialogue & menus)
         if not self.dialog.visible and not self.pause_menu.visible and not self.settings_panel.visible:
             # Sized and anchored directly to the top-right corner where QuestPanel renders
-            plate_w = 345
-            plate_h = 240
+            plate_w = 300
+            plate_h = 200
             plate_x = self.window.width - (plate_w / 2) - 12
-            plate_y = self.window.height - (plate_h / 2) - 155
+            plate_y = self.window.height - (plate_h / 2) - 75
 
             arcade.draw_rect_filled(arcade.XYWH(plate_x, plate_y, plate_w, plate_h), (12, 10, 14, 215))
             arcade.draw_rect_outline(arcade.XYWH(plate_x, plate_y, plate_w, plate_h), (180, 140, 90, 160), 2)
