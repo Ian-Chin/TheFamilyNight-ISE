@@ -316,7 +316,7 @@ class BbqView(StageView):
             elif self.near_grill and self.grill_unlocked and not self.grill_completed:
                 self.grill_prompt.draw(880, 340 + 40)
             
-            plate_w = 360
+            plate_w = 280
             plate_h = 130
             plate_left = WIDTH - 15 - plate_w
             plate_bottom = HEIGHT - 75 - plate_h
