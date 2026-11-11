@@ -311,7 +311,21 @@ class QuestPanel:
                 "base_note": ("Optional: " if optional else "") + note,
             })
             row_top -= CHAO_QUEST_ROW_GAP
+        self.last_note_y = row_top + CHAO_QUEST_ROW_GAP - 18
         self.refresh()
+
+    def plate_rect(self, pad=12):
+        """Screen rect that hugs the header and every line as currently worded."""
+        stage = self.stage
+        texts = [self.header[1]] + [
+            row[part][1] for row in self.rows for part in ("title", "note")
+        ]
+        left = min(text.x - text.content_width for text in texts)
+        right, top = stage.to_screen(
+            CHAO_QUEST_RIGHT + pad, CHAO_QUEST_TOP + CHAO_QUEST_HEADER_SIZE / 2 + pad,
+        )
+        _, bottom = stage.to_screen(0, self.last_note_y - CHAO_QUEST_NOTE_SIZE / 2 - pad)
+        return arcade.LRBT(left - pad * stage.scale, right, bottom, top)
 
     def refresh(self):
         if self.stage is None:
