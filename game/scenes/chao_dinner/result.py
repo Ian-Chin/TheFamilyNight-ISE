@@ -35,7 +35,6 @@ class ResultCard(PauseMenu):
             self.left - PLANK_PAD, self.bottom - PLANK_PAD,
             self.width + 2 * PLANK_PAD, self.height + 2 * PLANK_PAD,
         ))
-        # The colour stripe along the panel's top edge.
         arcade.draw_rect_filled(
             stage.rect(self.left + 14, top - RESULT_STRIPE_H - 6,
                        self.width - 28, RESULT_STRIPE_H),

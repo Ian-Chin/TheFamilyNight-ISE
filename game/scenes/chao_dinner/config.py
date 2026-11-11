@@ -3,46 +3,31 @@
 from ...config import HEIGHT, WIDTH
 
 
-# --- Chao dinner scene, in canvas units --------------------------------------
-# Same garden as the BBQ scene, after dark; the layout below still lines up.
 CHAO_DINNER_BG = "chao-dinner-night.png"
-CHAO_TITLE_BLUR = 8      # blur radius on the background, in source pixels
-# The scene opens on the night sky stacked above the garden; once the title
-# card starts to fade the camera tilts down onto the garden, taking the
-# title away with it, and Terry walks in.
+CHAO_TITLE_BLUR = 8
 CHAO_SKY_BG = "chao-dinner-sky.png"
-CHAO_SKY_HOLD = 0.0      # seconds after the title starts fading, before the tilt
-CHAO_SKY_PAN = 3.0       # seconds the tilt down takes
+CHAO_SKY_HOLD = 0.0
+CHAO_SKY_PAN = 3.0
 
-# Cousin Dave's family standing around the garden, as (name, art file, x, y, height).
 CHAO_NPCS = (
     ("Dave", "Dave.png", 790, 318, 126),
-    # Down in the bottom left corner, on the grass between the pond and path.
     ("Christine", "Christine.png", 360, 205, 122),
     ("Jess", "jess.png", 640, 356, 100),
-    # Out from under the quest panel in the top right.
     ("Tom", "tom.png", 720, 560, 108),
 )
 
-# The "!" over the dinner table, where the dinner is started from.
 CHAO_TABLE_MARK = "Exclamation Mark Symbol.png"
-CHAO_TABLE_MARK_POS = (229, 478)   # middle of the mark, resting
+CHAO_TABLE_MARK_POS = (229, 478)
 CHAO_TABLE_MARK_H = 72
-CHAO_MARK_BOB = 6        # canvas units the mark bobs up and down
-CHAO_MARK_BOB_TIME = 1.2 # seconds for one bob
-# How far Terry's feet may stand from the table's edge to start the dinner.
+CHAO_MARK_BOB = 6
+CHAO_MARK_BOB_TIME = 1.2
 CHAO_TABLE_RANGE = 70
 
-# Starting the dinner: the food fades onto the table, then the screen dips to
-# black and comes back up with the family sat round it.
 CHAO_DINNER_SERVED_BG = "chao-dinner-served.png"
-CHAO_SERVE_FADE = 0.9    # seconds for the food to fade onto the table
-CHAO_SERVE_HOLD = 0.8    # seconds to look at the food before the dip
-CHAO_SEAT_FADE = 0.45    # seconds down to black, and again back up
-CHAO_SEATED_HOLD = 1.2   # seconds of the family at the table before Terry speaks
-# Who sits where, as (name, stool x, stool y, height, eating). The stools are
-# the six round seats either side of the table; the bottom right one is left
-# free. Height is the whole figure, head to shoes, as if standing.
+CHAO_SERVE_FADE = 0.9
+CHAO_SERVE_HOLD = 0.8
+CHAO_SEAT_FADE = 0.45
+CHAO_SEATED_HOLD = 1.2
 CHAO_SEATS = (
     ("Dave", 121, 462, 88, True),
     ("Christine", 121, 399, 84, False),
@@ -50,66 +35,50 @@ CHAO_SEATS = (
     ("Jess", 332, 462, 78, False),
     ("Terry", 332, 399, 84, True),
 )
-CHAO_SHOCK_LEAD = 0.75   # seconds of the shocked face before he speaks
-CHAO_SHOCK_HOP = 16      # canvas units of the first hop
-CHAO_SHOCK_HOP_TIME = 0.2   # seconds per hop
-CHAO_SHOCK_HOPS = 3      # each one lower than the last
+CHAO_SHOCK_LEAD = 0.75
+CHAO_SHOCK_HOP = 16
+CHAO_SHOCK_HOP_TIME = 0.2
+CHAO_SHOCK_HOPS = 3
 
 
-# --- Kids at the table mini game --------------------------------------------
-KID_HEIGHT = 84          # canvas units, head to shoes, while running
+KID_HEIGHT = 84
 KID_RUN_SPEED = 175.0
-KID_RUN_FRAME = 0.08     # seconds per running frame
-KID_CAUGHT_FRAME = 0.12  # seconds per tantrum frame
-KID_SHAKE = 2.5          # canvas units a carried kid shakes
-KID_SEATED_MIN = 2.5     # seconds a returned kid stays put, at least
-KID_SEATED_MAX = 6.0     # and at most
-# Once the family is seated the camera closes in on the table: the canvas is
-# shown CHAO_ZOOM times larger, with CHAO_ZOOM_ORIGIN as the bottom left of
-# what is still on screen. CHAO_ZOOM_VIEW is that part, as (left, right,
-# bottom, top).
+KID_RUN_FRAME = 0.08
+KID_CAUGHT_FRAME = 0.12
+KID_SHAKE = 2.5
+KID_SEATED_MIN = 2.5
+KID_SEATED_MAX = 6.0
 CHAO_ZOOM = 1.6
 CHAO_ZOOM_ORIGIN = (0, 176)
 CHAO_ZOOM_VIEW = (
     CHAO_ZOOM_ORIGIN[0], CHAO_ZOOM_ORIGIN[0] + WIDTH / CHAO_ZOOM,
     CHAO_ZOOM_ORIGIN[1], CHAO_ZOOM_ORIGIN[1] + HEIGHT / CHAO_ZOOM,
 )
-# Where a kid's feet may go, kept far enough in from the edges of the zoomed
-# view that the whole kid, and the escape bar over their head, stay on screen.
 KID_BOUNDS = (
     CHAO_ZOOM_VIEW[0] + 36, CHAO_ZOOM_VIEW[1] - 36,
     CHAO_ZOOM_VIEW[2] + 16, CHAO_ZOOM_VIEW[3] - KID_HEIGHT - 30,
 )
-# Ground the kids run about on, as (left, right, bottom, top); targets are
-# picked in here. They path round the scenery in CHAO_OBSTACLES on a grid of
-# KID_GRID cells, keeping KID_CLEARANCE between their feet and its edges.
 KID_RUN_AREA = KID_BOUNDS
 KID_GRID = 20
 KID_CLEARANCE = 24
-KID_HIT_PAD = 10         # extra canvas units round a kid that still grabs
-# Carrying: the escape bar fills over KID_ESCAPE_TIME; full, they get away and
-# cannot be grabbed again for KID_ESCAPE_COOLDOWN.
+KID_HIT_PAD = 10
 KID_ESCAPE_TIME = 3.2
 KID_ESCAPE_COOLDOWN = 0.8
 KID_BAR_W = 74
 KID_BAR_H = 9
-KID_BAR_GAP = 10         # top of the kid's head to the bar
+KID_BAR_GAP = 10
 KID_BAR_SAFE = (126, 214, 150)
 KID_BAR_DANGER = (236, 92, 80)
-# Every so often a carried kid tugs the cursor: a short shove in a random
-# direction, spread over a few frames so it reads as a yank, not a teleport.
-KID_TUG_EVERY = (0.7, 1.5)   # seconds between tugs, picked at random
-KID_TUG = (28, 48)           # canvas units a tug moves the cursor
+KID_TUG_EVERY = (0.7, 1.5)
+KID_TUG = (28, 48)
 KID_TUG_TIME = 0.12
-# The drop box over each kid's stool while they are being carried.
-KID_SEAT_BOX = (84, 104)     # width and height, canvas units
-KID_SEAT_BOX_RISE = 22       # stool middle to the middle of the box
+KID_SEAT_BOX = (84, 104)
+KID_SEAT_BOX_RISE = 22
 KID_SEAT_COLOR = (255, 214, 138)
-KID_SEAT_READY = (126, 214, 150)   # once the kid is over it
-KIDS_GAME_TIME = 40.0    # seconds the mini game lasts
-KIDS_HURRY = 10          # seconds left when the clock turns red and ticks
-KIDS_GOOD_SHARE = 0.75   # share of the time seated needed to move on
-# The timer plank at the top middle of the screen.
+KID_SEAT_READY = (126, 214, 150)
+KIDS_GAME_TIME = 40.0
+KIDS_HURRY = 10
+KIDS_GOOD_SHARE = 0.75
 KIDS_HUD_TOP = HEIGHT - 26
 KIDS_HUD_W = 300
 KIDS_HUD_H = 76
@@ -117,11 +86,9 @@ KIDS_TIMER_SIZE = 26
 KIDS_HUD_NOTE_SIZE = 12
 KIDS_HINT = "Drag a runaway kid onto their glowing seat before they wriggle free"
 
-# How close Terry's feet must be to someone's for the interact prompt to show.
 CHAO_TALK_RANGE = 120
 
 
-# --- In-scene HUD, in canvas units -------------------------------------------
 PHASE_NAMES = ("Morning", "Afternoon", "Evening", "Night")
 HUD_MARGIN = 22
 HUD_GAP = 18
@@ -130,54 +97,45 @@ HUD_SETTINGS_H = 50
 HUD_BACKPACK_H = 58
 HUD_MAP_H = 104
 HUD_HOVER_GROW = 1.06
-# The garden art is busy, so the bare icons sit on a dark plate to stand out.
-HUD_PLATE_INSET = 12   # canvas units of plate around an icon
-HUD_PLATE_PAD = 8      # room around the plate for its shadow
+HUD_PLATE_INSET = 12
+HUD_PLATE_PAD = 8
 
 
-# --- Leftover feast typing game ---------------------------------------------
-# Said as each course goes, for stages 1 to 4.
 FEAST_STAGE_LINES = (
     "Salad and pie, gone!",
     "The roast chicken is history!",
     "Just the bread and crumbs left...",
     "Clean plates! Every last bite!",
 )
-FEAST_TIME = 60.0         # seconds on the clock
-FEAST_GOAL_WORDS = 36     # correct words that clear the whole table
-FEAST_MAX_EXTRA = 8       # extra letters allowed past the end of a word
-FEAST_STAGE_FADE = 0.9    # seconds one course crossfades into the next
-FEAST_COUNT_STEP = 0.7    # seconds per number of the count in
-FEAST_HURRY = 10          # seconds left when the clock turns red and ticks
-FEAST_COMBO_EVERY = 10    # clean words in a row between combo fanfares
-# The garden fills the top of the screen, cropped to the table: the top
-# FEAST_CROP of the art is cut off and its foot stops at FEAST_SCENE_BOTTOM.
+FEAST_TIME = 60.0
+FEAST_GOAL_WORDS = 36
+FEAST_MAX_EXTRA = 8
+FEAST_STAGE_FADE = 0.9
+FEAST_COUNT_STEP = 0.7
+FEAST_HURRY = 10
+FEAST_COMBO_EVERY = 10
 FEAST_SCENE_BOTTOM = 286
 FEAST_CROP = 0.33
-FEAST_TABLE_AREA = (330, 1180, 360, 560)   # where the crumbs fly from
-FEAST_FLOOR = (13, 15, 21)       # the dark ground the keyboard sits on
-# Words come one at a time: the one to type sits big in the middle, and the
-# next few wait in a stack under it, each sliding up a place as a word is done.
+FEAST_TABLE_AREA = (330, 1180, 360, 560)
+FEAST_FLOOR = (13, 15, 21)
 FEAST_FONT = ("Consolas", "Cascadia Mono", "Courier New", "monospace")
-FEAST_WORD_SIZE = 46      # the word being typed
-FEAST_WORD_Y = 352        # middle of the word being typed
-# The waiting words under it: (canvas y, font size, opacity), nearest first.
+FEAST_WORD_SIZE = 46
+FEAST_WORD_Y = 352
 FEAST_QUEUE = ((290, 26, 215), (252, 21, 140), (220, 17, 75))
-FEAST_SLIDE = 0.2         # seconds for the stack to move up a place
-FEAST_OUT_TIME = 0.4      # seconds the finished word floats up and fades
+FEAST_SLIDE = 0.2
+FEAST_OUT_TIME = 0.4
 FEAST_UNTYPED = (118, 124, 140)
 FEAST_CORRECT = (236, 232, 222)
 FEAST_WRONG = (236, 92, 80)
 FEAST_EXTRA = (150, 54, 50)
 FEAST_CARET = (255, 204, 110)
-# On-screen keyboard under the words.
 FEAST_KEY_ROWS = ("qwertyuiop", "asdfghjkl", "zxcvbnm")
 FEAST_KEY_W = 40
 FEAST_KEY_H = 32
 FEAST_KEY_GAP = 5
-FEAST_KEY_TOP = 168       # top of the first row
+FEAST_KEY_TOP = 168
 FEAST_SPACE_W = 250
-FEAST_KEY_GLOW = 0.28     # seconds a pressed key stays lit
+FEAST_KEY_GLOW = 0.28
 FEAST_KEY_HIT = (126, 214, 150)
 FEAST_KEY_FACE = (26, 29, 38)
 FEAST_KEY_EDGE = (255, 255, 255, 46)
@@ -208,14 +166,10 @@ FEAST_WORDS = (
 )
 
 
-# --- Dialogue lines ----------------------------------------------------------
-# Terry arrives to find everyone already in the garden. The first line is
-# said with the shocked face.
 CHAO_SHOCK_DIALOG = (
     ("Terry", "Whoa! Everyone's here already? That was fast!"),
     ("Terry", "Okay, okay. Lights are up, Dave and the family are here. Time to set up dinner at the table.", "happy"),
 )
-# The table prompt, and the card that asks before the mini game starts.
 CHAO_TABLE_PROMPT = "Set up"
 CHAO_SETUP_TITLE = "Dinner Time"
 CHAO_SETUP_MESSAGE = "You are about to enter a mini game."
@@ -223,12 +177,9 @@ CHAO_SETUP_ITEMS = [
     ("Set up", "setup", "play"),
     ("Wait", "wait", "book"),
 ]
-# The count in before each round of the kids game: seconds of 3, 2, 1, then
-# how long "GO!" stays up once they are off.
 CHAO_COUNTDOWN = 3
 CHAO_COUNT_GO = 0.6
 CHAO_COUNT_SIZE = 110
-# Table talk once everyone is seated, ending with the kids running off.
 CHAO_TABLE_TALK = (
     ("Terry", "Dinner is served, everyone! Dig in before the food gets cold.", "happy"),
     ("Dave", "Now this is a proper feast. You really outdid yourself, cousin."),
@@ -236,7 +187,6 @@ CHAO_TABLE_TALK = (
     ("Jess", "Psst, Tom. Want to run around?"),
     ("Tom", "Yes! Race you to the grill!"),
 )
-# The results card at the end of the mini game.
 KIDS_WIN_TITLE = "Dinner Saved!"
 KIDS_LOSE_TITLE = "What a Mess!"
 KIDS_RESULT_MESSAGE = "The kids stayed seated {share}% of the time."
@@ -248,15 +198,12 @@ KIDS_WIN_ITEMS = [
 KIDS_LOSE_ITEMS = [
     ("Try again", "retry", "play"),
 ]
-# Terry once the mini game is over and he carries on.
 CHAO_AFTER_GAME_DIALOG = (
     ("Terry", "Phew. Finally, a quiet dinner with the whole family.", "happy"),
 )
-# A while later: the screen dips to black over a clock, and the family are
-# full. They head off one by one and leave Terry with the rest of the food.
 CHAO_SKIP_TEXT = "30 minutes later..."
-CHAO_SKIP_FADE = 0.6     # seconds down to black, and again back up
-CHAO_SKIP_HOLD = 2.4     # seconds the clock spins on the black
+CHAO_SKIP_FADE = 0.6
+CHAO_SKIP_HOLD = 2.4
 CHAO_FULL_DIALOG = (
     ("Dave", "Ahh, I'm stuffed. I couldn't eat another bite if I tried."),
     ("Christine", "Me too. Thank you for having us, Terry. Lovely dinner!"),
@@ -264,13 +211,11 @@ CHAO_FULL_DIALOG = (
     ("Jess", "Can we go play now? Come on, Tom!"),
     ("Tom", "Yay! Bye Terry! Thanks for the food!"),
 )
-CHAO_LEAVE_FADE = 0.55   # seconds down to black while the family leave
-# Terry alone at the table, the first line with the shocked face.
+CHAO_LEAVE_FADE = 0.55
 CHAO_ALONE_DIALOG = (
     ("Terry", "Wait... everyone's gone? But there's still SO much food left!"),
     ("Terry", "I'm not letting a single bite go to waste. Time to finish this feast.", "hungry"),
 )
-# Where Terry stands once he gets up from the table, beside its right end.
 CHAO_ALONE_SPOT = (420, 392)
 CHAO_FEAST_PROMPT = "Eat"
 CHAO_FEAST_TITLE = "Leftover Feast"
@@ -279,7 +224,6 @@ CHAO_FEAST_ITEMS = [
     ("Start", "feast", "play"),
     ("Wait", "wait", "book"),
 ]
-# A short exchange with each family member: their line, then Terry's reply.
 CHAO_NPC_DIALOG = {
     "Dave": (
         ("Dave", "Smells good, cousin. I told the whole family your steak was legendary, so no pressure."),
@@ -300,28 +244,21 @@ CHAO_NPC_DIALOG = {
 }
 
 
-# --- Night lighting and screen effects ---------------------------------------
-# Drawn through game/core/postfx.py, so quality mode only; performance mode
-# keeps the plain picture and the plain fades to black.
-CHAO_AMBIENT = (0.72, 0.78, 1.0)   # the whole garden, cooled toward moonlight
-# Warm pools added on top: (x, y, radius, strength, (r, g, b), flicker), with
-# x, y and radius in canvas units. Strength is how far over the ambient the
-# middle of the pool goes; flicker is how much it wobbles, for flames.
+CHAO_AMBIENT = (0.72, 0.78, 1.0)
 CHAO_LIGHTS = (
-    (230, 395, 300, 1.0, (0.55, 0.36, 0.14), 0.06),   # over the dinner table
-    (878, 370, 230, 1.2, (0.80, 0.30, 0.06), 0.22),   # the grill's embers
-    (140, 72, 170, 0.7, (0.10, 0.26, 0.50), 0.0),     # the pond
-    (150, 708, 210, 0.6, (0.50, 0.38, 0.18), 0.10),   # string lights, top
+    (230, 395, 300, 1.0, (0.55, 0.36, 0.14), 0.06),
+    (878, 370, 230, 1.2, (0.80, 0.30, 0.06), 0.22),
+    (140, 72, 170, 0.7, (0.10, 0.26, 0.50), 0.0),
+    (150, 708, 210, 0.6, (0.50, 0.38, 0.18), 0.10),
     (470, 708, 210, 0.6, (0.50, 0.38, 0.18), 0.10),
     (790, 708, 210, 0.6, (0.50, 0.38, 0.18), 0.10),
     (1110, 708, 210, 0.6, (0.50, 0.38, 0.18), 0.10),
-    (330, 66, 190, 0.5, (0.50, 0.38, 0.18), 0.10),    # string lights, bottom
+    (330, 66, 190, 0.5, (0.50, 0.38, 0.18), 0.10),
     (720, 66, 190, 0.5, (0.50, 0.38, 0.18), 0.10),
     (1100, 66, 190, 0.5, (0.50, 0.38, 0.18), 0.10),
 )
 CHAO_VIGNETTE = 0.5
 
-# The kids game result card (see result.py).
 RESULT_STYLES = {
     "win": {"wash": (12, 60, 30, 150), "accent": (76, 186, 110), "title": (150, 236, 168)},
     "lose": {"wash": (70, 12, 16, 150), "accent": (214, 72, 72), "title": (250, 150, 146)},
@@ -330,27 +267,20 @@ RESULT_STRIPE_H = 6
 RESULT_BADGE_R = 26
 CHAO_GRAIN = 0.035
 
-# Depth of field: once the camera closes on the table the garden behind
-# softens, so the family stays the sharp thing in frame.
-CHAO_FOCUS_BLUR = 5.0    # blur radius in canvas units, fully pulled
-CHAO_FOCUS_TIME = 1.4    # seconds to pull focus
-# The table stays in focus: (x, y, sharp within, fully soft past), canvas units.
+CHAO_FOCUS_BLUR = 5.0
+CHAO_FOCUS_TIME = 1.4
 CHAO_FOCUS_SPOT = (230, 400, 190, 420)
 
-# Shocked moments: the world drains to grey but for a circle round Terry,
-# speed lines burst in, and the camera punches in.
-CHAO_SHOCK_FOCUS = 120   # canvas radius kept in colour
-CHAO_SHOCK_FADE = 0.22   # seconds for the grey to come and go
+CHAO_SHOCK_FOCUS = 120
+CHAO_SHOCK_FADE = 0.22
 CHAO_SPEED_LINES = 44
-CHAO_PUNCH = 0.09        # extra zoom at the height of the punch
-CHAO_PUNCH_TIME = 0.5    # seconds for the punch to settle
+CHAO_PUNCH = 0.09
+CHAO_PUNCH_TIME = 0.5
 
-# The kids game: a kid wriggling free shakes the screen and flushes its
-# edges red.
-CHAO_ESCAPE_SHAKE = 9.0  # canvas units
-CHAO_ESCAPE_DECAY = 2.6  # how fast the shake and the red die away, per second
-CHAO_SKIP_SPEED = 5.0    # the family eats this many times faster during "30 minutes later"
+CHAO_ESCAPE_SHAKE = 9.0
+CHAO_ESCAPE_DECAY = 2.6
+CHAO_SKIP_SPEED = 5.0
 
-KID_TRAIL = 6            # afterimages behind a carried kid
-KID_TRAIL_EVERY = 0.035  # seconds between them
-KID_SPARKLES = 22        # bits thrown up when a kid is put back in their seat
+KID_TRAIL = 6
+KID_TRAIL_EVERY = 0.035
+KID_SPARKLES = 22

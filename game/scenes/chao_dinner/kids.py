@@ -53,9 +53,6 @@ def _spring(clock, amount):
     return amount * math.exp(-clock * 7) * math.cos(clock * 24)
 
 
-# --- finding a way round the scenery ----------------------------------------
-# The garden is laid over a grid of KID_GRID cells; a cell is open if a kid's
-# feet could stand at its middle, clear of every obstacle by KID_CLEARANCE.
 
 def blocked(x, y):
     left, right, bottom, top = KID_BOUNDS
@@ -116,7 +113,6 @@ def _grid_route(first, last):
                 step = (cell[0] + dx, cell[1] + dy)
                 if not (dx or dy) or not _open(step):
                     continue
-                # No cutting across the corner of something solid.
                 if dx and dy and not (_open((cell[0] + dx, cell[1]))
                                       and _open((cell[0], cell[1] + dy))):
                     continue
@@ -148,7 +144,6 @@ def find_path(start, goal):
         points[-1] = goal
     path = []
     if blocked(*start):
-        # Dropped on the scenery: hop off it to the nearest open ground first.
         here = points[0]
         path.append(here)
     else:
@@ -198,19 +193,16 @@ class Runner:
                          middle_y - height / 2, middle_y + height / 2)
         self.x, self.y = self.seat
         self.dust = WalkDust(CHAO_STONE_AREAS)
-        self.heading = (0.0, 0.0)   # last direction run in, for the dust
+        self.heading = (0.0, 0.0)
         self.state = "seated"
         self.path = []
         self.facing = 1
         self.frame_clock = 0.0
         self.seated_for = 0.0
-        self.escape = 0.0      # seconds carried; they get free at KID_ESCAPE_TIME
-        self.cooldown = 0.0    # seconds until they can be grabbed again
-        # Squash and stretch: seconds since the last jolt, and how big it was
-        # (+ stretches tall, - squashes flat).
+        self.escape = 0.0
+        self.cooldown = 0.0
         self.jolt_clock = 9.0
         self.jolt = 0.0
-        # Afterimages left behind while carried: (x, y, texture, facing).
         self.trail = collections.deque(maxlen=KID_TRAIL)
         self.trail_clock = 0.0
         self.ghosts = arcade.SpriteList()
@@ -287,7 +279,6 @@ class Runner:
             self.y += dy / distance * step
             self.heading = (dx / distance, dy / distance)
             if abs(dx) > 1:
-                # The art runs to the right, so it is mirrored to run left.
                 self.facing = 1 if dx > 0 else -1
             step = 0
         return not self.path
@@ -308,8 +299,6 @@ class Runner:
         elif self.state == "carried":
             self.escape += delta_time
         self.jolt_clock += delta_time
-        # While carried, drop an afterimage every so often; once let go the
-        # trail runs out one image at a time.
         self.trail_clock += delta_time
         if self.trail_clock >= KID_TRAIL_EVERY:
             self.trail_clock = 0.0
@@ -317,12 +306,10 @@ class Runner:
                 self.trail.append((self.x, self.y, self.sprite.texture, self.facing))
             elif self.trail:
                 self.trail.popleft()
-        # Dust kicked up behind their feet while they run, as with Terry.
         running = self.state == "running"
         self.dust.update(delta_time, running, self.x, self.y, *self.heading)
 
     def draw(self):
-        # Dust still in the air settles even once they are sat back down.
         self.dust.draw()
         if self.state == "seated":
             return
@@ -333,8 +320,6 @@ class Runner:
         self.draw_trail()
         sprite = self.sprite
         sprite.texture = frames[int(self.frame_clock / frame_time) % len(frames)]
-        # Stretched tall when grabbed, squashed flat on landing; the area
-        # stays about the same, and the feet stay put.
         stretch = _spring(self.jolt_clock, self.jolt)
         sprite.scale_x = self.scale * self.facing * (1 - stretch * 0.6)
         sprite.scale_y = self.scale * (1 + stretch)
@@ -372,7 +357,6 @@ class Runner:
             left - 2, bottom - 2, KID_BAR_W + 4, KID_BAR_H + 4, (12, 10, 16, 220),
         )
         color = _mix(KID_BAR_SAFE, KID_BAR_DANGER, share)
-        # Close to breaking free, the bar flashes.
         if share > 0.75 and int(self.frame_clock * 10) % 2:
             color = (255, 240, 220)
         if share > 0:
@@ -391,7 +375,6 @@ class Runner:
         arcade.draw_lrbt_rectangle_outline(
             left, right, bottom, top, (*color, round(170 + 85 * pulse)), 3,
         )
-        # Corner ticks, so it reads as a target rather than a plain frame.
         tick = 12
         for x, sx in ((left, 1), (right, -1)):
             for y, sy in ((bottom, 1), (top, -1)):
@@ -411,8 +394,8 @@ class KidsGame:
         """`diners` maps "Tom" and "Jess" to their Diner at the table."""
         self.runners = [Runner(name, diners[name]) for name in ("Jess", "Tom")]
         self.clock = 0.0
-        self.sparkles = []   # [x, y, vx, vy, age, life, color, size]
-        self.events = []     # "escape" and "seated", for the view to react to
+        self.sparkles = []
+        self.events = []
         self.reset()
 
     def reset(self):
@@ -421,12 +404,12 @@ class KidsGame:
         self.seated_time = 0.0
         self.active = False
         self.carried = None
-        self.grip = (0.0, 0.0)      # cursor to the kid's feet when picked up
+        self.grip = (0.0, 0.0)
         self.pointer = (0.0, 0.0)
         self.pointer_moved = False
         self.tug_in = 0.0
-        self.tug = None             # (dx, dy, seconds left) of a tug under way
-        self.escapes = 0            # wriggled free this round, for Wriggle Room
+        self.tug = None
+        self.escapes = 0
         for runner in self.runners:
             runner.sit(0.0)
 
@@ -459,7 +442,6 @@ class KidsGame:
             step = min(delta_time, self.time_left)
             shown = math.ceil(self.time_left)
             self.time_left -= step
-            # The last ten seconds tick down out loud, tock pitched lower.
             if 0 < math.ceil(self.time_left) < shown <= KIDS_HURRY + 1:
                 audio.play("chao_tick", speed=1.0 if shown % 2 else 0.8)
             self.elapsed += step
@@ -489,7 +471,7 @@ class KidsGame:
             self.sparkles.append([x, y, math.cos(angle) * speed, math.sin(angle) * speed,
                                   0.0, random.uniform(0.45, 0.8), color,
                                   random.choice((3, 4, 5))])
-        self.sparkles.append([x, y, 0.0, 0.0, 0.0, 0.45, None, 0])   # the ring
+        self.sparkles.append([x, y, 0.0, 0.0, 0.0, 0.45, None, 0])
 
     def draw_effects(self):
         """The sparkles from a kid put back in their seat."""
@@ -598,7 +580,7 @@ class KidsHud:
 
     def __init__(self):
         self.stage = None
-        self.shown = None   # (seconds, seated, total) last written to the text
+        self.shown = None
 
     def layout(self, stage):
         self.stage = stage

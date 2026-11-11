@@ -87,7 +87,6 @@ class HUD:
         self.badges = textures.day_badges()
         self.phase = 0
 
-        # The badge art already carries its own plate; the icons do not.
         self.day = HudButton("day", self.badges[0], HUD_BADGE_H, plate=False)
         self.settings = HudButton(
             "settings", textures.ui_image("settings.png"), HUD_SETTINGS_H

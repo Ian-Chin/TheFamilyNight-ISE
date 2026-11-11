@@ -48,7 +48,7 @@ RESULT_W = 940
 RESULT_H = 500
 RESULT_LEFT = (WIDTH - RESULT_W) / 2
 RESULT_BOTTOM = (HEIGHT - RESULT_H) / 2 - 6
-GRAPH = (RESULT_LEFT + 430, RESULT_BOTTOM + 128, 470, 210)   # left, bottom, w, h
+GRAPH = (RESULT_LEFT + 430, RESULT_BOTTOM + 128, 470, 210)
 CRUMB_COLORS = (
     (214, 150, 74), (182, 104, 52), (236, 196, 120), (120, 168, 72),
     (220, 90, 60), (246, 222, 170),
@@ -168,7 +168,6 @@ class TypingFeastView(StageView):
         self.pause_menu = PauseMenu()
         self.settings_panel = SettingsPanel()
         button_y = RESULT_BOTTOM + 34
-        # Continue carries the story on to the ending; Enter takes it too.
         self.result_buttons = [
             MenuButton("Continue", "continue", "award",
                        WIDTH / 2 - 405 - 18, button_y, 270, 56),
@@ -182,11 +181,10 @@ class TypingFeastView(StageView):
         self.reset()
         self.relayout()
 
-    # --- round state --------------------------------------------------------
 
     def reset(self):
         """A fresh round, waiting on the intro card."""
-        self.mode = "intro"          # intro, count, play, ending, results
+        self.mode = "intro"
         self.mode_clock = 0.0
         self.time_left = FEAST_TIME
         self.elapsed = 0.0
@@ -200,27 +198,27 @@ class TypingFeastView(StageView):
         self.typed_chars = 0
         self.streak = 0
         self.best_streak = 0
-        self.history = []            # (second, wpm, raw, errors) per second
+        self.history = []
         self.second_chars = 0
         self.second_errors = 0
         self.next_second = 1
         self.course = 0
         self.old_course = None
         self.course_clock = FEAST_STAGE_FADE
-        self.meter = 0.0             # the food meter's eased fill
+        self.meter = 0.0
         self.bump = 0.0
         self.shake = 0.0
         self.flash = 0.0
         self.hurry_second = None
-        self.idle = 0.0              # seconds since the last key, for the caret
-        self.slide = 0.0             # 1 just after a word, easing back to 0
+        self.idle = 0.0
+        self.slide = 0.0
         self.caret_x = None
-        self.outgoing = None         # (texts, seconds since, colour) of the word just done
-        self.key_glow = {}           # key -> (seconds left, color)
+        self.outgoing = None
+        self.key_glow = {}
         self.crumbs = arcade.SpriteList()
         self.sparks = arcade.SpriteList()
         self.floaters = []
-        self.banner = None           # (texts, seconds since shown)
+        self.banner = None
         self.results = None
         self.dirty = True
 
@@ -275,7 +273,6 @@ class TypingFeastView(StageView):
                 counts[3] += max(0, len(word) - len(typed))
         return counts
 
-    # --- layout -------------------------------------------------------------
 
     def relayout(self):
         super().relayout()
@@ -285,7 +282,6 @@ class TypingFeastView(StageView):
         self.advance = probe.content_width / 20 / stage.scale
         self.dirty = True
         self.labels = {}
-        # Labels changed in place as the words go by, rather than rebuilt.
         self.run_pool = []
         self.queue_texts = [
             arcade.Text("", 0, 0, FEAST_UNTYPED, size * stage.scale, font_name=FEAST_FONT,
@@ -319,7 +315,6 @@ class TypingFeastView(StageView):
         for font, size, bold in sizes:
             arcade.Text(letters + letters.upper() + extra, 0, 0, font_size=size * scale,
                         font_name=font, bold=bold)
-        # The pop-up words and course lines, built now rather than on a bite.
         for key in (0, 1):
             for word in BITE_WORDS:
                 self.label(word, 18, MENU_FONT, key=key, bold=True, anchor_x="center",
@@ -377,8 +372,6 @@ class TypingFeastView(StageView):
                 font_name=MENU_FONT, bold=True, anchor_x="center",
                 anchor_y="center", batch=self.key_batch,
             )
-        # The resting keys never change, so they are baked into one shape list;
-        # only the lit and hinted keys are drawn on top each frame.
         self.key_shapes = arcade.shape_list.ShapeElementList()
         edge = max(1, stage.scale)
         for key, (left, bottom, w, h) in self.keys.items():
@@ -387,14 +380,13 @@ class TypingFeastView(StageView):
                 x, y, w * stage.scale, h * stage.scale, FEAST_KEY_FACE))
             self.key_shapes.append(arcade.shape_list.create_rectangle_outline(
                 x, y, w * stage.scale, h * stage.scale, FEAST_KEY_EDGE, edge))
-        # The bumps on F and J, for fingers to find home.
         for key in "fj":
             left, bottom, w, h = self.keys[key]
             self.key_shapes.append(arcade.shape_list.create_line(
                 *stage.to_screen(left + w / 2 - 5, bottom + 6),
                 *stage.to_screen(left + w / 2 + 5, bottom + 6),
                 (255, 255, 255, 90), max(1, 2 * stage.scale)))
-        self.lit_keys = set()   # keys whose labels are not at rest
+        self.lit_keys = set()
 
     def build_hud(self):
         stage = self.stage
@@ -461,7 +453,6 @@ class TypingFeastView(StageView):
     def show_banner(self, content, color=TEXT_HOVER):
         self.banner = (self.make_banner(content, color), 0.0, content, color)
 
-    # --- the words -----------------------------------------------------------
 
     def word_runs(self):
         """The word being typed as runs of same-coloured letters:
@@ -521,7 +512,6 @@ class TypingFeastView(StageView):
         self.out_text.text = word
         self.outgoing = ([self.out_text], 0.0, color)
 
-    # --- effects ------------------------------------------------------------
 
     def burst(self, x, y, count, spark=False, spread=1.0):
         for _ in range(count):
@@ -564,7 +554,6 @@ class TypingFeastView(StageView):
         for _ in range(4):
             self.burst(random.uniform(left, right), random.uniform(bottom, top), 12, spark=True)
 
-    # --- input --------------------------------------------------------------
 
     def glow(self, key, color):
         if key in self.keys:
@@ -636,7 +625,6 @@ class TypingFeastView(StageView):
             self.dirty = True
             audio.play("feast_key", speed=0.8)
             return
-        # A word sent off is gone, like a bite already eaten.
 
     def on_text(self, text):
         if self.pause_menu.visible or self.settings_panel.visible:
@@ -722,14 +710,12 @@ class TypingFeastView(StageView):
         elif action == "quit":
             self.window.close()
 
-    # --- flow ---------------------------------------------------------------
 
     def restart(self):
         old = self.course
         self.reset()
         self.relayout()
         if old:
-            # The full table comes back the same way it went.
             self.old_course, self.course_clock = old, 0.0
         self.start_count()
 
@@ -802,7 +788,6 @@ class TypingFeastView(StageView):
         self.second_errors = 0
         self.next_second += 1
 
-    # --- results panel ------------------------------------------------------
 
     def build_results(self):
         r = self.results
@@ -811,7 +796,6 @@ class TypingFeastView(StageView):
         stage = self.stage
         self.result_card = flat_panel(stage.px(RESULT_W), stage.px(RESULT_H), stage.px(PLANK_PAD),
                                       fill=GLASS_FILL_PANEL)
-        # Just the numbers: the story carries on whatever the score.
         eaten = round(100 * r["eaten"])
         self.res_title = self.shadowed("Your Stats", left + 200, top - 52, TEXT_HOVER,
                                        32, drop=2.5, bold=True, anchor_y="center")
@@ -923,7 +907,6 @@ class TypingFeastView(StageView):
         raw_points = [point(sec, raw) for sec, _, raw, _ in shown]
         wpm_points = [point(sec, wpm) for sec, wpm, _, _ in shown]
         if len(wpm_points) > 1:
-            # Soft fill under the wpm line.
             for a, b in zip(wpm_points, wpm_points[1:]):
                 base = stage.to_screen(0, gb)[1]
                 arcade.draw_polygon_filled([a, b, (b[0], base), (a[0], base)],
@@ -939,7 +922,6 @@ class TypingFeastView(StageView):
                 arcade.draw_line(x - size, y - size, x + size, y + size, FEAST_WRONG, 2 * s)
                 arcade.draw_line(x - size, y + size, x + size, y - size, FEAST_WRONG, 2 * s)
 
-    # --- update -------------------------------------------------------------
 
     def on_show_view(self):
         audio.ambience(AMBIENCE_NIGHT).start()
@@ -992,7 +974,6 @@ class TypingFeastView(StageView):
         if self.mode == "count":
             step = int(self.mode_clock / FEAST_COUNT_STEP)
             if step >= 3:
-                # "EAT!" goes up as the clock starts; draw_count fades it out.
                 audio.play("feast_go")
                 self.start_play()
             elif step != self.count_shown:
@@ -1043,7 +1024,6 @@ class TypingFeastView(StageView):
             floater.age += delta_time
         self.floaters = [f for f in self.floaters if f.age < f.life]
 
-    # --- drawing ------------------------------------------------------------
 
     def draw_course(self, backdrop, alpha):
         texture = backdrop.texture
@@ -1065,7 +1045,6 @@ class TypingFeastView(StageView):
         else:
             self.draw_course(self.courses[self.course], 255)
 
-        # The garden sinks into the dark ground the keyboard sits on.
         arcade.draw_rect_filled(stage.rect(-WIDTH, -HEIGHT, 3 * WIDTH, HEIGHT + FEAST_SCENE_BOTTOM - 40),
                                 FEAST_FLOOR)
         arcade.draw_texture_rect(self.floor_fade, stage.rect(
@@ -1094,7 +1073,6 @@ class TypingFeastView(StageView):
             self.draw_count(3 * FEAST_COUNT_STEP + self.mode_clock)
         elif self.mode == "results":
             self.draw_results()
-            # Sparks from the stamp land over the panel.
             self.draw_particles(sparks_only=True)
 
         if not self.settings_panel.visible:
@@ -1139,7 +1117,6 @@ class TypingFeastView(StageView):
         for text in (*self.wpm_text, self.wpm_note):
             text.draw()
 
-        # The food meter, with a notch where each course goes.
         arcade.draw_texture_rect(self.meter_plate, stage.rect(WIDTH / 2 - 210 - PLANK_PAD,
                                                               HEIGHT - 92 - PLANK_PAD,
                                                               420 + 2 * PLANK_PAD, 70 + 2 * PLANK_PAD))
@@ -1175,7 +1152,6 @@ class TypingFeastView(StageView):
         shake = math.sin(self.clock * 90) * 6 * self.shake
         slide = self.slide ** 2
 
-        # A dark strip behind the word being typed keeps it clear of the food.
         arcade.draw_rect_filled(stage.rect(WIDTH / 2 - 330, FEAST_WORD_Y - 38, 660, 76),
                                 (6, 8, 12, 185))
         for x in (WIDTH / 2 - 330, WIDTH / 2 + 330):
@@ -1183,16 +1159,12 @@ class TypingFeastView(StageView):
                              *stage.to_screen(x, FEAST_WORD_Y + 38),
                              with_alpha(FEAST_CARET, 140), max(1, 2 * stage.scale))
 
-        # The waiting stack, each word moving up a place as the last one goes.
         for k, text in enumerate(self.queue_texts):
             y, size, alpha = self.queue_slot(k + 1 + slide)
             text.x, text.y = stage.to_screen(WIDTH / 2, y)
             text.color = with_alpha(FEAST_UNTYPED, alpha)
             text.draw()
 
-        # The word being typed, rising into the middle from the first slot.
-        # Font sizes stay put: a new size means the glyphs being rasterised
-        # all over again, which stalls the frame. Only the position slides.
         y, _, alpha = self.queue_slot(slide)
         size = FEAST_WORD_SIZE
         advance = self.advance
@@ -1303,7 +1275,6 @@ class TypingFeastView(StageView):
             text.color = with_alpha(text.color, alpha)
             text.y = stage.to_screen(0, HEIGHT / 2 + 40 - offset + 30 * (1 - back_out(part / 0.3)))[1]
             text.draw()
-        # A ring punches out from behind each number.
         x, y = stage.to_screen(WIDTH / 2, HEIGHT / 2 + 40)
         radius = (60 + 200 * ease_out(part)) * stage.scale
         arcade.draw_circle_outline(x, y, radius, with_alpha(FEAST_CARET, 180 * (1 - part)),
