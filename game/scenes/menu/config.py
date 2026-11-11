@@ -46,9 +46,12 @@ STORY = (
          "market-dash/Scene 3 - returning home.jpg"),
     )),
     ("Bumpy Bus", "Keep the shopping safe on a rough ride home.", (
-        ("The Ride", "Guard the food from everything the bus throws at it.",
+        ("The Ride", "Keep your balance and guard the food on a rough ride.",
          "game.scenes.bumpy_bus", "BumpyBusView", {},
          "bus-scene/waiting_bus/pasar-station.png"),
+        ("The Highway", "Steer the bus through the traffic to the BBQ.",
+         "game.scenes.bumpy_bus", "BusHighwayView", {},
+         "bus-scene/destination/bbq-background.png"),
     )),
     ("Backyard BBQ", "Get the garden ready and cook for the family.", (
         ("The Garden", "The backyard hub where every job starts.",

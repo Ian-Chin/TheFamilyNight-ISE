@@ -46,15 +46,16 @@ class SoundBank:
         entry = self.sounds.get(name)
         return 0.0 if entry is None else mixer.volume(entry[1], entry[2])
 
-    def play(self, name, loop=False, speed=1.0):
+    def play(self, name, loop=False, speed=1.0, gain=1.0):
         """Start `name` and return its player, or None if there is no clip.
 
-        `speed` above 1 plays it faster and higher, below 1 slower and lower.
+        `speed` above 1 plays it faster and higher, below 1 slower and lower;
+        `gain` scales this one play on top of the mixer's level.
         """
         entry = self.sounds.get(name)
         if entry is None:
             return None
-        volume = self.volume(name)
+        volume = self.volume(name) * gain
         if volume <= 0.0 and not loop:
             return None
         return entry[0].play(volume=volume, loop=loop, speed=speed)
@@ -76,8 +77,8 @@ def bank():
     return _bank
 
 
-def play(name, loop=False, speed=1.0):
-    return bank().play(name, loop=loop, speed=speed)
+def play(name, loop=False, speed=1.0, gain=1.0):
+    return bank().play(name, loop=loop, speed=speed, gain=gain)
 
 
 def stop(player):

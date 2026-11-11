@@ -54,6 +54,9 @@ def main():
     elif "--bus" in sys.argv:
         from game.scenes.bumpy_bus import BumpyBusView
         window.show_view(BumpyBusView())
+    elif "--highway" in sys.argv:
+        from game.scenes.bumpy_bus import BusHighwayView
+        window.show_view(BusHighwayView())
     elif "--feast" in sys.argv:
         from game.scenes.chao_dinner import TypingFeastView
         window.show_view(TypingFeastView())

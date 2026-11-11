@@ -43,7 +43,7 @@
 - [Achievements](#achievements)
 - [Command line options](#command-line-options)
 - [Developer test menu](#developer-test-menu)
-- [Running the tests](#running-the-tests)
+- [Testing](#testing)
 - [Under the hood](#under-the-hood)
 - [Project layout](#project-layout)
 - [Adding a new scene or chapter](#adding-a-new-scene-or-chapter)
@@ -94,7 +94,7 @@ flowchart LR
         A1[Wake-up Call] --> A2[The Market] --> A3[Veggie Catch] --> A4[Meat Catch] --> A5[Heading Home]
     end
     subgraph S2[Scene 2: Bumpy Bus]
-        B1[The Ride]
+        B1[The Station] --> B2[Round 1: Keep Your Balance] --> B3[Round 2: Highway Dash]
     end
     subgraph S3[Scene 3: Backyard BBQ]
         C1[The Garden] --> C2[Prep] --> C3[Chopping] --> C4[Grilling]
@@ -126,18 +126,25 @@ flowchart LR
 
 *Keep the shopping safe on a rough ride home.*
 
-Board the bus at the station (A/D to walk, Space to jump, Enter beside the bus to board). The ride lasts **90 seconds** and asks you to do two things at once:
+At the station, walk with A/D, jump with Space, press Enter beside the officer to hear how the trip works and Enter at the arrow to board. The title card, dialogue box, portraits and interact prompts are the same ones the other scenes use. The ride is two rounds and shares one three-segment bread health bar.
 
-**1. React to bus events.** Events appear in random order at random intervals. The central **ALERT** shows the event name, a random response letter, how many presses it needs and a countdown. The letter changes every time and the warning icons carry no fixed key labels, so you have to read the alert.
+**Round 1: keep your balance (60 seconds, inside the bus).** A little Terry stands on the balance bar along the bottom of the screen. The road always rumbles, and every few seconds the driver does something that throws everyone one way:
 
-**2. Track the ring with your mouse.** The mouse target alternates every 10 to 13 seconds between two rings, with a blue-white ripple and crossfade between them:
-
-| Ring | Behaviour |
+| Jolt | What happens |
 |---|---|
-| **Pirate rag-doll** | Gives a short cannon warning, fires a cannonball, then spins and recoils 260 to 340 canvas pixels to a new spot (at least 240 near the edges). The ball is a visual cue only. |
-| **Tesla coil** | Marks its destination, charges, stretches out of sight and reappears along an electric trail with a landing pulse and fading afterimage. The outside timer pauses while the ring cannot be tracked. |
+| **Brake** | Everyone is thrown toward the driver (left). Hold `D` to lean back against it. |
+| **Speed up** | Everyone is thrown toward the back (right). Hold `A`. |
+| **Bumpy road** | Two to four potholes rock you back and forth with no fixed side. |
 
-Outside the ring the guide breathes red; inside it turns steady green. **Every five continuous seconds outside a visible ring costs one bread segment** of the three-segment health bar. The shopping on screen is eggs, meat, cabbage and eggplant. Space or P pauses everything (movement, lights, projectiles and damage) together. Arriving carries straight on to the BBQ.
+Each jolt is announced a moment early, with arrows showing which way you will be thrown, so you can lean into it before it hits. Leaning too far makes you lean further, and if Terry tips past the end of the bar he falls over, which **costs one bread segment**. Jolts get stronger and closer together as the ride goes on.
+
+At the same time, **bus events** still threaten the shopping (eggs, meat, cabbage, eggplant). The central **ALERT** shows the event name, a random response letter, how many presses it needs and a countdown. The letter changes every time, so you have to read the alert. Miss one and an ingredient is spoiled.
+
+**Round 2: Highway Dash (40 seconds, from behind the bus).** The cabin fades out and the camera drops in behind the bus on a three-lane highway that runs away to the horizon, all in pixel art. The bus gains on everything ahead of it: cars, vans and box trucks. Steer with `A` / `D` (or the arrow keys); there is nothing else to press. **Every crash costs a bread segment**, knocks the bus's speed back and leaves it blinking and untouchable for a moment. Most traffic is sent down whichever lane you are in, so staying put never works, but a vehicle is only added when a route past everything still exists. The HUD shows the bread, how much of the road home is done, how many vehicles you have overtaken and your speed.
+
+Round 2 is its own view (`BusHighwayView`), built like the market and BBQ scenes: the shared title card, pause overlay, settings panel and sound bank, with a *Crashed!* card offering **Try Again** when the bread runs out.
+
+Running out of bread in either round brings up a *Try Again / Main Menu* card: round 1 restarts the ride, round 2 restarts only the highway (which always starts with at least two segments). Esc opens the same pause overlay and settings as every other scene, and clearing the highway fades straight into the BBQ.
 
 ### Scene 3: Backyard BBQ
 
@@ -189,8 +196,9 @@ In every scene, **Esc** opens a pause overlay (resume, settings, main menu) whil
 | **Everywhere** | `Esc` pause / back · `Enter` or `Space` advance dialogue |
 | **Walking scenes** (market, garden, dinner) | `W` `A` `S` `D` move · `Space` jump · `Enter` interact when the prompt shows |
 | **Market catch games** | `A` / `D` or `←` / `→` move |
-| **Bus station** | `A` / `D` move · `Space` jump · `Enter` beside the bus to board |
-| **Bus ride** | Mouse tracks the ring · alert letter keys respond to events · `Space` or `P` pause |
+| **Bus station** | `A` / `D` move · `Space` jump · `Enter` to talk to the officer or board |
+| **Bus ride, round 1** | `A` / `D` or `←` / `→` lean · alert letter keys respond to events · `Space` or `P` pause |
+| **Bus ride, round 2** | `A` / `D` or `←` / `→` steer |
 | **Chopping / Grilling** | Mouse: click **CHOP** / **SPIN** |
 | **Kids at the table** | Mouse: click and drag a kid back to their seat |
 | **Typing Feast** | Type the words · `Enter` to start · `Tab` restart |
@@ -220,7 +228,7 @@ Achievements last for the current session only (every launch starts fresh, for d
 ## Command line options
 
 ```powershell
-py -3.12 main.py [--windowed] [--market | --bus | --bbq | --feast] [--screenshot out.png]
+py -3.12 main.py [--windowed] [--market | --bus | --highway | --bbq | --feast] [--screenshot out.png]
 ```
 
 | Flag | Effect |
@@ -228,6 +236,7 @@ py -3.12 main.py [--windowed] [--market | --bus | --bbq | --feast] [--screenshot
 | `--windowed` | Start in a window instead of fullscreen. |
 | `--market` | Skip the menu, open Scene 1. |
 | `--bus` | Skip the menu, open the bus station (Scene 2). |
+| `--highway` | Skip the menu, open round 2 of the bus scene, the highway. |
 | `--bbq` / `--after-bus` | Skip the menu, open the garden hub (Scene 3) already faded in. |
 | `--feast` | Skip the menu, open the Typing Feast. |
 | `--screenshot PATH` | Save a frame 0.6 s after start to `PATH`, then close. Handy for docs and CI. |
@@ -249,13 +258,9 @@ A scene whose module is missing shows as *not built yet*; one that fails to impo
 
 ---
 
-## Running the tests
+## Testing
 
-```powershell
-py -3.12 -m unittest tests.test_bus_rings -v
-```
-
-`tests/test_bus_rings.py` checks the bus rings without opening a window: the cannon fires before the spin and recoil, teleport distances stay fair near the edges, the Tesla timer pauses while the ring is hidden, and a restart resets all state. `target_rings.py` is deterministic given a seeded `random.Random`, which is what makes it testable.
+There is no test suite in the repository at the moment. The two bus rounds are written so one can be added without opening a window: `bumpy_bus/balance.py` (round 1) and `bumpy_bus/traffic.py` (round 2) import nothing from arcade and are deterministic given a seeded `random.Random`, so a ride can be stepped frame by frame from a plain script.
 
 ---
 
@@ -304,8 +309,6 @@ Buttons, plates, cards and the dialogue box are drawn procedurally in Pillow (`a
 ```
 main.py                 entry point: window, achievements overlay, warm-up, menu
 test.py                 developer launcher that jumps straight into one scene
-tests/
-  test_bus_rings.py     headless behaviour tests for the bus tracking rings
 game/
   config.py             canvas size, asset paths, palette, achievements, shared tuning
   core/                 code every scene builds on
@@ -332,7 +335,7 @@ game/
   scenes/               one package per scene, each with its own config.py
     menu/               title menu, story select, achievements page
     market_dash/        Scene 1: intro, market floor, catch games, ending
-    bumpy_bus/          Scene 2: station, ride, rings, alerts, audio
+    bumpy_bus/          Scene 2: station, ride, highway. station.py / ride.py / highway.py are the views, on a shared base.py; balance.py and traffic.py hold the rules, cabin.py the cabin frames, hud.py the HUD
     bbq/                Scene 3: garden hub, prep, chopping, grilling
     chao_dinner/        Scene 4: dinner, kids game, result card, HUD, typing feast
     ending/             closing cut scene
