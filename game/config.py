@@ -553,11 +553,13 @@ ACHIEVEMENTS = (
     ("bus_dodger", "Bumpy Bus", "Road Warrior",
      "Get through the traffic without a single crash.", False),
     ("bus_arrive", "Bumpy Bus", "Special Delivery",
-     "Reach the BBQ with the shopping.", False),
+     "Pull up at home with the shopping.", False),
     ("egg_bus_officer", "Bumpy Bus", "Law Abiding",
      "Hear the officer out before boarding.", True),
     ("egg_bus_close", "Bumpy Bus", "Paint Scraper",
      "Squeeze past 3 vehicles with a near miss.", True),
+    ("egg_bus_shout", "Bumpy Bus", "Road Rage",
+     "Shout 5 vehicles off the road in one drive.", True),
 
      # Backyard BBQ
     ("bbq_prep", "Backyard BBQ", "Prep Time!",

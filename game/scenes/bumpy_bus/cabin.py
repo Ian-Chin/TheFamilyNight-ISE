@@ -54,6 +54,10 @@ class Cabin:
             self.threads[kind].join()
         return self.sheets[kind]
 
+    def ready(self, kind):
+        """True once `kind` can be shown without waiting for its sheet."""
+        return kind in self.sheets
+
     def release(self, kind):
         """Let go of a reaction sheet once its scene has played."""
         if kind != "idle":
@@ -82,12 +86,21 @@ class Cabin:
         y = index // self.columns * self.frame_h
         return self.sheet(kind).crop((x, y, x + self.frame_w, y + self.frame_h))
 
-    def at(self, kind, seconds):
-        """The texture showing `kind` at `seconds`."""
-        frame = (kind, self.frame_at(kind, seconds))
-        if frame == self.shown:
-            return self.texture
-        image = self.frame_image(*frame)
+    def idle_frame(self):
+        """The cabin with everyone standing still, as a picture to paint on."""
+        return self.frame_image("idle", 0)
+
+    def image_at(self, kind, seconds):
+        return self.frame_image(kind, self.frame_at(kind, seconds))
+
+    def show(self, image, key):
+        """Show a picture built by the caller; `key` says when it has changed."""
+        if key != self.shown:
+            self.upload(image)
+            self.shown = key
+        return self.texture
+
+    def upload(self, image):
         atlas = arcade.get_window().ctx.default_atlas
         if self.texture is None:
             self.texture = arcade.Texture(image)
@@ -95,5 +108,12 @@ class Cabin:
         else:
             self.texture.image = image
         atlas.update_texture_image(self.texture)
+
+    def at(self, kind, seconds):
+        """The texture showing `kind` at `seconds`."""
+        frame = (kind, self.frame_at(kind, seconds))
+        if frame == self.shown:
+            return self.texture
+        self.upload(self.frame_image(*frame))
         self.shown = frame
         return self.texture
