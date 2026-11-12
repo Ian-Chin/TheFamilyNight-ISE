@@ -370,6 +370,8 @@ SOUND_FILES = {
     "ambience_night": ("ambience-night", "music", 0.6),
     # The ending cut scene's burp, chimes and whooshes, timed to its video.
     "ending_sfx": ("ending-sfx", "sound", 1.0),
+    # The title menu's loop, until a game starts.
+    "menu_music": ("menu-music", "music", 0.5),
 
     #market dash scene
     "phone_ring": ("phone-ring", "sound", 0.75),

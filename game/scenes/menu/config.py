@@ -20,6 +20,15 @@ CREDIT_ICON = "award"
 CREDITS_W = 560
 CREDITS_H = 320
 
+# The loop under the title, story and achievement screens; starting a game
+# stops it.
+MENU_MUSIC = "menu_music"
+# Coming from the splash, the menu opens on a white flash and zooms out
+# from close up into place.
+REVEAL_ZOOM = 1.35       # how close the zoom starts
+REVEAL_TIME = 0.9        # seconds to settle
+REVEAL_FLASH = 0.45      # seconds for the flash to clear
+
 
 # --- Story screen ------------------------------------------------------------
 # (scene title, blurb, chapters). Each chapter is
@@ -46,12 +55,15 @@ STORY = (
          "market-dash/Scene 3 - returning home.jpg"),
     )),
     ("Bumpy Bus", "Keep the shopping safe on a rough ride home.", (
-        ("The Ride", "Keep your balance and guard the food on a rough ride.",
+        ("The Station", "Talk to the officer, then board the bus.",
          "game.scenes.bumpy_bus", "BumpyBusView", {},
          "bus-scene/waiting_bus/pasar-station.png"),
+        ("The Ride", "Keep your balance and guard the food on a rough ride.",
+         "game.scenes.bumpy_bus", "BusRideView", {},
+         "bus-scene/ride-preview.png"),
         ("The Highway", "Steer the bus through the traffic to the BBQ.",
          "game.scenes.bumpy_bus", "BusHighwayView", {},
-         "bus-scene/destination/bbq-background.png"),
+         "bus-scene/highway-preview.png"),
     )),
     ("Backyard BBQ", "Get the garden ready and cook for the family.", (
         ("The Garden", "The backyard hub where every job starts.",

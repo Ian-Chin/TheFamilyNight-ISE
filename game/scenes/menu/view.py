@@ -9,7 +9,8 @@ from ...config import (
 )
 from .config import (
     CREDITS_H, CREDITS_NAMES, CREDITS_W, CREDIT_ICON, CREDIT_MARGIN, LOGO_TOP_MARGIN,
-    LOGO_WIDTH, MENU_BUTTON_GAP, MENU_ITEMS, MENU_RIGHT,
+    LOGO_WIDTH, MENU_BUTTON_GAP, MENU_ITEMS, MENU_MUSIC, MENU_RIGHT, REVEAL_FLASH,
+    REVEAL_TIME, REVEAL_ZOOM,
 )
 from ...core.options import SettingsPanel
 from ...core.pause import PauseMenu
@@ -27,8 +28,12 @@ def cover_rect(texture, window_w, window_h):
 
 
 class MenuView(StageView):
-    def __init__(self):
+    def __init__(self, reveal=False):
+        """`reveal` opens the menu with a white flash, zooming out into place."""
         super().__init__()
+        self.reveal = reveal
+        self.reveal_clock = 0.0
+        self.reveal_camera = arcade.camera.Camera2D() if reveal else None
         self.backdrop = Backdrop("menu-bg.jpg")
         self.logo = textures.ui_image("logo.png")
 
@@ -61,14 +66,40 @@ class MenuView(StageView):
         self.relayout()
         self.panel = None
 
+    def on_show_view(self):
+        audio.ambience(MENU_MUSIC).start()
+
     def on_update(self, delta_time):
         self.backdrop.update(delta_time)
+        audio.ambience(MENU_MUSIC).update(delta_time)
+        if self.reveal:
+            self.reveal_clock += min(delta_time, 1 / 30)
+            if self.reveal_clock >= REVEAL_TIME:
+                self.reveal = False
 
     def on_hide_view(self):
         self.backdrop.stop()
 
+    def reveal_progress(self):
+        """0 as the flash starts, 1 once the menu has settled."""
+        return min(1.0, self.reveal_clock / REVEAL_TIME)
+
+    def draw_flash(self):
+        """The white flash, gone in the first part of the zoom."""
+        p = min(1.0, self.reveal_clock / REVEAL_FLASH)
+        arcade.draw_rect_filled(
+            arcade.LBWH(0, 0, self.stage.window_w, self.stage.window_h),
+            (255, 255, 255, round(255 * (1 - p) ** 2)),
+        )
+
     def on_draw(self):
         self.clear()
+        if self.reveal:
+            # The whole menu drawn through a camera easing back from close up.
+            camera = self.reveal_camera
+            camera.match_window()
+            camera.zoom = 1 + (REVEAL_ZOOM - 1) * (1 - self.reveal_progress()) ** 3
+            camera.use()
         background = self.backdrop.texture
         arcade.draw_texture_rect(
             background,
@@ -89,6 +120,9 @@ class MenuView(StageView):
             self.placeholder.set_title(self.panel)
             self.placeholder.draw()
         self.settings_panel.draw()
+        if self.reveal:
+            self.window.default_camera.use()
+            self.draw_flash()
 
     def on_mouse_motion(self, x, y, dx, dy):
         x, y = self.canvas_point(x, y)
@@ -128,6 +162,7 @@ class MenuView(StageView):
 
     def activate(self, item):
         if item.action == "play":
+            audio.ambience(MENU_MUSIC).stop()
             from ..market_dash import MarketDashView
             self.window.show_view(MarketDashView())
         elif item.action == "story":

@@ -13,6 +13,7 @@ import arcade
 from game.config import HEIGHT, TITLE, WIDTH
 from game.core import achievements
 from game.scenes.menu import MenuView
+from game.scenes.splash import SplashView
 
 
 def warm_up():
@@ -66,8 +67,10 @@ def main():
         view = BbqView()
         view.fade_clock = CHAO_FADE_IN
         window.show_view(view)
-    else:
+    elif "--menu" in sys.argv:
         window.show_view(MenuView())
+    else:
+        window.show_view(SplashView())
 
     if "--screenshot" in sys.argv:
         out = sys.argv[sys.argv.index("--screenshot") + 1]

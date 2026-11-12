@@ -19,7 +19,7 @@ from ...config import (
 from ...core import audio, textures
 from ...core.stage import StageView
 from ...core.ui import MenuButton
-from .config import STORY
+from .config import MENU_MUSIC, STORY
 
 # --- Layout, in canvas units -------------------------------------------------
 LIST_LEFT = 56
@@ -311,7 +311,11 @@ class StoryView(StageView):
                 (0, 0, 0, round(255 * shade)),
             )
 
+    def on_show_view(self):
+        audio.ambience(MENU_MUSIC).start()
+
     def on_update(self, delta_time):
+        audio.ambience(MENU_MUSIC).update(delta_time)
         self.clock += delta_time
         if self.fade < 1:
             self.fade = min(1.0, self.fade + delta_time / FADE_TIME)
@@ -320,6 +324,7 @@ class StoryView(StageView):
             # Wait one frame fully black, so the scene's build pause hides.
             if self.leave_clock >= LEAVE_TIME + 0.05:
                 view_class, kwargs, title = self.leaving
+                audio.ambience(MENU_MUSIC).stop()
                 try:
                     self.window.show_view(view_class(**kwargs))
                 except Exception:
