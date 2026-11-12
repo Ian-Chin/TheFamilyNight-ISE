@@ -86,6 +86,9 @@ class SplashView(StageView):
         if STEPS[self.step] == "studio":
             if self.trailer is None:
                 self.trailer = self.make_trailer()
+            elif self.clock >= CARD_IN:
+                # The card is holding still now, so the stall goes unseen.
+                self.trailer.prepare_menu()
             # No fade back to paper: the card fades off the trailer instead.
             if self.clock >= CARD_IN + CARD_HOLD:
                 self.finish()

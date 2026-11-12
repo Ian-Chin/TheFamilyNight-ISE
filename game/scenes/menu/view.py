@@ -14,6 +14,7 @@ from .config import (
 )
 from ...core.options import SettingsPanel
 from ...core.pause import PauseMenu
+from ...core.settings import graphics
 from ...core.sprites import Terry
 from ...core.stage import StageView
 from ...core.ui import Card, CreditsButton, MenuButton
@@ -65,6 +66,20 @@ class MenuView(StageView):
         ]
         self.relayout()
         self.panel = None
+
+    def prepare(self):
+        """Do the slow first-frame work now, for a menu built ahead of time.
+
+        Putting the art in the atlas and opening the backdrop's video both
+        stall long enough to be felt, and on the reveal they land right on
+        the flash. Called while the trailer is still loading, the menu opens
+        with its first video frames already decoded.
+        """
+        atlas = self.window.ctx.default_atlas
+        atlas.add(self.logo)
+        self.backdrop.reserve()
+        if graphics.animated and self.backdrop.video is not None:
+            self.backdrop.start()
 
     def on_show_view(self):
         audio.ambience(MENU_MUSIC).start()

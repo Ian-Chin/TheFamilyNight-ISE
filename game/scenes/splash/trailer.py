@@ -47,7 +47,20 @@ class TrailerView(StageView):
         self.done = False
         self.skipped = True   # anything short of the last frame cuts the sound
         self.sound = None   # the soundtrack, started with the first frame
+        self.menu = None      # built ahead by `prepare_menu`
         self.relayout()
+
+    def prepare_menu(self):
+        """Build the menu now rather than on the trailer's last frame.
+
+        The work stalls for a moment, and at the handover it lands right on
+        the reveal's flash. The splash calls this while the studio card is
+        holding still, where a stall cannot be seen.
+        """
+        if self.menu is None:
+            from ..menu.view import MenuView
+            self.menu = MenuView(reveal=True)
+            self.menu.prepare()
 
     def relayout(self):
         super().relayout()
@@ -71,8 +84,12 @@ class TrailerView(StageView):
             return
         self.done = True
         self.skipped = skipped
-        from ..menu.view import MenuView
-        self.window.show_view(MenuView(reveal=True))
+        if self.menu is None:
+            self.prepare_menu()
+        menu = self.menu
+        if (menu.stage.window_w, menu.stage.window_h) != self.window.get_size():
+            menu.on_resize(*self.window.get_size())
+        self.window.show_view(menu)
 
     def show(self, image):
         atlas = self.window.ctx.default_atlas
