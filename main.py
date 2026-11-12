@@ -8,7 +8,7 @@ import pyglet
 # on, which costs more than the drawing itself. Set before arcade loads.
 pyglet.options.debug_gl = False
 
-import arcade  # noqa: E402
+import arcade
 
 from game.config import HEIGHT, TITLE, WIDTH
 from game.core import achievements
