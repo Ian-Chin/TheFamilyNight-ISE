@@ -138,13 +138,22 @@ At the station, walk with A/D, jump with Space, press Enter beside the officer t
 
 Each jolt is announced a moment early, with arrows showing which way you will be thrown, so you can lean into it before it hits. Leaning too far makes you lean further, and if Terry tips past the end of the bar he falls over, which **costs one bread segment**. Jolts get stronger and closer together as the ride goes on.
 
-At the same time, **bus events** still threaten the shopping (eggs, meat, cabbage, eggplant). The central **ALERT** shows the event name, a random response letter, how many presses it needs and a countdown. The letter changes every time, so you have to read the alert. Miss one and an ingredient is spoiled.
+At the same time, **bus events** still threaten the shopping (eggs, meat, cabbage, eggplant). The **ALERT** card shows the event name, a random response letter, how many taps it needs and a countdown. The letter changes every time, so you have to read the alert. While it counts down you can watch the culprit wind up, and **every tap changes something you can see**, with a line popping up to say what:
 
-**Round 2: Highway Dash (40 seconds, from behind the bus).** The cabin fades out and the camera drops in behind the bus on a three-lane highway that runs away to the horizon, all in pixel art. The bus gains on everything ahead of it: cars, vans and box trucks. Steer with `A` / `D` (or the arrow keys); there is nothing else to press. **Every crash costs a bread segment**, knocks the bus's speed back and leaves it blinking and untouchable for a moment. Most traffic is sent down whichever lane you are in, so staying put never works, but a vehicle is only added when a route past everything still exists. The HUD shows the bread, how much of the road home is done, how many vehicles you have overtaken and your speed.
+| Alert | Taps before the last | The last tap |
+|---|---|---|
+| **Mask Kid Scare** | His thought bubble shows the shadow monster he means to be. It turns to look at him, outgrows the bubble, then leans out roaring while he sweats. | The shadow climbs out and scares the kid instead. |
+| **Granny Cane** | She stops (*Huh?*), starts warming up with her cane over her head, then drops into a crouch. | A backflip, drawn pose by pose (`bumpy_bus/granny_art.py`): launch, tuck, over, land, ta-da. |
+| **Worker Steals Food** | The bag rustles, a wedge of cheese pops up as bait, the trap under it glints, and he starts to sweat. | His hand comes out of the bag in a mousetrap. |
+| **Fart Attack** | He holds it in, goes red, shakes, and a little escapes. | The cloud goes up his own nose and he turns green. |
+
+These are painted into the cabin frames by `bumpy_bus/payback.py`. Run out of time and the scene plays through and an ingredient is spoiled.
+
+**Round 2: Highway Dash (40 seconds, from behind the bus).** The cabin fades out and the camera drops in behind the bus on a three-lane highway that runs away to the horizon, all in pixel art. The bus gains on everything ahead of it: cars, vans and box trucks. Steer with `A` / `D` (or the arrow keys); there is nothing else to press. **Every crash costs a bread segment**, knocks the bus's speed back and leaves it blinking and untouchable for a moment, and the vehicle you rammed is sent spinning up over the horizon in a shower of sparks. Steering hard smokes the tyres and lays rubber on the road. Press `Q` and the driver leans out of his window and yells: whatever is close ahead in your lane swerves onto the verge. He needs five seconds to get his breath back. Most traffic is sent down whichever lane you are in, so staying put never works, but a vehicle is only added when a route past everything still exists. The HUD shows the bread, how much of the road home is done, how many vehicles you have overtaken and your speed.
 
 Round 2 is its own view (`BusHighwayView`), built like the market and BBQ scenes: the shared title card, pause overlay, settings panel and sound bank, with a *Crashed!* card offering **Try Again** when the bread runs out.
 
-Running out of bread in either round brings up a *Try Again / Main Menu* card: round 1 restarts the ride, round 2 restarts only the highway (which always starts with at least two segments). Esc opens the same pause overlay and settings as every other scene, and clearing the highway fades straight into the BBQ.
+Running out of bread in either round brings up a *Try Again / Main Menu* card: round 1 restarts the ride, round 2 restarts only the highway (which always starts with at least two segments). Esc opens the same pause overlay and settings as every other scene, and once the traffic is behind, home comes up on the left: the bus brakes and pulls over by the garden fence, Terry hops off and walks in through the gate, says his piece, and the scene fades into the BBQ. Enter or Space skips ahead.
 
 ### Scene 3: Backyard BBQ
 
@@ -198,7 +207,7 @@ In every scene, **Esc** opens a pause overlay (resume, settings, main menu) whil
 | **Market catch games** | `A` / `D` or `←` / `→` move |
 | **Bus station** | `A` / `D` move · `Space` jump · `Enter` to talk to the officer or board |
 | **Bus ride, round 1** | `A` / `D` or `←` / `→` lean · alert letter keys respond to events · `Space` or `P` pause |
-| **Bus ride, round 2** | `A` / `D` or `←` / `→` steer |
+| **Bus ride, round 2** | `A` / `D` or `←` / `→` steer · `Q` shout the lane ahead clear |
 | **Chopping / Grilling** | Mouse: click **CHOP** / **SPIN** |
 | **Kids at the table** | Mouse: click and drag a kid back to their seat |
 | **Typing Feast** | Type the words · `Enter` to start · `Tab` restart |

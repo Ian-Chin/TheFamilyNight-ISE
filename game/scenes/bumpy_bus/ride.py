@@ -20,11 +20,13 @@ from .cabin import Cabin
 from .config import (
     BAR_AMBER, BAR_BOTTOM, BAR_CENTER, BAR_FIGURE_H, BAR_GREEN, BAR_H, BAR_REACH, BAR_RED,
     BRAKES_FOR_ACHIEVEMENT, CABIN_BOTTOM, CABIN_SIZE, EVENT_KEYS, EVENT_NAMES, EVENT_PRESSES,
-    EVENT_SCENES, EVENT_TIME, FIRST_EVENT_DELAY, FOOD_LOSS, LEAVE_FADE, NO_EVENTS_LAST,
-    REACTION_CUES, REACTION_EVENT_DELAY, RIDE_HINT, RIDE_HINT_TIME, RIDE_KICKER,
+    EVENT_APPROACH, EVENT_SCENES, EVENT_TAP_WORDS, EVENT_TAP_SHOVE, EVENT_TIME, EVENT_WIN_WORDS,
+    FIRST_EVENT_DELAY, FOOD_LOSS, LEAVE_FADE, NO_EVENTS_LAST,
+    PAYBACK_CUES, REACTION_CUES, REACTION_EVENT_DELAY, RIDE_HINT, RIDE_HINT_TIME, RIDE_KICKER,
     RIDE_LOSE_MESSAGE, RIDE_LOSE_TITLE, RIDE_TAGLINE, RIDE_TITLE, SOLVED_EVENT_DELAY,
 )
 from .hud import BusHud
+from .payback import DURATION as PAYBACK_TIME, SPOTS, Payback
 from ...core.widgets import TitleCard
 
 INGREDIENT_NAMES = ("eggs", "meat", "cabbage", "eggplant")
@@ -36,6 +38,11 @@ ALERT_BOX = (WIDTH / 2 - 250, 420, 500, 100)
 KEY_W, KEY_H = 64, 48
 RED = (255, 113, 113)
 WHITE = (241, 246, 238)
+GOLD = (255, 220, 120)
+TERRY_SPOT = (760, 250)       # where Terry stands in the cabin, for the effects
+CABIN_FRAME = (1056, 442)     # the cabin sheets' frame size, in their own pixels
+POPUP_LIFE = 1.1
+SPARK_LIFE = 0.55
 
 
 class BusRideView(BusView):
@@ -70,6 +77,13 @@ class BusRideView(BusView):
         self.reaction = None           # scene playing after a missed alert
         self.reaction_time = 0.0
         self.cues_played = set()
+        self.creep = 0.0               # how far through the wind-up the culprit is
+        self.payback = None            # [event, seconds in, creep when beaten, cues played]
+        self.paint = None              # draws the paybacks, built on first use
+        self.key_bounce = 0.0          # the keycap dips for a moment on every tap
+        self.since_tap = 9.0           # seconds since the last tap, for its kick
+        self.popups = []               # [arcade.Text, age, base y]
+        self.sparks = []               # square bits thrown out by a win
         self.relayout()
 
     def relayout(self):
@@ -125,6 +139,7 @@ class BusRideView(BusView):
                 from .highway import BusHighwayView
                 damaged = [INGREDIENT_NAMES[i] for i in sorted(self.damaged)]
                 self.go(BusHighwayView(self.lives, self.food, damaged))
+        self.update_effects(delta_time)
         self.hud.lives = self.lives
         self.hud.damaged = self.damaged
         self.hud.alert = self.event
@@ -165,11 +180,26 @@ class BusRideView(BusView):
                 self.cabin.release(self.reaction)
                 self.reaction = None
                 self.next_event = self.elapsed + self.rng.uniform(*REACTION_EVENT_DELAY)
-        if (self.event is None and self.reaction is None and self.elapsed >= self.next_event
+        if (self.event is None and self.reaction is None and self.payback is None
+                and self.elapsed >= self.next_event
                 and self.elapsed < RIDE_DURATION - NO_EVENTS_LAST):
             self.start_event()
+        if self.payback:
+            event, seconds, _, played = self.payback
+            seconds = self.payback[1] = seconds + delta_time
+            for index, (at, sound, gain) in enumerate(PAYBACK_CUES[event]):
+                if index not in played and seconds >= at:
+                    played.add(index)
+                    audio.play(sound, gain=gain)
+            if seconds >= PAYBACK_TIME[event]:
+                self.cabin.release(EVENT_SCENES[event])
+                self.payback = None
         if self.event is not None:
             self.event_left -= delta_time
+            # They creep in as the clock runs down, less the taps so far.
+            taps = self.presses / EVENT_PRESSES[self.event]
+            goal = (1 - max(0.0, self.event_left) / EVENT_TIME) * (1 - EVENT_TAP_SHOVE * taps)
+            self.creep += (goal - self.creep) * min(1.0, delta_time * 8)
             if self.event_left <= 0:
                 self.spoil()
                 if self.food == 0:
@@ -188,6 +218,7 @@ class BusRideView(BusView):
         self.event_key = self.rng.choice([k for k in KEYS if k != self.event_key])
         self.event_left = EVENT_TIME
         self.presses = 0
+        self.creep = 0.0
         # Read its sheet now, while the countdown runs.
         self.cabin.prepare(EVENT_SCENES[self.event])
         audio.play("bus_warning")
@@ -195,12 +226,73 @@ class BusRideView(BusView):
     def spoil(self):
         """The alert ran out: play the scene, and one ingredient is ruined."""
         self.reaction = EVENT_SCENES[self.event]
-        self.reaction_time = 0.0
+        # Carry straight on from wherever the wind-up had got to.
+        self.reaction_time = (self.creep * EVENT_APPROACH[self.event]
+                              * self.cabin.duration(self.reaction))
         self.cues_played = set()
+        self.creep = 0.0
         self.damaged.add(self.rng.randrange(len(INGREDIENT_NAMES)))
         self.food = max(0, self.food - FOOD_LOSS)
         self.event = None
         audio.play("hp_reduced")
+
+    def tap(self):
+        """One press of the alert key: shove the culprit back a little."""
+        self.presses += 1
+        self.key_bounce = 0.1
+        self.since_tap = 0.0
+        self.creep = max(0.0, self.creep - 0.1)
+        if self.presses < EVENT_PRESSES[self.event]:
+            # Each tap pushes the culprit one step further, and says so.
+            audio.play("ui_click", speed=1 + 0.15 * self.presses)
+            self.burst(4, speed=120)
+            self.pop(EVENT_TAP_WORDS[self.event][self.presses - 1], WHITE, 24)
+            return
+        # That was the last one: their plan comes right back at them.
+        audio.play("bus_protect")
+        self.payback = [self.event, 0.0, self.creep, set()]
+        self.creep = 0.0
+        self.pop(EVENT_WIN_WORDS[self.event], GOLD, 34)
+        self.burst(22, speed=330)
+        self.event = None
+        self.next_event = self.elapsed + self.rng.uniform(*SOLVED_EVENT_DELAY)
+
+    def pop(self, words, color, size):
+        """Words floating up over whoever the alert is about."""
+        fx, fy = SPOTS[self.event]
+        x = fx * CABIN_SIZE[0] / CABIN_FRAME[0]
+        y = CABIN_BOTTOM + (CABIN_FRAME[1] - fy) * CABIN_SIZE[1] / CABIN_FRAME[1]
+        # Only the newest line is shown, so quick taps do not pile up.
+        self.popups = []
+        self.popups.append([arcade.Text(
+            words, x, y, color, size, anchor_x="center", bold=True,
+            font_name="Kenney Pixel Square",
+        ), 0.0, y])
+
+    def burst(self, count, speed):
+        """Square sparks flung out from where Terry stands."""
+        for _ in range(count):
+            angle = self.rng.uniform(0, math.tau)
+            pace = speed * self.rng.uniform(0.45, 1.0)
+            self.sparks.append({
+                "x": TERRY_SPOT[0], "y": TERRY_SPOT[1] + 30,
+                "vx": math.cos(angle) * pace, "vy": math.sin(angle) * pace + 90,
+                "age": 0.0, "size": self.rng.uniform(5, 10),
+                "color": self.rng.choice((GOLD, WHITE, (255, 170, 80))),
+            })
+
+    def update_effects(self, delta_time):
+        self.key_bounce = max(0.0, self.key_bounce - delta_time)
+        self.since_tap += delta_time
+        for popup in self.popups:
+            popup[1] += delta_time
+        self.popups = [popup for popup in self.popups if popup[1] < POPUP_LIFE]
+        for spark in self.sparks:
+            spark["age"] += delta_time
+            spark["x"] += spark["vx"] * delta_time
+            spark["y"] += spark["vy"] * delta_time
+            spark["vy"] -= 620 * delta_time
+        self.sparks = [spark for spark in self.sparks if spark["age"] < SPARK_LIFE]
 
     def leave(self):
         audio.play("bus_horn")
@@ -208,6 +300,7 @@ class BusRideView(BusView):
         self.leave_time = 0.0
         self.event = None
         self.reaction = None
+        self.payback = None
 
     def fail(self):
         self.held.clear()
@@ -227,15 +320,58 @@ class BusRideView(BusView):
         if color is not None and tuple(text.color[:3]) != color:
             text.color = color
 
+    def wind_up(self, event, creep):
+        """The cabin `creep` of the way through `event`'s wind-up, as a picture."""
+        kind = EVENT_SCENES[event]
+        if creep <= 0 or not self.cabin.ready(kind):
+            return self.cabin.idle_frame()
+        return self.cabin.image_at(kind, creep * EVENT_APPROACH[event] * self.cabin.duration(kind))
+
+    def painter(self):
+        if self.paint is None:
+            self.paint = Payback(self.cabin.idle_frame())
+        return self.paint
+
     def draw_cabin(self):
+        tick = int(self.anim * 30)        # painted frames are redrawn 30 times a second
         if self.reaction:
             texture = self.cabin.at(self.reaction, self.reaction_time)
+        elif self.payback:
+            event, seconds, start, _ = self.payback
+            frame = self.wind_up(event, self.painter().creep_at(event, seconds, start))
+            self.painter().play(frame, event, seconds)
+            texture = self.cabin.show(frame, ("payback", event, tick))
+        elif self.event is not None and (self.event == 0 or self.presses):
+            # The alert is running and taps have changed things: paint them in.
+            # Once the granny has been tapped she is in her own drawn poses.
+            creep = 0.0 if self.event == 1 else self.creep
+            frame = self.wind_up(self.event, creep)
+            self.painter().stage(frame, self.event, self.presses, self.anim, self.since_tap)
+            texture = self.cabin.show(frame, ("stage", self.event, self.presses, tick))
+        elif self.event is not None and self.creep > 0 and self.cabin.ready(EVENT_SCENES[self.event]):
+            kind = EVENT_SCENES[self.event]
+            approach = EVENT_APPROACH[self.event]
+            texture = self.cabin.at(kind, self.creep * approach * self.cabin.duration(kind))
         else:
             texture = self.cabin.at("idle", self.anim)
         dx, dy = self.balance.shake() if self.mode == "ride" else (0, 0)
         arcade.draw_texture_rect(
             texture, arcade.LBWH(dx, CABIN_BOTTOM - dy, *CABIN_SIZE), pixelated=True,
         )
+
+    def draw_effects(self):
+        for spark in self.sparks:
+            share = spark["age"] / SPARK_LIFE
+            size = spark["size"] * (1 - share * 0.5)
+            arcade.draw_rect_filled(
+                arcade.XYWH(round(spark["x"]), round(spark["y"]), size, size),
+                (*spark["color"], round(255 * (1 - share))),
+            )
+        for text, age, base in self.popups:
+            # Pops up fast, hangs, then drifts off.
+            text.y = base + min(1.0, age / 0.15) * 30 + age * 24
+            text.color = (*text.color[:3], round(255 * (1 - (age / POPUP_LIFE) ** 3)))
+            text.draw()
 
     def plate(self, box):
         left, bottom, width, height = box
@@ -321,7 +457,8 @@ class BusRideView(BusView):
         arcade.draw_texture_rect(self.plates[ALERT_BOX], stage.rect(
             left - PLANK_PAD, bottom - PLANK_PAD, width + 2 * PLANK_PAD, height + 2 * PLANK_PAD,
         ))
-        key_left, key_bottom = left + 26, bottom + (height - KEY_H) / 2
+        dip = 4 if self.key_bounce > 0 else 0
+        key_left, key_bottom = left + 26, bottom + (height - KEY_H) / 2 - dip
         arcade.draw_texture_rect(self.keycap, stage.rect(
             key_left - 2, key_bottom - 2, KEY_W + 4, KEY_H + 4,
         ))
@@ -345,6 +482,7 @@ class BusRideView(BusView):
         self.draw_cabin()
         if self.mode in ("ride", "leaving"):
             self.draw_bar()
+        self.draw_effects()
 
         self.window.default_camera.use()
         self.hud.draw()
@@ -369,10 +507,6 @@ class BusRideView(BusView):
                 self.title_card.skip()
             return
         if self.mode == "ride" and self.event is not None and key == self.event_key:
-            self.presses += 1
-            if self.presses >= EVENT_PRESSES[self.event]:
-                audio.play("bus_protect")
-                self.event = None
-                self.next_event = self.elapsed + self.rng.uniform(*SOLVED_EVENT_DELAY)
+            self.tap()
             return
         super().key_down(key)

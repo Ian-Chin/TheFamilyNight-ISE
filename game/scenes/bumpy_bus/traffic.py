@@ -12,9 +12,10 @@ import random
 
 from .config import (
     AIM_AT_BUS, BUS_REACH, BUS_SPEED, BUS_WIDTH, BUS_Z, CAR_PAINTS, CLEAR_TIME,
-    CLOSING_SPEED, FAR_Z, HALF_LENGTH, HIGHWAY_DURATION, HIT_FORGIVE, HIT_GRACE,
-    LANE_CHANGE, LANE_X, NEAR_GAP, SAFE_MARGIN, SPAWN_GAP, STEER_SPEED,
-    TRUCK_PAINTS, VAN_PAINTS, VEHICLE_KINDS,
+    CLOSING_SPEED, FAR_Z, FLY_FORWARD, FLY_GRAVITY, FLY_RISE, FLY_SIDE, FLY_TIME,
+    HALF_LENGTH, HIGHWAY_DURATION, HIT_FORGIVE, HIT_GRACE, LANE_CHANGE, LANE_X,
+    NEAR_GAP, PULL_SPEED, SAFE_MARGIN, SHOULDER_X, SHOUT_COOLDOWN, SHOUT_RANGE,
+    SPAWN_GAP, STEER_SPEED, TRUCK_PAINTS, VAN_PAINTS, VEHICLE_KINDS,
 )
 
 PAINTS = {"car": CAR_PAINTS, "van": VAN_PAINTS, "truck": TRUCK_PAINTS}
@@ -39,6 +40,10 @@ class Vehicle:
         self.counted = False       # already behind the bus
         self.drift = 0.0           # knocked sideways, across the road per second
         self.spin = 0.0            # degrees
+        self.air = 0.0             # seconds since it was rammed
+        self.lift = 0.0            # road units off the ground, once rammed
+        self.pulled = False        # shouted onto the verge
+        self.target_x = x
         self.fade = 1.0
         self.sprite = None         # highway.py hangs its sprite here
 
@@ -59,6 +64,9 @@ class Traffic:
         self.slowed = 0.0          # 1 right after a crash, easing back to 0
         self.safe = False          # set once the round is won: nothing can hit
         self.crashes = self.near_misses = self.overtakes = 0
+        self.shout_wait = 0.0      # seconds until the driver can shout again
+        self.shooed = 0            # vehicles shouted off the road
+        self.cruise = None         # set while the bus is being driven in to park
         self.next_spawn = 1.0
 
     @property
@@ -72,6 +80,8 @@ class Traffic:
 
     @property
     def speed(self):
+        if self.cruise is not None:
+            return self.cruise
         return mix(*BUS_SPEED, self.difficulty) * self.pace
 
     @property
@@ -158,6 +168,64 @@ class Traffic:
             return True
         return False
 
+    def shout(self):
+        """The driver yells: what is close ahead in the bus's lane pulls over.
+
+        Returns the vehicles that moved, or None if he is still out of breath.
+        """
+        if self.shout_wait > 0 or self.safe:
+            return None
+        self.shout_wait = SHOUT_COOLDOWN
+        lane = self.bus_lane()
+        moved = []
+        for vehicle in self.vehicles:
+            if (vehicle.hit or vehicle.pulled or vehicle.lane != lane
+                    or not BUS_Z < vehicle.z <= BUS_Z + SHOUT_RANGE):
+                continue
+            if lane == 0:
+                side = -1
+            elif lane == len(LANE_X) - 1:
+                side = 1
+            else:
+                # From the middle, toward whichever side has less in the way.
+                busy = [sum(1 for v in self.vehicles
+                            if v.lane == other and not v.hit and abs(v.z - vehicle.z) < 2.5)
+                        for other in (lane - 1, lane + 1)]
+                side = -1 if busy[0] < busy[1] else 1 if busy[1] < busy[0] else self.rng.choice((-1, 1))
+            vehicle.pulled = True
+            vehicle.lane = -1          # no longer shuts any lane
+            vehicle.target_x = side * SHOULDER_X
+            moved.append(vehicle)
+        self.shooed += len(moved)
+        return moved
+
+    def fly(self, vehicle, delta_time):
+        """A rammed vehicle: up, away and round and round."""
+        vehicle.air += delta_time
+        vehicle.z += FLY_FORWARD * delta_time
+        vehicle.x += vehicle.drift * delta_time
+        vehicle.lift = max(0.0, FLY_RISE * vehicle.air - FLY_GRAVITY * vehicle.air ** 2 / 2)
+        vehicle.spin += 620 * delta_time * (1 if vehicle.drift > 0 else -1)
+        vehicle.fade = max(0.0, min(1.0, (FLY_TIME - vehicle.air) / 0.2))
+
+    def coast(self, delta_time, speed, toward):
+        """The round is won and the bus drives itself: at `speed`, easing
+        across to `toward`. Whatever traffic is left pulls away ahead."""
+        cruising = mix(*BUS_SPEED, 1.0)
+        self.cruise = speed
+        self.distance += speed * delta_time
+        self.grace = max(0.0, self.grace - delta_time)
+        self.shake = max(0.0, self.shake - delta_time * 2.2)
+        self.vx = max(-STEER_SPEED * 0.6, min(STEER_SPEED * 0.6, (toward - self.x) * 2.4))
+        self.x += self.vx * delta_time
+        for vehicle in self.vehicles:
+            if vehicle.hit:
+                self.fly(vehicle, delta_time)
+            else:
+                vehicle.z += (cruising - vehicle.closing - speed) * delta_time
+        self.vehicles = [v for v in self.vehicles
+                         if v.fade > 0 and GONE_Z < v.z < FAR_Z + 1]
+
     # --- Frame --------------------------------------------------------------
 
     def update(self, delta_time, steer, traffic=True):
@@ -173,6 +241,7 @@ class Traffic:
         self.grace = max(0.0, self.grace - delta_time)
         self.shake = max(0.0, self.shake - delta_time * 2.2)
         self.slowed = max(0.0, self.slowed - delta_time / 1.5)
+        self.shout_wait = max(0.0, self.shout_wait - delta_time)
 
         self.vx += (steer * STEER_SPEED - self.vx) * min(1.0, delta_time * 11)
         self.x = max(-BUS_REACH, min(BUS_REACH, self.x + self.vx * delta_time))
@@ -188,12 +257,13 @@ class Traffic:
                 self.next_spawn = self.clock + 0.2
 
         for vehicle in self.vehicles:
-            vehicle.z -= vehicle.closing * self.pace * delta_time
             if vehicle.hit:
-                vehicle.x += vehicle.drift * delta_time
-                vehicle.spin += 420 * delta_time * (1 if vehicle.drift > 0 else -1)
-                vehicle.fade = max(0.0, vehicle.fade - delta_time * 1.6)
+                self.fly(vehicle, delta_time)
                 continue
+            vehicle.z -= vehicle.closing * self.pace * delta_time
+            if vehicle.pulled:
+                step = PULL_SPEED * delta_time
+                vehicle.x += max(-step, min(step, vehicle.target_x - vehicle.x))
             if vehicle.z < BUS_Z - HALF_LENGTH:
                 # Dropping behind: it slips out of view rather than swelling
                 # up over the bottom of the screen.
@@ -211,7 +281,8 @@ class Traffic:
             gap = abs(vehicle.x - self.x) - (vehicle.width + BUS_WIDTH) / 2
             if gap < -HIT_FORGIVE:
                 vehicle.hit = True
-                vehicle.drift = 2.4 if vehicle.x >= self.x else -2.4
+                vehicle.lane = -1
+                vehicle.drift = FLY_SIDE if vehicle.x >= self.x else -FLY_SIDE
                 self.crashes += 1
                 self.grace = HIT_GRACE
                 self.shake = self.slowed = 1.0

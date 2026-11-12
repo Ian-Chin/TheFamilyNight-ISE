@@ -9,7 +9,7 @@ from ...config import HEIGHT, WIDTH
 HIGHWAY_KICKER = "R O U N D   2"
 HIGHWAY_TITLE = "Highway Dash"
 HIGHWAY_TAGLINE = "Steer with A and D, and get the shopping home in one piece"
-HIGHWAY_HINT = "A / D  or  Left / Right to steer        Esc to pause"
+HIGHWAY_HINT = "A / D to steer        Q to shout the traffic aside        Esc to pause"
 HIGHWAY_HINT_TIME = 9.0       # seconds the hint stays up
 HIGHWAY_DURATION = 40.0       # seconds of traffic
 HIGHWAY_FADE = 0.9            # seconds in from black, and out again at the end
@@ -24,6 +24,7 @@ BACKDROP_SCALE = 4
 BACKDROP_SINK = 18            # how far the hills dip below the horizon
 
 LANE_X = (-2 / 3, 0.0, 2 / 3)     # lane centres
+BUS_ART_SHARE = 68 / 44       # the bus art's canvas over the bus drawn on it
 BUS_Z = 0.25
 BUS_WIDTH = 0.50
 BUS_REACH = 0.72              # how far from the middle the bus may steer
@@ -71,6 +72,41 @@ HIGHWAY_LOSE_MESSAGE = "The shopping is all over the road."
 
 NEAR_MISSES_FOR_ACHIEVEMENT = 3
 
+# A rammed vehicle is thrown up and away down the road, spinning.
+FLY_FORWARD = 5.0             # road units per second, away from the bus
+FLY_SIDE = 1.7
+FLY_RISE = 2.0                # how fast it leaves the ground
+FLY_GRAVITY = 1.5
+FLY_TIME = 1.0                # seconds before it is a twinkle in the distance
+
+# Q: the driver leans out and yells, and whatever is close ahead in the bus's
+# lane pulls over onto the verge.
+SHOUT_RANGE = 7.0             # road units ahead that hear it
+SHOUT_COOLDOWN = 5.0          # seconds before he has the breath for another
+SHOUT_SHOW = 0.9              # seconds he stays hanging out of the window
+SHOULDER_X = 1.3              # where a shouted-at vehicle ends up
+PULL_SPEED = 2.6              # across the road, per second
+SHOUTS_FOR_ACHIEVEMENT = 5
+
+# Home. Once the traffic is behind, the house comes up on the left, the bus
+# pulls over beside it and Terry walks in through the garden gate.
+HOUSE_X = -2.95               # middle of the house and yard, across the road
+HOUSE_WIDTH = 3.4
+HOUSE_STOP_Z = 3.6            # how far ahead of the camera it is when the bus stops
+PARK_X = LANE_X[0]
+ARRIVE_PAUSE = 0.7            # seconds parked before Terry steps off
+ARRIVE_WALK = 2.2             # seconds from the bus to the gate
+TERRY_ROAD_W = 0.2
+TERRY_PATH = ((-1.2, 0.3), (-4.17, 3.5))    # road points: kerb by the bus, then the gate
+ARRIVAL_LINES = (
+    ("Home at last, and every bit of the shopping made it!", "happy"),
+    ("Right. Time to get the BBQ going before everyone turns up.", "hungry"),
+)
+ARRIVAL_LINES_SPOILED = (
+    ("Home at last! And the shopping... mostly made it.", "nervous"),
+    ("Nobody needs to know about the {spoiled}. Time to get the BBQ going.", "happy"),
+)
+
 
 # --- Shared by every view in the scene -------------------------------------------
 LOSE_ITEMS = [
@@ -99,7 +135,8 @@ OFFICER_LINES = (
     "Halt, citizen! The bus is about to leave.",
     "This driver brakes hard and the road is rough. Lean with A and D to stay on your feet.",
     "Keep an eye on your food too. Kids, grannies and sneaky workers are everywhere.",
-    "After that it is the highway: steer with A and D and dodge the traffic.",
+    "After that it is the highway: steer with A and D to dodge the traffic.",
+    "And if someone will not budge, press Q. The driver has quite a voice.",
     "Walk to the arrow and press Enter to get on. Safe trip!",
 )
 DEPARTURE_TIME = 2.8                  # the bus sweeps across, revealing the cabin
@@ -130,6 +167,25 @@ ALERT_ICONS = ("kid", "cane", "worker", "fart")
 EVENT_SCENES = ("boy-scares", "cane-hit", "worker-steals", "fart-poison")
 EVENT_NAMES = ("Mask Kid Scare", "Granny Cane", "Worker Steals Food", "Fart Attack")
 EVENT_PRESSES = (4, 4, 5, 5)
+# How much of each scene is the wind-up, before anything lands. While the alert
+# counts down the culprit creeps through it; every tap shoves them back.
+EVENT_APPROACH = (0.20, 0.40, 0.26, 0.15)
+EVENT_WIN_WORDS = ("BOO BACK!", "BACKFLIP?!", "SNAP!", "SMELT IT!")
+# What each tap before the last one does to the culprit, in order.
+EVENT_TAP_WORDS = (
+    ("It sees him...", "It's growing!", "It's getting out!"),
+    ("Huh?", "Warming up?", "Ready...!"),
+    ("Rustle!", "Cheese?", "...a trap?", "Gulp."),
+    ("Hold it!", "Going red!", "Shaking!", "Leaking!"),
+)
+# Sounds in each payback, as (seconds in, sound, gain).
+PAYBACK_CUES = (
+    ((0.25, "bus_scare", 1.0), (0.3, "bus_swish", 1.0)),
+    ((0.25, "bus_jump", 1.0), (0.6, "bus_swish", 1.0), (1.05, "bus_land", 1.0)),
+    ((0.15, "bus_cane_hit", 1.0), (0.4, "bus_swish", 0.8)),
+    ((0.1, "bus_fart", 1.0), (0.7, "bus_gas_fade", 1.0)),
+)
+EVENT_TAP_SHOVE = 0.7                 # how far a full set of taps holds them back
 EVENT_TIME = 7.0
 EVENT_KEYS = "FGHIJKLOUYT"
 FOOD_LOSS = 25

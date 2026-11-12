@@ -55,8 +55,46 @@ def wheels(pen, left, right, top, bottom, width):
         box(pen, x + 1, top + 1, x + width - 2, top + 1, HUB)
 
 
-def bus_rear():
-    """The yellow bus Terry is riding, 44 x 47."""
+BUS_BODY_W = 44      # the bus itself
+BUS_MARGIN = 12      # clear art either side, where the driver leans out
+
+
+def bus_rear(driver=False, braking=False):
+    """The yellow bus Terry is riding, on a 68 x 47 canvas.
+
+    Every variant shares the canvas, so swapping one for another never shifts
+    the bus. With `driver`, the driver hangs out of the right-hand window,
+    seen from behind, shaking a fist at the traffic. With `braking`, the tail
+    lights burn bright.
+    """
+    body = bus_body()
+    image, pen = canvas(BUS_BODY_W + 2 * BUS_MARGIN, body.height)
+    image.alpha_composite(body, (BUS_MARGIN, 0))
+    o = BUS_MARGIN
+    if braking:
+        for x in (6, 34):
+            box(pen, o + x - 1, 27, o + x + 4, 33, (255, 70, 60, 120))
+            box(pen, o + x, 28, o + x + 3, 32, (255, 96, 84, 255))
+            box(pen, o + x + 1, 29, o + x + 2, 31, (255, 226, 200, 255))
+    if driver:
+        uniform, cap = (58, 110, 200, 255), (34, 62, 140, 255)
+        skin, hair = (244, 196, 160, 255), (40, 40, 56, 255)
+        # Shoulder out of the window, then the back of his head under the cap.
+        framed(pen, o + 38, 12, o + 47, 21, uniform)
+        framed(pen, o + 42, 5, o + 51, 15, hair)
+        box(pen, o + 43, 6, o + 50, 10, cap)
+        box(pen, o + 43, 13, o + 50, 14, skin)
+        box(pen, o + 49, 10, o + 53, 11, cap)
+        # Arm up, fist shaking.
+        framed(pen, o + 48, 8, o + 52, 19, uniform)
+        box(pen, o + 47, 16, o + 48, 19, uniform)
+        framed(pen, o + 51, 1, o + 55, 9, uniform)
+        framed(pen, o + 50, -1, o + 56, 4, skin)
+    return image
+
+
+def bus_body():
+    """The bus on its own, 44 x 47."""
     width, height = 44, 47
     image, pen = canvas(width, height)
     yellow, cream = (250, 198, 44, 255), (252, 240, 214, 255)
@@ -273,6 +311,79 @@ def backdrop(width=320, height=100):
         pen.ellipse((x0, top, x1, top + 44), fill=near)
     for x0, top, x1 in ((-50, 86, 150), (120, 88, 300), (250, 85, 380)):
         pen.ellipse((x0, top, x1, top + 40), fill=front)
+    return image
+
+
+def house():
+    """Home: the backyard and its gate on the left, the house on the right. 150 x 100."""
+    image, pen = canvas(150, 100)
+    wall, wall_dark = (246, 232, 204, 255), (222, 204, 172, 255)
+    roof, roof_dark = (198, 78, 64, 255), (160, 58, 52, 255)
+    wood, wood_dark = (150, 104, 68, 255), (112, 76, 52, 255)
+    lit = (255, 226, 132, 255)
+    lawn, lawn_dark = (126, 196, 110, 255), (98, 170, 92, 255)
+    leaf, leaf_light = (62, 142, 84, 255), (112, 186, 108, 255)
+    fence = (244, 240, 230, 255)
+
+    # Lawn, with a path up to the gate.
+    box(pen, 0, 76, 149, 99, lawn)
+    for x in range(4, 150, 13):
+        box(pen, x, 88 + x % 3 * 3, x + 3, 88 + x % 3 * 3, lawn_dark)
+    box(pen, 15, 82, 27, 99, (214, 198, 160, 255))
+
+    # The tree in the yard, and string lights from it across to the house.
+    framed(pen, 42, 46, 47, 84, wood)
+    for x0, y0, x1, y1 in ((28, 20, 62, 50), (34, 10, 56, 28), (24, 30, 40, 46), (50, 28, 66, 46)):
+        pen.ellipse((x0, y0, x1, y1), fill=leaf, outline=INK)
+    pen.ellipse((30, 22, 60, 46), fill=leaf)
+    pen.ellipse((36, 13, 46, 20), fill=leaf_light)
+    pen.ellipse((30, 28, 38, 34), fill=leaf_light)
+    for index, x in enumerate(range(60, 84, 4)):
+        y = 44 + (2 if index in (2, 3) else 1 if index in (1, 4) else 0)
+        box(pen, x, y, x, y, INK)
+        box(pen, x, y + 1, x, y + 2, (lit, (255, 150, 130, 255), (150, 220, 255, 255))[index % 3])
+
+    # The grill, already smoking.
+    for x, y, size in ((10, 50, 3), (7, 43, 4), (11, 35, 5)):
+        box(pen, x, y, x + size, y + size, (236, 236, 236, 170))
+    framed(pen, 5, 58, 15, 64, (44, 46, 58, 255))
+    box(pen, 6, 59, 14, 59, (200, 70, 60, 255))
+    for x in (6, 13):
+        box(pen, x, 65, x, 76, INK)
+
+    # The house.
+    framed(pen, 70, 40, 144, 84, wall)
+    box(pen, 71, 76, 143, 83, wall_dark)
+    framed(pen, 122, 8, 131, 30, (176, 96, 80, 255))
+    box(pen, 121, 7, 132, 9, INK)
+    pen.polygon(((64, 42), (107, 12), (150, 42)), fill=roof, outline=INK)
+    for row in range(18, 42, 6):
+        half = (row - 12) * 43 // 30
+        box(pen, 107 - half + 2, row, 107 + half - 2, row, roof_dark)
+    box(pen, 64, 41, 149, 43, INK)
+    framed(pen, 100, 56, 114, 84, wood)
+    box(pen, 102, 58, 112, 70, wood_dark)
+    box(pen, 111, 71, 112, 72, lit)
+    box(pen, 98, 84, 116, 86, (190, 186, 176, 255))
+    for x in (76, 121):
+        framed(pen, x, 52, x + 16, 68, lit)
+        box(pen, x + 8, 53, x + 8, 67, INK)
+        box(pen, x + 1, 60, x + 15, 60, INK)
+        box(pen, x - 1, 69, x + 17, 70, wall_dark)
+
+    # Picket fence along the front, open at the gate.
+    for x in range(0, 150, 5):
+        if 14 <= x <= 27:
+            continue
+        box(pen, x, 74, x + 3, 90, INK)
+        box(pen, x + 1, 75, x + 2, 89, fence)
+        box(pen, x + 1, 73, x + 2, 73, INK)
+    for x0, x1 in ((0, 13), (29, 149)):
+        box(pen, x0, 79, x1, 80, fence)
+        box(pen, x0, 85, x1, 86, fence)
+    for x in (12, 28):
+        framed(pen, x, 70, x + 3, 91, wood)
+    box(pen, 0, 97, 149, 99, SHADOW)
     return image
 
 
