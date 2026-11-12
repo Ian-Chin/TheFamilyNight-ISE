@@ -1,4 +1,4 @@
-"""Startup splash: the studio intro, APU, and the libraries the game is coded with."""
+"""Startup splash: APU, the libraries the game is coded with, the studio, then the trailer."""
 
 from .view import SplashView
 

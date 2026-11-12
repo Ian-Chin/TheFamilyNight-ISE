@@ -372,6 +372,10 @@ SOUND_FILES = {
     "ending_sfx": ("ending-sfx", "sound", 1.0),
     # The title menu's loop, until a game starts.
     "menu_music": ("menu-music", "music", 0.5),
+    # The startup trailer's soundtrack, started with its first frame.
+    "trailer": ("trailer", "music", 0.8),
+    # The startup splash's cue, timed to its cards, faded under the trailer.
+    "splash_music": ("splash-music", "music", 0.7),
 
     #market dash scene
     "phone_ring": ("phone-ring", "sound", 0.75),

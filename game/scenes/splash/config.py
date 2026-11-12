@@ -11,7 +11,7 @@ INK = (34, 36, 44)
 INK_DIM = (120, 122, 132)
 
 STUDIO_LOGO = "splash/group2-studio.png"
-STUDIO_WIDTH = 640
+STUDIO_WIDTH = 720
 
 APU_LOGO = "splash/apu-logo.png"
 APU_WIDTH = 620
@@ -29,3 +29,10 @@ LIBRARY_GAP = 92
 
 SKIP_HINT = "Click to skip"
 SKIP_GRACE = 0.3         # so the click that launched the game cannot skip it
+
+# --- Trailer ----------------------------------------------------------------
+# Played once after the studio card, which fades out over it, then the menu.
+TRAILER_VIDEO = "trailer.mp4"
+TRAILER_SOUND = "trailer"   # its soundtrack, a SOUND_FILES name
+SPLASH_MUSIC = "splash_music"   # the cue under the cards, a SOUND_FILES name
+TRAILER_FADE = 0.9       # seconds for the studio card to fade off the trailer

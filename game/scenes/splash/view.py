@@ -1,22 +1,22 @@
-"""The startup splash: the studio logo, the APU logo, then "Coded with".
+"""The startup splash: the APU logo, "Coded with", then the studio logo.
 
-Each card fades up out of the paper, holds, and fades back. A click or any
-key skips straight to the title menu, which opens with its flash zoom either
-way.
+Each card fades up out of the paper, holds, and fades back, except the
+studio card: it fades away over the trailer, already playing underneath. A
+click or any key skips straight to the trailer.
 """
 
 import arcade
 
 from ...config import HEIGHT, WIDTH
-from ...core import textures
+from ...core import audio, textures
 from ...core.stage import StageView
 from .config import (
     APU_LOGO, APU_WIDTH, CARD_HOLD, CARD_IN, CARD_OUT, CODED_WITH, INK, INK_DIM,
-    LIBRARIES, LIBRARY_GAP, LIBRARY_ICON, PAPER, PAPER_IN, SKIP_GRACE, SKIP_HINT,
+    LIBRARIES, LIBRARY_GAP, LIBRARY_ICON, PAPER, PAPER_IN, SKIP_GRACE, SKIP_HINT, SPLASH_MUSIC,
     STUDIO_LOGO, STUDIO_WIDTH,
 )
 
-STEPS = ("studio", "apu", "libraries")
+STEPS = ("apu", "libraries", "studio")
 CARD_TIME = CARD_IN + CARD_HOLD + CARD_OUT
 
 
@@ -33,7 +33,14 @@ class SplashView(StageView):
         self.clock = 0.0          # seconds into the current step
         self.total = 0.0          # seconds since the splash opened
         self.done = False
+        self.trailer = None       # built as the studio card arrives, to decode ahead
+        self.music = None
         self.relayout()
+
+    def on_show_view(self):
+        # Building the sound bank stalls a moment, so it happens here, before
+        # anything moves, rather than on the trailer's first frame.
+        self.music = audio.play(SPLASH_MUSIC)
 
     def relayout(self):
         super().relayout()
@@ -64,8 +71,11 @@ class SplashView(StageView):
         if self.done:
             return
         self.done = True
-        from ..menu.view import MenuView
-        self.window.show_view(MenuView(reveal=True))
+        self.window.show_view(self.trailer or self.make_trailer())
+
+    def make_trailer(self):
+        from .trailer import TrailerView
+        return TrailerView(cover=self.logos["studio"], music=self.music)
 
     def on_update(self, delta_time):
         if self.done:
@@ -73,11 +83,15 @@ class SplashView(StageView):
         delta_time = min(delta_time, 1 / 30)
         self.clock += delta_time
         self.total += delta_time
-        if self.clock >= CARD_TIME:
+        if STEPS[self.step] == "studio":
+            if self.trailer is None:
+                self.trailer = self.make_trailer()
+            # No fade back to paper: the card fades off the trailer instead.
+            if self.clock >= CARD_IN + CARD_HOLD:
+                self.finish()
+        elif self.clock >= CARD_TIME:
             self.step += 1
             self.clock = 0.0
-            if self.step >= len(STEPS):
-                self.finish()
 
     # --- Drawing ------------------------------------------------------------
 
