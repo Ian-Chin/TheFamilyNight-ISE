@@ -29,7 +29,7 @@ class MarketStageView(StageView):
         self.ambience_player = None
         self.walking_player = None
 
-        # 1. Title Card on first entry
+      
         self.show_title_card = not (self.veg_done or self.meat_done)
         self.title_card = TitleCard(
             kicker="S C E N E   1",
@@ -42,7 +42,7 @@ class MarketStageView(StageView):
         self.pause_menu = PauseMenu()
         self.settings_panel = SettingsPanel()
 
-        # 2. Market Quests
+       
         market_quests = (
             ("veg", "Gather Vegetables", "Head to the vegetable stalls", False),
             ("meat", "Gather Prime Meat", "Head to the meat deli counter", False),
@@ -71,7 +71,7 @@ class MarketStageView(StageView):
 
         self.backdrop = Backdrop("market-dash/Scene 2.4 - market interior.jpg")
 
-        # 3. Calculate spawn coordinates FIRST
+     
         if self.defend_unlocked:
             spawn_x, spawn_y = 630, 90
         elif last_completed == "veg" or (self.veg_done and not self.meat_done):
@@ -81,13 +81,13 @@ class MarketStageView(StageView):
         else:
             spawn_x, spawn_y = 495, 180
 
-        # 4. Create Terry with the calculated coordinates
+    
         self.terry = Terry(spawn_x, spawn_y, carrying=False)
         self.sprites = arcade.SpriteList()
         self.sprites.append(self.terry)
         self.sort_by_depth()
 
-        # 5. Portraits Setup
+      
         try:
             self.terry_portrait = textures.character("terry-idle-1.png")
         except Exception:
@@ -102,13 +102,13 @@ class MarketStageView(StageView):
         self.current_speaker = None
         self.current_partner = None
 
-        # 6. Register all widgets once
+     
         self.widgets = [
             self.dialog, self.pause_menu, self.settings_panel,
             self.title_card, self.quests, self.portraits
         ]
 
-        # 7. Interactive Indicators
+      
         self.indicators = arcade.SpriteList()
         exclamation_tex = textures.ui_image("Exclamation Mark Symbol.png")
         lock_tex = textures.ui_image("Lock Symbol.png")
@@ -207,7 +207,7 @@ class MarketStageView(StageView):
             speaker, text = item[0], item[1]
             self.stage_dialogue_bg = item[2] if len(item) > 2 else None
 
-            # Highlight Terry when he speaks, dim him when the shopper shouts
+           
             self.current_speaker = "left" if speaker == "Terry" else "right"
             self.current_partner = self.shopper_portrait
 
@@ -230,7 +230,7 @@ class MarketStageView(StageView):
         self.time_elapsed += delta_time
         self.backdrop.update(delta_time)
 
-        # --- STEP 1: LOCK ANIMATION SEQUENCE ---
+       
         if self.lock_animating:
             self.lock_anim_timer -= delta_time
 
@@ -296,7 +296,7 @@ class MarketStageView(StageView):
 
             return
 
-        # --- STEP 2: DIALOGUE UPDATE ---                                                                        
+                                                                              
         if self.dialog.visible:                                                                                  
             if self.walking_player is not None:                                                                  
                 audio.stop(self.walking_player)                                                                  
@@ -304,7 +304,7 @@ class MarketStageView(StageView):
             self.dialog.update(delta_time)                                                                       
             return 
 
-        # Player Movement
+       
         dx = (arcade.key.D in self.held) - (arcade.key.A in self.held)
         dy = (arcade.key.W in self.held) - (arcade.key.S in self.held)
         self.terry.update_movement(
@@ -324,19 +324,19 @@ class MarketStageView(StageView):
         if dy:
             self.sort_by_depth()
 
-        # Indicator Bobbing
+       
         bob_offset = math.sin(self.time_elapsed * 4.0) * 6.0
         if not self.meat_done:
             self.meat_marker.center_y = self.meat_marker.base_y + bob_offset
         if not self.veg_done:
             self.veg_marker.center_y = self.veg_marker.base_y + bob_offset
 
-        # Proximity Checks
+       
         self.near_meat = (110 <= self.terry.center_x <= 310) and (230 <= self.terry.ground_y <= 480)
         self.near_veg = (1000 <= self.terry.center_x <= 1100) and (0 <= self.terry.ground_y <= 150)
         self.near_defend = (600 <= self.terry.center_x <= 660) and (0 <= self.terry.ground_y <= 150)
 
-        # Context Prompts
+       
         if self.near_meat:
             if not self.meat_done:
                 self.hint.text = "Press Enter to gather prime meat!"
@@ -369,7 +369,7 @@ class MarketStageView(StageView):
     def on_draw(self):
         self.clear()
 
-        # 1. World Layer in Camera Space
+       
         self.camera.use()
 
         if self.dialog.visible and self.stage_dialogue_bg:
@@ -384,13 +384,13 @@ class MarketStageView(StageView):
             self.sprites.draw(pixelated=True)
             self.indicators.draw(pixelated=True)
 
-        # 2. UI in Screen Space
+     
         self.window.default_camera.use()
         self.hint.draw()
 
-        # Only draw the quest checklist when Terry is walking around (hide during dialogue & menus)
+        
         if not self.dialog.visible and not self.pause_menu.visible and not self.settings_panel.visible:
-            # Sized from the quest text itself, so it scales with the window and never clips
+          
             plate = self.quests.plate_rect()
             arcade.draw_rect_filled(plate, (12, 10, 14, 215))
             arcade.draw_rect_outline(plate, (180, 140, 90, 160), max(1, 2 * self.stage.scale))
@@ -399,11 +399,11 @@ class MarketStageView(StageView):
         if self.show_title_card:
             self.title_card.draw()
 
-        # Render Character Avatars above the dialogue box
+      
         if self.dialog.visible and self.current_speaker:
             self.portraits.draw(partner=self.current_partner, speaking=self.current_speaker)
 
-        # Draw the Dialogue Box over the portraits' bottom edges
+       
         if self.dialog.visible and getattr(self.dialog, "texture", None):
             self.dialog.draw()
 

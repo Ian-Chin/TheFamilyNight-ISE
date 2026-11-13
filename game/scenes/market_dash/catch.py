@@ -7,7 +7,7 @@ import arcade
 from .prep_sprites import run_prep
 from ...core import achievements, audio, textures
 
-# Cumulative metrics across attempts/stages
+
 _TOTAL_BUMPS = 0
 _TOTAL_BLOCKS = 0
 _TOTAL_MACKEREL_STUNS = 0
@@ -99,7 +99,7 @@ class MarketCatchView(StageView):
         self.instruction_modal.open(mode=self.mode)
         self.widgets = [self.dialog, self.pause_menu, self.settings_panel]
 
-        # Duration: 60s for gathering, 50s for defend checkout escape
+        
         self.duration = 50.0 if self.mode == "defend" else 60.0
         self.time_left = self.duration
 
@@ -121,11 +121,11 @@ class MarketCatchView(StageView):
             heart.center_y = hp_y
             self.hearts.append(heart)
 
-        # Shelf restock cycle timers & active slot
-        self.active_restock = None  # Dict of restock state when an ingredient is on shelf
-        self.restock_interval = 4.5 if self.mode == "veg" else 3.8 # next ingredients spawn time interval
-        self.restock_timer = 1.2    # Initial delay before first restock
-        self.shopper_rush_speed = 4.6 if self.mode == "veg" else 4.6 # shoppers rush speed
+        #
+        self.active_restock = None  #
+        self.restock_interval = 4.5 if self.mode == "veg" else 3.8 
+        self.restock_timer = 1.2    
+        self.shopper_rush_speed = 4.6 if self.mode == "veg" else 4.6 
 
         # Terry Action Mechanics (Defend mode Spin Attack / Gathering Block)
         self.swinging = False
@@ -258,7 +258,7 @@ class MarketCatchView(StageView):
         self.dropped_items = arcade.SpriteList()
         self.held = set()
 
-        # Inter-session dialogue support
+       
         def catch_advance():
             if self.dialog.typing:
                 self.dialog.advance()
@@ -299,8 +299,8 @@ class MarketCatchView(StageView):
         self.upcoming_restock = None
         self.time_left = self.duration
         self.restock_timer = 4.0 
-        self.phase_spawn_timer = 8.0 # spawn new shoppers
-        self.max_shoppers = 15 # maximum shoppers on screen at once
+        self.phase_spawn_timer = 8.0 
+        self.max_shoppers = 15 
         self.invuln_timer = 0.0
         self.touching_crowd_timer = 0.0
 
@@ -313,14 +313,14 @@ class MarketCatchView(StageView):
             self.exit_warn_timer = 0.0
 
         if self.mode in ("veg", "meat"):
-            count = 5 #Intitial shoppers for gathering game
+            count = 5 
         else:
-            count = 13 # Intitial shoppers for defend game
+            count = 13
 
         if self.mode == "veg":
-            self.shopper_rush_speed = 4.6 # veg shoppers rush speed
+            self.shopper_rush_speed = 4.6
         elif self.mode == "meat":
-            self.shopper_rush_speed = 4.6 # meat shoppers rush speed
+            self.shopper_rush_speed = 4.6
         else:
             self.shopper_rush_speed = 4.5
 
@@ -516,7 +516,7 @@ class MarketCatchView(StageView):
                 "color": (120, 255, 140)
             })
 
-            # Clear active slot and cancel rushing shoppers
+            
             self.active_restock = None
             self.upcoming_restock = None
             self.restock_timer = self.restock_interval
@@ -530,11 +530,11 @@ class MarketCatchView(StageView):
         return False
 
     def on_update(self, delta_time):
-        # Decay red damage flash
+        
         if self.damage_alpha > 0:
             self.damage_alpha = max(0.0, self.damage_alpha - (280.0 * delta_time))
 
-        # Heart breaking sequence
+        
         if self.heart_anim_timer > 0:
             self.heart_anim_timer -= delta_time
             if self.heart_anim_timer <= 0 and self.breaking_idx != -1:
@@ -555,7 +555,7 @@ class MarketCatchView(StageView):
             self.dialog_ctrl.update(delta_time, is_dialog_visible=self.dialog.visible, is_typing=self.dialog.typing)
             return
 
-        # Cooldown decays
+        
         if self.block_cooldown > 0:
             self.block_cooldown = max(0.0, self.block_cooldown - delta_time)
         if self.spin_cooldown > 0:
@@ -569,7 +569,7 @@ class MarketCatchView(StageView):
         if self.touching_crowd_timer > 0:
             self.touching_crowd_timer = max(0.0, self.touching_crowd_timer - delta_time)
 
-        # Screenshake update
+       
         if self.shake_timer > 0:
             self.shake_timer -= delta_time
             offset_x = (random.random() * 2 - 1) * self.shake_intensity
@@ -578,14 +578,14 @@ class MarketCatchView(StageView):
         else:
             self.camera.position = (WIDTH / 2, HEIGHT / 2)
 
-        # Floating popups update
+       
         for popup in list(self.floating_popups):
             popup["timer"] -= delta_time
             popup["y"] += 35.0 * delta_time
             if popup["timer"] <= 0:
                 self.floating_popups.remove(popup)
 
-        # 1. Timer countdown
+       
         if not self.completed:
             self.time_left -= delta_time
             if self.time_left <= 0:
@@ -599,11 +599,11 @@ class MarketCatchView(StageView):
                     self.complete_game_mode()
                 return
 
-        # Exit warning timer decay
+        
         if self.exit_warn_timer > 0:
             self.exit_warn_timer = max(0.0, self.exit_warn_timer - delta_time)
 
-        # Defend Mode Victory Trigger: Reaching checkout doors at top
+        
         if self.mode == "defend" and not self.completed:
             if CHECKOUT_MIN_X <= self.player.center_x <= CHECKOUT_MAX_X and self.player.center_y >= 620:
                 if len(self.dropped_items) > 0:
@@ -623,11 +623,10 @@ class MarketCatchView(StageView):
                     self.complete_game_mode()
                     return
 
-        # 2. Player Movement & Actions
+       
         if self.swinging:
             self.swing_timer -= delta_time
             self.player.texture = self.terry_tex_action
-            # 180 degree clockwise spin during attack starting from current facing angle
             progress = max(0.0, min(1.0, 1.0 - (self.swing_timer / self.swing_duration)))
             self.player.angle = self.swing_base_angle - (progress * 180.0)
             if self.swing_timer <= 0:
@@ -645,16 +644,16 @@ class MarketCatchView(StageView):
             self.player.angle = self.facing_angle
             self.player.texture = self.terry_tex_defend if self.mode == "defend" else self.terry_tex_normal
 
-        # Orient character to face towards the movement direction (Left: 90°, Right: 270°, Up: 180°, Down: 0°)
+       
         if not self.swinging and (self.player_move_x != 0 or self.player_move_y != 0):
             self.facing_angle = (math.degrees(math.atan2(self.player_move_y, -self.player_move_x)) + 90) % 360
             self.player.angle = self.facing_angle
 
-        # 2D Top-Down Movement with diagonal normalization, Shift speed boost, and crowd slowdown
+     
         step = delta_time * 60.0
         if self.touching_crowd_timer > 0:
-            crowd_slow = 0.40  # Heavy slowdown when touching/ramming shoppers
-            current_speed = self.base_speed * crowd_slow  # Break sprint boost and slow Terry down
+            crowd_slow = 0.40  
+            current_speed = self.base_speed * crowd_slow  
         else:
             current_speed = self.boost_speed if self.speed_boosted else self.base_speed
         norm = 0.7071 if (self.player_move_x != 0 and self.player_move_y != 0) else 1.0
@@ -662,16 +661,15 @@ class MarketCatchView(StageView):
         self.player.center_x += self.player_move_x * current_speed * norm * step
         self.player.center_y += self.player_move_y * current_speed * norm * step
 
-        # Constrain within checkered aisle bounds
+       
         self.player.center_x = max(AISLE_MIN_X, min(AISLE_MAX_X, self.player.center_x))
         self.player.center_y = max(AISLE_MIN_Y, min(AISLE_MAX_Y, self.player.center_y))
 
-        # Positive scale (direction is naturally handled by angle rotation)
+        
         self.player.scale_x = abs(self.player_scale)
         self.player.scale_y = abs(self.player_scale)
 
-        # Shopper wave increase by duration phase (Veg & Meat Modes)
-        # Initial 5 shoppers, increasing by 1 or 2 every 8 seconds up to max 8 shoppers
+        
         if self.mode in ("veg", "meat") and not self.completed:
             self.phase_spawn_timer -= delta_time
             if self.phase_spawn_timer <= 0:
@@ -688,21 +686,19 @@ class MarketCatchView(StageView):
                         )
                         self.snatchers_list.append(new_shopper)
 
-        # 3. Shelf Restock Cycle (Veg & Meat Modes)
+       
         if self.mode in ("veg", "meat") and not self.completed:
-            # Active shelf slot timer update
+        
             if self.active_restock is not None:
                 self.active_restock["anim_timer"] += delta_time
                 self.active_restock["timer"] -= delta_time
                 if self.active_restock["timer"] <= 0:
-                    # Urgency expired - shoppers cleared the shelf
                     self.active_restock = None
                     self.upcoming_restock = None
                     self.restock_timer = self.restock_interval
                     for shopper in self.snatchers_list:
                         shopper.cancel_rush()
             else:
-                # Countdown to next restock
                 uncollected = [k for k in self.active_keys if not self.collected_status[k]]
                 floor_names = [d.item_name for d in self.dropped_items]
                 carried_names = [s.carried_item for s in self.snatchers_list if s.carried_item]
@@ -713,7 +709,7 @@ class MarketCatchView(StageView):
                 if candidates:
                     self.restock_timer -= delta_time
 
-                    # 3 seconds before restock: determine upcoming shelf slot & item for hint
+                    
                     if self.restock_timer <= 1.0: # restock hint seconds
                         if self.upcoming_restock is None:
                             pick_name = random.choice(candidates)
@@ -751,15 +747,15 @@ class MarketCatchView(StageView):
                             "anim_timer": 0.0,
                         }
 
-                        # Trigger shoppers on that side to rush the shelf with reaction delay
+                       
                         for shopper in self.snatchers_list:
-                            delay = random.uniform(0.1, 0.3) # reactive delay before rushing to shelf
+                            delay = random.uniform(0.1, 0.3) 
                             if slot_x < 640 and shopper.center_x < 640:
                                 shopper.trigger_rush(slot_x, slot_y, pick_name, item_tex, delay=delay)
                             elif slot_x >= 640 and shopper.center_x >= 640:
                                 shopper.trigger_rush(slot_x, slot_y, pick_name, item_tex, delay=delay)
 
-        # 4. Floor Dropped Pickups Update
+        
         for item in list(self.dropped_items):
             expired = item.update_timer(delta_time)
             if expired:
@@ -796,12 +792,12 @@ class MarketCatchView(StageView):
                         self.complete_game_mode()
                         return
 
-        # 5. Shopper Behavior, Shelf Claim, and Collisions
+        
         for shopper in list(self.snatchers_list):
             shopper.bump_cooldown = max(0.0, getattr(shopper, "bump_cooldown", 0.0) - delta_time)
             shopper.update_behavior(delta_time, self.player.center_y, self.player.center_x, dropped_items=self.dropped_items)
 
-            # Check if shopper successfully fled off screen with a stolen ingredient
+           
             if shopper.has_fled_with_item:
                 lost_item = shopper.carried_item or "Ingredient"
                 if self.mode == "defend":
@@ -819,14 +815,12 @@ class MarketCatchView(StageView):
                         player_pos=(self.player.center_x, self.player.center_y),
                         min_dist=200
                     )
-                    # Check if all 5 items permanently stolen
                     if len(self.basket_items) == 0 and len(self.dropped_items) == 0 and not any(s.carried_item for s in self.snatchers_list):
                         self.show_retry_prompt("All 5 ingredients were stolen! Your basket is empty.")
                         return
                     if self.lives <= 0:
                         return
                 else:
-                    # In Veg & Meat modes: Reduce 1 HP when shopper flees outside the scene with an ingredient (no time reduction)
                     self.take_damage(ignore_invuln=True)
                     self.floating_popups.append({
                         "text": f"-1 HP! {lost_item} LOST!",
@@ -844,7 +838,6 @@ class MarketCatchView(StageView):
                     if self.lives <= 0:
                         return
 
-            # Check if rushing shopper reached the active shelf slot before Terry
             if self.active_restock and shopper.state == STATE_RUSHING_SHELF:
                 dist_shelf = math.hypot(shopper.center_x - self.active_restock["x"], shopper.center_y - self.active_restock["y"])
                 if dist_shelf < 125:
@@ -867,7 +860,6 @@ class MarketCatchView(StageView):
                     for other in self.snatchers_list:
                         other.cancel_rush()
 
-            # Terry & Shopper Collisions
             dist_x = abs(self.player.center_x - shopper.center_x)
             dist_y = abs(self.player.center_y - shopper.center_y)
             dist_total = math.hypot(dist_x, dist_y)
@@ -909,7 +901,7 @@ class MarketCatchView(StageView):
                             "color": (120, 255, 140)
                         })
 
-                # Mackerel Swing active hit in Defend mode
+             
                 elif self.swinging and self.mode == "defend" and is_colliding:
                     self.current_swing_hits += 1
                     self.mackerel_stuns += 1
@@ -935,12 +927,11 @@ class MarketCatchView(StageView):
                         floor_item.from_thief = True
                         self.dropped_items.append(floor_item)
 
-                # Unblocked Collision
+              
                 elif is_colliding:
-                    # Character speed is reduced when touching or ramming into shoppers
                     self.touching_crowd_timer = 0.4
 
-                    # Shaking effect triggers when touching or ramming into shopper
+                    
                     self.shake_timer = 0.2
                     self.shake_intensity = 5.0
 
@@ -954,7 +945,6 @@ class MarketCatchView(StageView):
 
                     if self.mode == "defend" and shopper.ram_cooldown <= 0:
                         shopper.ram_cooldown = 1.0
-                        # Stumble backward slightly with 0.8s invulnerability
                         push_angle = math.atan2(self.player.center_y - shopper.center_y, self.player.center_x - shopper.center_x)
                         self.player.center_x += math.cos(push_angle) * 25.0
                         self.player.center_y += math.sin(push_angle) * 25.0
@@ -963,7 +953,6 @@ class MarketCatchView(StageView):
                         self.invuln_timer = 0.8
 
                         if self.basket_items:
-                            # Spill 1 item from basket onto the floor - drop far away
                             spilled_idx = random.randrange(len(self.basket_items))
                             spilled_item = self.basket_items.pop(spilled_idx)
 
@@ -1001,7 +990,6 @@ class MarketCatchView(StageView):
                                 "color": (255, 70, 70)
                             })
                         else:
-                            # Basket is empty, Terry takes damage!
                             self.take_damage()
                             self.floating_popups.append({
                                 "text": "OUCH!",
@@ -1080,7 +1068,7 @@ class MarketCatchView(StageView):
     def on_draw(self):
         self.clear()
 
-        # 1. Gameplay & HUD in Camera Space
+      
         self.camera.use()
 
         if self.in_wave_dialogue and getattr(self, "dialogue_bg", None):
@@ -1089,7 +1077,6 @@ class MarketCatchView(StageView):
             arcade.draw_texture_rect(self.bg_texture, arcade.XYWH(WIDTH / 2, HEIGHT / 2, WIDTH, HEIGHT))
 
         if not (self.in_wave_dialogue and getattr(self, "dialogue_bg", None)):
-            # Active Wall-Shelf Restock Slot Indicator
             if self.active_restock:
                 rx = self.active_restock["x"]
                 ry = self.active_restock["y"]
@@ -1098,14 +1085,10 @@ class MarketCatchView(StageView):
                 t_max = self.active_restock["max_timer"]
                 anim_t = self.active_restock["anim_timer"]
 
-                # 1. Floor Light Projection Beam
-                # Soft, semi-translucent light cone (70px wide, RGBA(255, 220, 80, 40..90))
-                # extending outward from crate into the checkered floor
                 beam_alpha = int(40 + 50 * (0.5 + 0.5 * math.sin(time.time() * 7.0)))
                 beam_color = (255, 220, 80, beam_alpha)
                 if rx < 640:
-                    # Left wall shelf: projects rightward across aisle floor
-                    beam_origin_x = rx + 70  # right edge of crate
+                    beam_origin_x = rx + 70  
                     beam_end_x = beam_origin_x + 300
                     beam_pts = [
                         (beam_origin_x, ry - 35),
@@ -1114,8 +1097,7 @@ class MarketCatchView(StageView):
                         (beam_end_x, ry - 48)
                     ]
                 else:
-                    # Right wall shelf: projects leftward across aisle floor
-                    beam_origin_x = rx - 70  # left edge of crate
+                    beam_origin_x = rx - 70  
                     beam_end_x = beam_origin_x - 300
                     beam_pts = [
                         (beam_origin_x, ry - 35),
@@ -1125,26 +1107,26 @@ class MarketCatchView(StageView):
                     ]
                 arcade.draw_polygon_filled(beam_pts, beam_color)
 
-                # 2. Backdrop Plate & Pulsing Golden Highlight Box (140 x 80 px)
+
                 crate_w = 140
                 crate_h = 80
-                pulse_alpha = int(155 + 85 * math.sin(time.time() * 7.0))  # 70..240
+                pulse_alpha = int(155 + 85 * math.sin(time.time() * 7.0)) 
 
-                # Dark golden backing rectangle over crate art
+         
                 arcade.draw_rect_filled(arcade.XYWH(rx, ry, crate_w, crate_h), (35, 22, 12, 215))
                 arcade.draw_rect_filled(arcade.XYWH(rx, ry, crate_w - 6, crate_h - 6), (75, 48, 22, 170))
                 # Pulsing outline with warm golden hue
                 arcade.draw_rect_outline(arcade.XYWH(rx, ry, crate_w, crate_h), (255, 205, 55, pulse_alpha), border_width=3)
                 arcade.draw_rect_outline(arcade.XYWH(rx, ry, crate_w + 4, crate_h + 4), (255, 230, 110, int(pulse_alpha * 0.35)), border_width=1)
 
-                # 3. Floating Target Item Sprite inside Crate with subtle sine-wave bobbing (+/- 4px)
+
                 pop_scale = min(1.0, anim_t / 0.25)
                 bob_y = math.sin(time.time() * 5.0) * 4.0
                 target_size = 52.0 * pop_scale
                 if target_size > 1.0:
                     arcade.draw_texture_rect(tex, arcade.XYWH(rx, ry + bob_y, target_size, target_size))
 
-                # 4. Urgency Progress Bar directly above crate (110 x 8 px)
+
                 bar_w = 110
                 bar_h = 8
                 bar_y = ry + 49
@@ -1162,56 +1144,54 @@ class MarketCatchView(StageView):
                     bar_col = (255, 60, 60) if int(time.time() * 8) % 2 == 0 else (180, 25, 25)
                 arcade.draw_rect_filled(arcade.XYWH(fill_x, bar_y, fill_w, bar_h - 2), bar_col)
 
-                # 5. Context-Sensitive Beacon Prompt right above urgency bar
+
                 tag_y = bar_y + 17 + (math.sin(time.time() * 6.0) * 2.0)
                 dist_to_player = math.hypot(self.player.center_x - rx, self.player.center_y - ry)
 
                 if dist_to_player > 140:
-                    # Far away (>140px): Red warning badge "⚡ FRESH DROP"
                     badge_w = 114
                     badge_h = 22
                     arcade.draw_rect_filled(arcade.XYWH(rx, tag_y, badge_w, badge_h), (55, 14, 14, 230))
                     arcade.draw_rect_outline(arcade.XYWH(rx, tag_y, badge_w, badge_h), (255, 75, 75, pulse_alpha), border_width=2)
                     arcade.draw_text("⚡ FRESH DROP", rx, tag_y - 4, (255, 225, 225), 10, bold=True, anchor_x="center")
                 else:
-                    # In range (<=140px): Bright green interaction badge "[E] GRAB!"
                     badge_w = 98
                     badge_h = 22
                     arcade.draw_rect_filled(arcade.XYWH(rx, tag_y, badge_w, badge_h), (18, 65, 28, 240))
                     arcade.draw_rect_outline(arcade.XYWH(rx, tag_y, badge_w, badge_h), (100, 255, 140, pulse_alpha), border_width=2)
                     arcade.draw_text("[E] GRAB!", rx, tag_y - 4, (240, 255, 220), 11, bold=True, anchor_x="center")
 
-            # 3-Second Warning Hint (Blinking Exclamation Mark) before Food Drops on Shelf
+
             elif self.mode in ("veg", "meat") and getattr(self, "upcoming_restock", None) is not None and self.restock_timer <= 1.0: # restock hint seconds
                 ux = self.upcoming_restock["x"]
                 uy = self.upcoming_restock["y"]
                 crate_w = 140
                 crate_h = 80
 
-                # Rapid blinking state
+             
                 blink_on = int(time.time() * 7.0) % 2 == 0
                 alert_col = (255, 60, 60) if blink_on else (255, 220, 40)
                 glow_alpha = 230 if blink_on else 120
 
-                # Pulsing warning highlight around the target shelf crate
+               
                 arcade.draw_rect_filled(arcade.XYWH(ux, uy, crate_w, crate_h), (40, 20, 10, 180))
                 arcade.draw_rect_outline(arcade.XYWH(ux, uy, crate_w, crate_h), (alert_col[0], alert_col[1], alert_col[2], glow_alpha), border_width=3)
 
-                # Centered blinking exclamation mark bubble
+              
                 bob = math.sin(time.time() * 12.0) * 3.0
                 bubble_y = uy + bob
                 arcade.draw_circle_filled(ux, bubble_y, 22, (25, 18, 12, 230))
                 arcade.draw_circle_outline(ux, bubble_y, 22, alert_col, border_width=2.5)
                 arcade.draw_text("!", ux, bubble_y - 12, alert_col, 26, bold=True, anchor_x="center")
 
-                # Floating "INCOMING! X.Xs" countdown banner right above crate
+               
                 sec_left = max(0.1, self.restock_timer)
                 banner_y = uy + 50
                 arcade.draw_rect_filled(arcade.XYWH(ux, banner_y, 116, 22), (25, 15, 12, 240))
                 arcade.draw_rect_outline(arcade.XYWH(ux, banner_y, 116, 22), alert_col, border_width=1.5)
                 arcade.draw_text(f"INCOMING! {sec_left:.1f}s", ux, banner_y - 4, (255, 235, 180), 10, bold=True, anchor_x="center")
 
-            # Defend Mode: Exit Mat & Chevron Floor Guide
+         
             if self.mode == "defend":
                 exit_w = CHECKOUT_MAX_X - CHECKOUT_MIN_X
                 exit_cx = (CHECKOUT_MIN_X + CHECKOUT_MAX_X) / 2
@@ -1219,34 +1199,33 @@ class MarketCatchView(StageView):
                 exit_h = 75
 
                 pulse_a = int(140 + 90 * math.sin(time.time() * 6.0))
-                # Glowing green exit mat
                 arcade.draw_rect_filled(arcade.XYWH(exit_cx, exit_cy, exit_w, exit_h), (18, 75, 35, 160))
                 arcade.draw_rect_outline(arcade.XYWH(exit_cx, exit_cy, exit_w, exit_h), (80, 240, 120, pulse_a), border_width=3)
 
-                # Pulsing chevron arrows pointing up to the checkout doors
+             
                 chev_y_offsets = [-18, 0, 18]
                 for dy in chev_y_offsets:
                     arrow_y = exit_cy + dy + (math.sin(time.time() * 6.0 + dy) * 3.0)
                     arcade.draw_text("▲   ▲   ▲", exit_cx, arrow_y - 7, (120, 255, 160, pulse_a), 13, bold=True, anchor_x="center")
 
-                # Arcade label: "CHECKOUT EXIT DOORS"
+            
                 label_y = CHECKOUT_MIN_Y + 12
                 arcade.draw_rect_filled(arcade.XYWH(exit_cx, label_y, 190, 22), (12, 45, 22, 230))
                 arcade.draw_rect_outline(arcade.XYWH(exit_cx, label_y, 190, 22), (100, 255, 150, pulse_a), border_width=1.5)
                 arcade.draw_text("CHECKOUT EXIT DOORS", exit_cx, label_y - 5, (230, 255, 230), 10, bold=True, anchor_x="center")
 
-            # Draw ground shadows beneath shoppers
+         
             for s in self.snatchers_list:
                 s.draw_shadow()
 
-            # Draw floor dropped items, shoppers, and player
+       
             self.dropped_items.draw()
             self.snatchers_list.draw()
             for s in self.snatchers_list:
                 s.draw_overlays()
             self.player_list.draw()
 
-            # Visual shield aura while Terry is actively blocking (Veg & Meat)
+      
             if self.blocking and self.mode in ("veg", "meat"):
                 cx, cy = self.player.center_x, self.player.center_y
                 shield_radius = 65
@@ -1284,7 +1263,7 @@ class MarketCatchView(StageView):
             seconds_left = max(0, int(self.time_left))
             arcade.draw_text(f"{seconds_left:02d}s", panel_x + (bar_w / 2) - 24, panel_y + 13, (255, 215, 110), 11, bold=True, anchor_x="center", anchor_y="center")
 
-            # --- Wooden HP Plaque & Heart Sprites ---
+            
             hp_w = 146
             hp_h = 42
             hp_x = PLAY_LEFT + 66
@@ -1294,7 +1273,7 @@ class MarketCatchView(StageView):
             arcade.draw_rect_outline(arcade.XYWH(hp_x, hp_y, hp_w, hp_h), (42, 22, 10), 2)
             self.hearts.draw()
 
-            # --- Top-Right Horizontal Shopping Checklist / Basket Ribbon ---
+            
             if self.mode == "defend" and self.basket_keys:
                 item_count = len(self.basket_keys)
                 slot_step = 42
@@ -1303,7 +1282,7 @@ class MarketCatchView(StageView):
                 ribbon_x = WIDTH - (ribbon_w / 2) - 18
                 ribbon_y = HEIGHT - 35
 
-                # Basket count tag
+               
                 basket_count = len(self.basket_items)
                 count_col = (130, 255, 150) if basket_count > 0 else (255, 90, 90)
                 arcade.draw_text(
@@ -1317,7 +1296,7 @@ class MarketCatchView(StageView):
                     anchor_y="center"
                 )
 
-                # Semi-translucent dark pill with subtle wooden border
+              
                 arcade.draw_rect_filled(arcade.XYWH(ribbon_x, ribbon_y, ribbon_w, ribbon_h), (25, 15, 10, 190))
                 arcade.draw_rect_outline(arcade.XYWH(ribbon_x, ribbon_y, ribbon_w, ribbon_h), (180, 140, 90, 200), border_width=2)
 
@@ -1329,20 +1308,18 @@ class MarketCatchView(StageView):
                     tex = self.all_ingredients.get(name)
 
                     if in_basket:
-                        # Carried: subtle green backdrop circle + full opacity icon + bright green checkmark badge
                         arcade.draw_circle_filled(slot_cx, slot_cy, 16, (40, 120, 60, 220))
                         arcade.draw_circle_outline(slot_cx, slot_cy, 16, (90, 210, 110, 200), border_width=1.5)
                         if tex:
                             arcade.draw_texture_rect(tex, arcade.XYWH(slot_cx, slot_cy, 24, 24))
 
-                        # Checkmark badge at bottom-right
+                        
                         chk_x = slot_cx + 10
                         chk_y = slot_cy - 10
                         arcade.draw_circle_filled(chk_x, chk_y, 7, (20, 75, 30, 255))
                         arcade.draw_circle_outline(chk_x, chk_y, 7, (120, 255, 150, 255), border_width=1)
                         arcade.draw_text("✔", chk_x, chk_y - 5, (130, 255, 150), 8, bold=True, anchor_x="center")
                     else:
-                        # Spilled: dark red slot backdrop with warning red border + reduced opacity icon + red ! badge
                         arcade.draw_circle_filled(slot_cx, slot_cy, 16, (55, 15, 15, 210))
                         arcade.draw_circle_outline(slot_cx, slot_cy, 16, (230, 60, 60, 200), border_width=1.5)
                         if tex:
@@ -1366,7 +1343,7 @@ class MarketCatchView(StageView):
                 ribbon_x = WIDTH - (ribbon_w / 2) - 18
                 ribbon_y = HEIGHT - 35
 
-                # Semi-translucent dark pill with subtle wooden border
+                
                 arcade.draw_rect_filled(arcade.XYWH(ribbon_x, ribbon_y, ribbon_w, ribbon_h), (25, 15, 10, 190))
                 arcade.draw_rect_outline(arcade.XYWH(ribbon_x, ribbon_y, ribbon_w, ribbon_h), (180, 140, 90, 200), border_width=2)
 
@@ -1378,20 +1355,18 @@ class MarketCatchView(StageView):
                     tex = self.all_ingredients.get(name)
 
                     if collected:
-                        # Collected: subtle green backdrop circle + full opacity icon + bright green checkmark badge
                         arcade.draw_circle_filled(slot_cx, slot_cy, 16, (40, 120, 60, 220))
                         arcade.draw_circle_outline(slot_cx, slot_cy, 16, (90, 210, 110, 200), border_width=1.5)
                         if tex:
                             arcade.draw_texture_rect(tex, arcade.XYWH(slot_cx, slot_cy, 24, 24))
 
-                        # Checkmark badge at bottom-right of circle
+                
                         chk_x = slot_cx + 10
                         chk_y = slot_cy - 10
                         arcade.draw_circle_filled(chk_x, chk_y, 7, (20, 75, 30, 255))
                         arcade.draw_circle_outline(chk_x, chk_y, 7, (120, 255, 150, 255), border_width=1)
                         arcade.draw_text("✔", chk_x, chk_y - 5, (130, 255, 150), 8, bold=True, anchor_x="center")
                     else:
-                        # Uncollected: dark circular slot backdrop + icon at reduced opacity (alpha=110)
                         arcade.draw_circle_filled(slot_cx, slot_cy, 16, (18, 12, 10, 190))
                         arcade.draw_circle_outline(slot_cx, slot_cy, 16, (60, 48, 38, 140), border_width=1)
                         if tex:
@@ -1401,7 +1376,7 @@ class MarketCatchView(StageView):
                                 color=arcade.types.Color(160, 150, 140, 110)
                             )
 
-            # --- Floating popups (pickups, deflections, etc.) ---
+          
             for popup in self.floating_popups:
                 alpha = max(0, min(255, int(255 * (popup["timer"] / popup["max_timer"]))))
                 r, g, b = popup.get("color", (255, 255, 255))
@@ -1416,10 +1391,10 @@ class MarketCatchView(StageView):
                     anchor_y="center"
                 )
 
-        # 2. Screen-Space Overlays & UI
+       
         self.window.default_camera.use()
 
-        # Red damage flash
+        
         if self.damage_alpha > 0:
             flash_rect = arcade.XYWH(
                 self.window.width / 2, 
@@ -1429,19 +1404,19 @@ class MarketCatchView(StageView):
                 )
             arcade.draw_rect_filled(flash_rect, (255, 30, 30, int(self.damage_alpha)))
 
-        # Dialogue
+   
         if self.in_wave_dialogue and self.dialog.visible:
             self.dialog.draw()
 
-        # Pause and settings
+       
         if not self.settings_panel.visible:
             self.pause_menu.draw()
         self.settings_panel.draw()
 
-        # Draw Retry Modal
+       
         self.retry_modal.draw(ui_camera=self.camera)
 
-        # Draw Instruction Modal Board
+      
         self.instruction_modal.draw(ui_camera=self.camera)
 
     def on_key_press(self, key, modifiers):
@@ -1474,17 +1449,17 @@ class MarketCatchView(StageView):
             self.pause_menu.open()
             return
 
-        # Shelf grab interaction with Enter / Num_Enter / E
+      
         if key in (arcade.key.ENTER, arcade.key.NUM_ENTER, arcade.key.E):
             if self.try_grab_shelf():
                 return
 
-        # Space key for Block (gathering modes) or Spin & Defend (defend mode)
+      
         if key == arcade.key.SPACE:
             self.trigger_block_or_spin()
             return
 
-        # Shift speed boost
+        
         if key in (arcade.key.LSHIFT, arcade.key.RSHIFT):
             self.speed_boosted = True
 
@@ -1561,7 +1536,7 @@ class MarketCatchView(StageView):
         self.shake_timer = 0.3
         self.shake_intensity = 8.0
 
-        # Target the lost heart
+      
         self.breaking_idx = self.lives
         if 0 <= self.breaking_idx < self.max_lives:
             self.hearts[self.breaking_idx].texture = textures.ui_image("Character_HP_broke_into_half.png")
