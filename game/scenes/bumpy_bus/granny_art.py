@@ -1,14 +1,3 @@
-"""The granny from the cabin, drawn again pose by pose for her backflip.
-
-Each pose is its own drawing in her colours: standing, a little hop, arms up
-for the stretch, the crouch, the launch, the tuck as she goes over, the
-landing and the ta-da. The tuck is a curled-up drawing of its own, turned in
-quarter steps as she goes round, which a pixel grid takes without any loss.
-
-Art pixels; payback.py blows them up by SCALE to sit with the cabin art.
-Everything faces right, the way she stands in the cabin. Pillow only.
-"""
-
 import functools
 
 import PIL.Image
@@ -45,7 +34,6 @@ def blank():
 
 
 def finish(image):
-    """Ink one pixel round everything, the way the cabin art is drawn."""
     rim = image.getchannel("A").filter(PIL.ImageFilter.MaxFilter(3))
     backing = PIL.Image.new("RGBA", image.size, INK)
     backing.putalpha(rim)
@@ -53,7 +41,6 @@ def finish(image):
 
 
 def head(pen, x, y, mood="calm"):
-    """Her head with its bun, top left at (x, y). 22 x 19."""
     pen.ellipse((x, y, x + 8, y + 8), fill=HAIR)                  # the bun
     pen.ellipse((x + 1, y + 1, x + 4, y + 3), fill=HAIR_LIGHT)
     pen.ellipse((x + 3, y + 1, x + 22, y + 19), fill=HAIR)
@@ -64,7 +51,7 @@ def head(pen, x, y, mood="calm"):
     pen.rectangle((x + 10, y + 11, x + 11, y + 13), fill=SKIN_DARK)  # ear
     pen.point(((x + 18, y + 16), (x + 21, y + 16)), fill=BLUSH)
     if mood == "happy":
-        for ex in (x + 15, x + 19):                               # ^ ^
+        for ex in (x + 15, x + 19):
             pen.point(((ex, y + 12), (ex + 1, y + 11), (ex + 2, y + 12)), fill=INK)
         pen.rectangle((x + 17, y + 15, x + 19, y + 15), fill=INK)
     elif mood == "shut":
@@ -86,7 +73,6 @@ def head(pen, x, y, mood="calm"):
 
 
 def torso(pen, x, y, height=16):
-    """Cardigan with collar, top left at (x, y). 17 wide."""
     pen.rounded_rectangle((x, y, x + 16, y + height), 3, fill=CARDIGAN)
     pen.rectangle((x + 12, y + 2, x + 15, y + height - 2), fill=CARDIGAN_DARK)
     pen.rectangle((x + 2, y + 2, x + 3, y + height - 3), fill=CARDIGAN_LIGHT)
@@ -108,7 +94,6 @@ def skirt(pen, top_left, top_right, bottom_right, bottom_left):
 
 
 def shoe(pen, x, y, toes=1):
-    """A shoe, heel at x, toes pointing `toes` (1 right, -1 left, 0 down)."""
     if toes == 0:
         pen.rounded_rectangle((x, y, x + 3, y + 5), 1, fill=SHOE)
         pen.rectangle((x + 1, y + 1, x + 2, y + 1), fill=SHOE_LIGHT)
@@ -119,7 +104,6 @@ def shoe(pen, x, y, toes=1):
 
 
 def cane(pen, top, bottom, handle=1):
-    """The cane from `top` (the crook) to `bottom` (the rubber foot)."""
     pen.line((top, bottom), fill=CANE, width=2)
     tx, ty = top
     pen.line((tx, ty, tx - 4 * handle, ty), fill=CANE, width=2)
@@ -127,8 +111,6 @@ def cane(pen, top, bottom, handle=1):
     bx, by = bottom
     pen.rectangle((bx - 1, by - 1, bx + 1, by), fill=CANE_DARK)
 
-
-# --- Poses -----------------------------------------------------------------------
 
 def stand(mood="calm"):
     image, pen = blank()
@@ -143,7 +125,6 @@ def stand(mood="calm"):
 
 
 def stretch():
-    """Arms up, cane held over her head: the warm-up."""
     image, pen = blank()
     skirt(pen, (12, 40), (25, 40), (26, 54), (10, 54))
     shoe(pen, 11, 55)
@@ -157,7 +138,6 @@ def stretch():
 
 
 def crouch(mood="fierce"):
-    """Knees bent, ready to spring."""
     image, pen = blank()
     skirt(pen, (9, 46), (27, 46), (31, 56), (5, 56))
     shoe(pen, 5, 56)
@@ -171,7 +151,6 @@ def crouch(mood="fierce"):
 
 
 def launch():
-    """Off the floor: stretched long, arms flung up, toes pointed."""
     image, pen = blank()
     skirt(pen, (13, 36), (25, 36), (24, 50), (14, 50))
     shoe(pen, 15, 51, toes=0)
@@ -185,10 +164,6 @@ def launch():
 
 
 def tuck():
-    """Curled into a ball, knees hugged: the shape she spins in.
-
-    Drawn with her head at the top; the turns come from quarter steps.
-    """
     image, pen = blank()
     ox, oy = 6, 18
     pen.ellipse((ox + 1, oy + 8, ox + 20, oy + 27), fill=CARDIGAN)          # back, curled
@@ -205,7 +180,6 @@ def tuck():
 
 
 def land():
-    """Down again, arms out for balance."""
     image, pen = blank()
     skirt(pen, (10, 44), (26, 44), (29, 56), (7, 56))
     shoe(pen, 7, 56)
@@ -219,7 +193,6 @@ def land():
 
 
 def tada():
-    """Ta-da: one arm up with the cane, the other out, beaming."""
     image, pen = blank()
     skirt(pen, (11, 40), (25, 40), (27, 54), (9, 54))
     shoe(pen, 9, 55, toes=-1)
@@ -234,13 +207,11 @@ def tada():
 
 @functools.lru_cache(maxsize=1)
 def poses():
-    """Every pose, blown up to the cabin's pixel size."""
     raw = {
         "stand": stand(), "stand_wide": stand("wide"), "stretch": stretch(),
         "crouch": crouch(), "launch": launch(), "land": land(), "tada": tada(),
     }
     ball = tuck()
-    # Going over backwards: head back, then down, then round to the front.
     raw["tuck_0"] = ball
     raw["tuck_1"] = ball.transpose(PIL.Image.ROTATE_90)
     raw["tuck_2"] = ball.transpose(PIL.Image.ROTATE_180)

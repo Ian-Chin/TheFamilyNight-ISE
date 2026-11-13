@@ -1,7 +1,3 @@
-"""Constants only the splash scene uses. Shared ones stay in game/config.py."""
-
-# --- Logo cards -------------------------------------------------------------
-# Each card fades up out of the paper, holds, and fades back.
 CARD_IN = 0.45
 CARD_HOLD = 1.7
 CARD_OUT = 0.4
@@ -17,7 +13,6 @@ APU_LOGO = "splash/apu-logo.png"
 APU_WIDTH = 620
 
 CODED_WITH = "Coded with"
-# (logo, name) for each library the game is built on.
 LIBRARIES = (
     ("splash/python.png", "Python"),
     ("splash/arcade.png", "Arcade"),
@@ -30,8 +25,6 @@ LIBRARY_GAP = 92
 SKIP_HINT = "Click to skip"
 SKIP_GRACE = 0.3         # so the click that launched the game cannot skip it
 
-# --- Trailer ----------------------------------------------------------------
-# Played once after the studio card, which fades out over it, then the menu.
 TRAILER_VIDEO = "trailer.mp4"
 TRAILER_SOUND = "trailer"   # its soundtrack, a SOUND_FILES name
 SPLASH_MUSIC = "splash_music"   # the cue under the cards, a SOUND_FILES name

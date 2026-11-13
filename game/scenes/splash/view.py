@@ -1,10 +1,3 @@
-"""The startup splash: the APU logo, "Coded with", then the studio logo.
-
-Each card fades up out of the paper, holds, and fades back, except the
-studio card: it fades away over the trailer, already playing underneath. A
-click or any key skips straight to the trailer.
-"""
-
 import arcade
 
 from ...config import HEIGHT, WIDTH
@@ -38,8 +31,6 @@ class SplashView(StageView):
         self.relayout()
 
     def on_show_view(self):
-        # Building the sound bank stalls a moment, so it happens here, before
-        # anything moves, rather than on the trailer's first frame.
         self.music = audio.play(SPLASH_MUSIC)
 
     def relayout(self):
@@ -65,7 +56,6 @@ class SplashView(StageView):
         row = count * LIBRARY_ICON + (count - 1) * LIBRARY_GAP
         return (WIDTH - row) / 2 + LIBRARY_ICON / 2 + index * (LIBRARY_ICON + LIBRARY_GAP)
 
-    # --- Flow ---------------------------------------------------------------
 
     def finish(self):
         if self.done:
@@ -87,26 +77,21 @@ class SplashView(StageView):
             if self.trailer is None:
                 self.trailer = self.make_trailer()
             elif self.clock >= CARD_IN:
-                # The card is holding still now, so the stall goes unseen.
                 self.trailer.prepare_menu()
-            # No fade back to paper: the card fades off the trailer instead.
             if self.clock >= CARD_IN + CARD_HOLD:
                 self.finish()
         elif self.clock >= CARD_TIME:
             self.step += 1
             self.clock = 0.0
 
-    # --- Drawing ------------------------------------------------------------
 
     def card_alpha(self):
-        """How far the current card's content is faded up, 0 to 1."""
         t = self.clock
         return max(0.0, min(1.0, t / CARD_IN, (CARD_TIME - t) / CARD_OUT))
 
     def on_draw(self):
         self.clear()
         step = STEPS[min(self.step, len(STEPS) - 1)]
-        # Black opens up to paper once, as the first card arrives.
         paper = min(1.0, self.total / PAPER_IN)
         arcade.draw_rect_filled(
             arcade.LBWH(0, 0, self.stage.window_w, self.stage.window_h),
@@ -128,7 +113,6 @@ class SplashView(StageView):
         self.coded_text.color = (*INK_DIM, alpha)
         self.coded_text.draw()
         for index, icon in enumerate(self.icons):
-            # Each logo fitted into the same square, a beat after the last.
             rise = min(1.0, max(0.0, 1 - (self.clock - index * 0.08) / CARD_IN))
             scale = LIBRARY_ICON / max(icon.width, icon.height)
             width, height = icon.width * scale, icon.height * scale
@@ -140,7 +124,6 @@ class SplashView(StageView):
             name.color = (*INK, round(alpha * (1 - rise)))
             name.draw()
 
-    # --- Input --------------------------------------------------------------
 
     def on_key_press(self, key, modifiers):
         if self.total > SKIP_GRACE:

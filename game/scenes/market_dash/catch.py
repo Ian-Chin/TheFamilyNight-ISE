@@ -34,12 +34,6 @@ from .sprites import (
 
 
 class TrimmedBox(arcade.hitbox.HitBoxAlgorithm):
-    """A hit box hugging the opaque pixels, worked out in one call.
-
-    arcade's default walks each corner pixel by pixel in Python, which costs
-    seconds over the few hundred snatcher frames a round loads.
-    """
-
     def calculate(self, image, **kwargs):
         bbox = image.getchannel("A").getbbox()
         if bbox is None:
@@ -57,7 +51,6 @@ _textures = {}
 
 
 def load_texture(path):
-    """Load a texture once per run; every later round reuses it."""
     key = str(path)
     if key not in _textures:
         _textures[key] = arcade.load_texture(key, hit_box_algorithm=_TRIMMED_BOX)
@@ -65,7 +58,6 @@ def load_texture(path):
 
 
 def warm_up():
-    """Slice the sprite sheets and load every round's frames ahead of time."""
     run_prep()
     for path in TERRY_GAME_DIR.glob("*.png"):
         load_texture(path)
@@ -78,8 +70,6 @@ def warm_up():
 
 
 class MarketCatchView(StageView):
-    """Top-down Wall-Shelf Restock & Crowd Rush Scramble minigame."""
-
     def __init__(self, mode="veg", veg_done=False, meat_done=False):
         super().__init__()
         run_prep()
@@ -103,7 +93,6 @@ class MarketCatchView(StageView):
         self.duration = 50.0 if self.mode == "defend" else 60.0
         self.time_left = self.duration
 
-        # HP, Heart animation, and Damage Flash variables
         self.max_lives = 3
         self.lives = self.max_lives
         self.damage_alpha = 0.0      
@@ -111,7 +100,6 @@ class MarketCatchView(StageView):
         self.heart_anim_state = 0
         self.breaking_idx = -1
 
-        # Setup Heart sprites
         self.hearts = arcade.SpriteList()
         hp_start_x = PLAY_LEFT + 28
         hp_y = HEIGHT - 32
@@ -121,20 +109,17 @@ class MarketCatchView(StageView):
             heart.center_y = hp_y
             self.hearts.append(heart)
 
-        #
-        self.active_restock = None  #
+        self.active_restock = None
         self.restock_interval = 4.5 if self.mode == "veg" else 3.8 
         self.restock_timer = 1.2    
         self.shopper_rush_speed = 4.6 if self.mode == "veg" else 4.6 
 
-        # Terry Action Mechanics (Defend mode Spin Attack / Gathering Block)
         self.swinging = False
         self.swing_timer = 0.0
         self.swing_duration = 0.30
         self.spin_cooldown = 0.0
         self.exit_warn_timer = 0.0
 
-        # Terry Block & Speed Boost Mechanics
         self.blocking = False
         self.block_timer = 0.0
         self.block_duration = 0.45
@@ -145,19 +130,16 @@ class MarketCatchView(StageView):
         self.invuln_timer = 0.0
         self.touching_crowd_timer = 0.0
 
-        # Visual juice & floating popups
         self.floating_popups = []
         self.shake_timer = 0.0
         self.shake_intensity = 0.0
 
-        # Achievement metrics
         self.swung_fish = False
         self.current_swing_hits = 0
         self.mackerel_stuns = 0
         self.blocked_shoppers = 0
         self.shopper_bumps = 0
 
-        # Load Terry Sprites
         tex_without_fish = load_texture(TERRY_GAME_DIR / "sprite without fish.png")
         tex_holding_fish = load_texture(TERRY_GAME_DIR / "sprite holding fish.png")
         tex_defending    = load_texture(TERRY_GAME_DIR / "sprite defending.png")
@@ -183,7 +165,6 @@ class MarketCatchView(StageView):
         self.player_list = arcade.SpriteList()
         self.player_list.append(self.player)
 
-        # Load Ingredients
         self.all_ingredients = {}
         for f in sorted(list(INGREDIENTS_BASE_DIR.glob("*.png"))):
             name = f.stem.replace("_", " ").title()
@@ -208,7 +189,6 @@ class MarketCatchView(StageView):
         else:
             self.active_keys = []
 
-        # Defend Mode Basket Setup (Terry starts with 5 gathered items)
         if self.mode == "defend":
             self.basket_keys = list(self.meat_keys[:3] + self.veg_keys[:2])[:5]
             self.basket_items = list(self.basket_keys)
@@ -218,7 +198,6 @@ class MarketCatchView(StageView):
 
         self.collected_status = {k: False for k in self.active_keys}
 
-        # Load Snatchers (supports 16-frame collections: walk, walk_right, rush, rush_right, grab)
         self.snatcher_types = []
         if SNATCHERS_BASE_DIR.exists():
             for folder in sorted([p for p in SNATCHERS_BASE_DIR.iterdir() if p.is_dir()]):
@@ -228,7 +207,6 @@ class MarketCatchView(StageView):
                 rushes_right = [load_texture(folder / f"rush_right_{i}.png") for i in range(16) if (folder / f"rush_right_{i}.png").exists()]
                 grabs = [load_texture(folder / f"grab_{i}.png") for i in range(16) if (folder / f"grab_{i}.png").exists()]
 
-                # Fallback to legacy 6-frame sets if 16-frame sets are not present
                 if not walks:
                     walks = [load_texture(folder / f"fall_{i}.png") for i in range(6) if (folder / f"fall_{i}.png").exists()]
                 if not grabs:
@@ -335,7 +313,6 @@ class MarketCatchView(StageView):
             self.snatchers_list.append(shopper)
 
     def trigger_mackerel_swing(self):
-        """Spins 180 degrees clockwise to stun and knock back shoppers in Defend mode."""
         if self.swinging or self.spin_cooldown > 0:
             return False
         self.swung_fish = True
@@ -362,7 +339,6 @@ class MarketCatchView(StageView):
                     achievements.unlock("market_strike")
 
                 dropped = shopper.trigger_stun(self.player.center_x, self.player.center_y, is_defending=True)
-                # Knockback 110px away from Terry
                 angle = math.atan2(shopper.center_y - self.player.center_y, shopper.center_x - self.player.center_x)
                 shopper.center_x += math.cos(angle) * 110.0
                 shopper.center_y += math.sin(angle) * 110.0
@@ -394,7 +370,6 @@ class MarketCatchView(StageView):
         return True
 
     def trigger_block_or_spin(self):
-        """Triggers Terry's block in gathering modes or mackerel swing in defend mode."""
         if self.mode == "defend":
             return self.trigger_mackerel_swing()
         elif self.mode in ("veg", "meat") and not self.blocking and self.block_cooldown <= 0:
@@ -445,7 +420,6 @@ class MarketCatchView(StageView):
                 cb()
 
     def show_retry_prompt(self, reason=None):
-        """Shows the Try Again / Give Up modal on defeat or timeout."""
         if self.retry_modal.visible:
             return
 
@@ -477,7 +451,6 @@ class MarketCatchView(StageView):
         )
 
     def try_grab_shelf(self):
-        """Grabs the item from the active shelf slot (gathering) or picks up nearest floor item (defend)."""
         if self.mode == "defend":
             for item in list(self.dropped_items):
                 d = math.hypot(self.player.center_x - item.center_x, self.player.center_y - item.center_y)
@@ -691,7 +664,6 @@ class MarketCatchView(StageView):
 
        
         if self.mode in ("veg", "meat") and not self.completed:
-        
             if self.active_restock is not None:
                 self.active_restock["anim_timer"] += delta_time
                 self.active_restock["timer"] -= delta_time
@@ -869,7 +841,6 @@ class MarketCatchView(StageView):
             is_colliding = arcade.check_for_collision(self.player, shopper) or (dist_total < 55)
 
             if shopper.state != STATE_STUNNED:
-                # Terry Block / Parry 
                 if self.blocking and self.mode in ("veg", "meat") and (is_colliding or dist_total < 80):
                     audio.play("block")
                     if not getattr(shopper, "block_registered", False):
@@ -1006,7 +977,6 @@ class MarketCatchView(StageView):
                                 return
 
                     elif self.mode in ("veg", "meat"):
-                        # Touching or ramming into shoppers slows character speed with screen shake (no HP lost)
                         if shopper.ram_cooldown <= 0:
                             shopper.ram_cooldown = 0.8
                             popup_text = "RAMMED!" if shopper.state == STATE_RUSHING_SHELF else "BUMP!"
@@ -1118,7 +1088,6 @@ class MarketCatchView(StageView):
          
                 arcade.draw_rect_filled(arcade.XYWH(rx, ry, crate_w, crate_h), (35, 22, 12, 215))
                 arcade.draw_rect_filled(arcade.XYWH(rx, ry, crate_w - 6, crate_h - 6), (75, 48, 22, 170))
-                # Pulsing outline with warm golden hue
                 arcade.draw_rect_outline(arcade.XYWH(rx, ry, crate_w, crate_h), (255, 205, 55, pulse_alpha), border_width=3)
                 arcade.draw_rect_outline(arcade.XYWH(rx, ry, crate_w + 4, crate_h + 4), (255, 230, 110, int(pulse_alpha * 0.35)), border_width=1)
 
@@ -1235,7 +1204,6 @@ class MarketCatchView(StageView):
                 arcade.draw_circle_filled(cx, cy, shield_radius, (160, 230, 255, 60))
                 arcade.draw_circle_outline(cx, cy, shield_radius, (130, 220, 255, 220), border_width=3)
 
-            # Progress Bar Plaque
             progress = max(0.0, min(1.0, self.time_left / self.duration))
             panel_w = 460
             panel_h = 58

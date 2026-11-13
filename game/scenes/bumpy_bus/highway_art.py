@@ -1,13 +1,3 @@
-"""Pixel art for the highway round, drawn with Pillow. No arcade, no GL context.
-
-Everything is painted small, one art pixel at a time, and shown scaled up with
-hard edges, so it sits with the pixel art in the rest of the bus scene. Each
-function returns a PIL image; highway.py turns them into textures once.
-
-Vehicles are seen from behind, the way the camera follows the bus down the
-road. Coordinates are art pixels, x to the right and y down.
-"""
-
 import PIL.Image
 import PIL.ImageDraw
 import PIL.ImageEnhance
@@ -27,7 +17,6 @@ SHADOW = (10, 12, 22, 110)
 
 
 def shade(color, amount):
-    """Lighter for a positive amount, darker for a negative one."""
     target = 255 if amount > 0 else 0
     return (*(round(c + (target - c) * abs(amount)) for c in color[:3]), 255)
 
@@ -38,12 +27,10 @@ def canvas(width, height):
 
 
 def box(pen, x0, y0, x1, y1, fill):
-    """A filled block, corners included, like every other shape here."""
     pen.rectangle((x0, y0, x1, y1), fill=fill)
 
 
 def framed(pen, x0, y0, x1, y1, fill):
-    """A block with a one pixel ink outline and its corners knocked off."""
     box(pen, x0 + 1, y0, x1 - 1, y1, INK)
     box(pen, x0, y0 + 1, x1, y1 - 1, INK)
     box(pen, x0 + 1, y0 + 1, x1 - 1, y1 - 1, fill)
@@ -60,13 +47,6 @@ BUS_MARGIN = 12      # clear art either side, where the driver leans out
 
 
 def bus_rear(driver=False, braking=False):
-    """The yellow bus Terry is riding, on a 68 x 47 canvas.
-
-    Every variant shares the canvas, so swapping one for another never shifts
-    the bus. With `driver`, the driver hangs out of the right-hand window,
-    seen from behind, shaking a fist at the traffic. With `braking`, the tail
-    lights burn bright.
-    """
     body = bus_body()
     image, pen = canvas(BUS_BODY_W + 2 * BUS_MARGIN, body.height)
     image.alpha_composite(body, (BUS_MARGIN, 0))
@@ -79,13 +59,11 @@ def bus_rear(driver=False, braking=False):
     if driver:
         uniform, cap = (58, 110, 200, 255), (34, 62, 140, 255)
         skin, hair = (244, 196, 160, 255), (40, 40, 56, 255)
-        # Shoulder out of the window, then the back of his head under the cap.
         framed(pen, o + 38, 12, o + 47, 21, uniform)
         framed(pen, o + 42, 5, o + 51, 15, hair)
         box(pen, o + 43, 6, o + 50, 10, cap)
         box(pen, o + 43, 13, o + 50, 14, skin)
         box(pen, o + 49, 10, o + 53, 11, cap)
-        # Arm up, fist shaking.
         framed(pen, o + 48, 8, o + 52, 19, uniform)
         box(pen, o + 47, 16, o + 48, 19, uniform)
         framed(pen, o + 51, 1, o + 55, 9, uniform)
@@ -94,34 +72,28 @@ def bus_rear(driver=False, braking=False):
 
 
 def bus_body():
-    """The bus on its own, 44 x 47."""
     width, height = 44, 47
     image, pen = canvas(width, height)
     yellow, cream = (250, 198, 44, 255), (252, 240, 214, 255)
     box(pen, 3, 44, 40, 46, SHADOW)
     wheels(pen, 6, 37, 38, 45, 8)
-    # Roof, seen a little from above, with the air conditioner on top.
     framed(pen, 7, 0, 36, 7, cream)
     box(pen, 9, 1, 34, 1, shade(cream, .5))
     framed(pen, 15, 1, 28, 5, GLASS)
     for y in (3, 4):
         box(pen, 17, y, 26, y, shade(GLASS, -.35) if y == 3 else GLASS_SHINE)
-    # Body.
     framed(pen, 4, 5, 39, 39, yellow)
     box(pen, 5, 6, 38, 7, shade(yellow, .4))
     box(pen, 5, 23, 38, 24, shade(yellow, -.22))
     box(pen, 5, 34, 38, 34, shade(yellow, -.22))
-    # Rear window.
     framed(pen, 8, 9, 35, 21, GLASS)
     box(pen, 10, 11, 14, 12, GLASS_SHINE)
     box(pen, 11, 13, 13, 13, GLASS_SHINE)
     box(pen, 21, 10, 22, 20, INK)
-    # Lights: amber indicators over red tail lights, either side.
     for x in (6, 34):
         box(pen, x, 25, x + 3, 26, AMBER)
         box(pen, x, 28, x + 3, 32, TAIL)
         box(pen, x + 1, 29, x + 2, 30, TAIL_GLOW)
-    # Black stripe with the plate on it, then the bumper.
     box(pen, 12, 27, 31, 28, INK)
     framed(pen, 16, 29, 27, 34, PLATE)
     box(pen, 18, 31, 25, 32, shade(INK, .45))
@@ -132,19 +104,16 @@ def bus_body():
 
 
 def car_rear(paint):
-    """A small hatchback, 34 x 27."""
     width, height = 34, 27
     image, pen = canvas(width, height)
     paint = (*paint, 255)
     box(pen, 2, 24, 31, 26, SHADOW)
     wheels(pen, 3, 30, 19, 25, 6)
-    # Cabin, narrower than the body.
     framed(pen, 6, 0, 27, 12, shade(paint, -.12))
     box(pen, 8, 1, 25, 1, shade(paint, .35))
     framed(pen, 8, 3, 25, 10, GLASS)
     box(pen, 10, 5, 13, 5, GLASS_SHINE)
     box(pen, 10, 6, 11, 6, GLASS_SHINE)
-    # Body.
     framed(pen, 1, 10, 32, 21, paint)
     box(pen, 2, 11, 31, 11, shade(paint, .4))
     box(pen, 2, 17, 31, 17, shade(paint, -.25))
@@ -158,7 +127,6 @@ def car_rear(paint):
 
 
 def van_rear(paint):
-    """A delivery van, 36 x 36."""
     width, height = 36, 36
     image, pen = canvas(width, height)
     paint = (*paint, 255)
@@ -167,7 +135,6 @@ def van_rear(paint):
     framed(pen, 2, 0, 33, 30, paint)
     box(pen, 4, 1, 31, 2, shade(paint, .4))
     box(pen, 3, 22, 32, 22, shade(paint, -.25))
-    # Two rear doors, each with a window.
     box(pen, 17, 3, 18, 27, shade(paint, -.4))
     for x in (5, 20):
         framed(pen, x, 4, x + 10, 13, GLASS)
@@ -183,20 +150,17 @@ def van_rear(paint):
 
 
 def truck_rear(paint):
-    """A box truck, 42 x 50: tall enough to hide the road ahead."""
     width, height = 42, 50
     image, pen = canvas(width, height)
     paint = (*paint, 255)
     crate = (232, 230, 220, 255)
     box(pen, 2, 47, 39, 49, SHADOW)
-    # Twin tyres either side.
     wheels(pen, 4, 37, 40, 48, 10)
     for x in (8, 32):
         box(pen, x, 41, x, 48, shade(TYRE, .25))
     framed(pen, 1, 0, 40, 37, crate)
     box(pen, 3, 1, 38, 2, shade(crate, .6))
     box(pen, 2, 30, 39, 33, paint)
-    # Door seam, hinges and the locking bars.
     box(pen, 20, 3, 21, 36, shade(crate, -.3))
     for x in (12, 29):
         box(pen, x, 4, x, 35, shade(crate, -.22))
@@ -204,20 +168,17 @@ def truck_rear(paint):
     for y in (8, 16, 24):
         box(pen, 2, y, 3, y + 1, BUMPER)
         box(pen, 38, y, 39, y + 1, BUMPER)
-    # Chassis rail with the lights and plate.
     framed(pen, 2, 36, 39, 42, BUMPER)
     for x in (4, 33):
         box(pen, x, 38, x + 4, 40, TAIL)
         box(pen, x + 1, 38, x + 2, 38, TAIL_GLOW)
     framed(pen, 16, 37, 25, 41, PLATE)
-    # Mud flaps.
     for x in (5, 30):
         box(pen, x, 43, x + 6, 46, INK)
     return image
 
 
 def tree():
-    """A roadside tree, 30 x 46."""
     image, pen = canvas(30, 46)
     leaf, dark, light = (62, 142, 84, 255), (40, 104, 70, 255), (112, 186, 108, 255)
     box(pen, 5, 43, 25, 45, SHADOW)
@@ -235,7 +196,6 @@ def tree():
 
 
 def lamp(side=1):
-    """A street lamp leaning over the road, 22 x 58. `side` 1 hangs right."""
     image, pen = canvas(22, 58)
     pole, lit = (92, 100, 120, 255), (255, 238, 160, 255)
     box(pen, 2, 55, 12, 57, SHADOW)
@@ -252,7 +212,6 @@ def lamp(side=1):
 
 
 def sign(color=(46, 140, 96)):
-    """A highway sign on two posts, 34 x 36, with an arrow pointing ahead."""
     image, pen = canvas(34, 36)
     color = (*color, 255)
     box(pen, 5, 33, 28, 35, SHADOW)
@@ -260,7 +219,6 @@ def sign(color=(46, 140, 96)):
         box(pen, x, 18, x + 1, 34, INK)
     framed(pen, 0, 0, 33, 20, color)
     pen.rectangle((2, 2, 31, 18), outline=PLATE)
-    # Arrow.
     box(pen, 16, 6, 17, 15, PLATE)
     box(pen, 14, 8, 19, 8, PLATE)
     box(pen, 15, 7, 18, 7, PLATE)
@@ -272,7 +230,6 @@ def sign(color=(46, 140, 96)):
 
 
 def bush():
-    """A low bush, 22 x 13."""
     image, pen = canvas(22, 13)
     box(pen, 2, 11, 19, 12, SHADOW)
     pen.ellipse((0, 3, 12, 11), fill=(58, 136, 82, 255), outline=INK)
@@ -284,24 +241,19 @@ def bush():
 
 
 def backdrop(width=320, height=100):
-    """Late afternoon sky over far hills. The road is drawn over its foot."""
     image, pen = canvas(width, height)
-    # Sky in flat bands, cool at the top and warm toward the horizon.
     bands = ((86, 146, 220), (106, 164, 228), (132, 184, 234), (164, 204, 238),
              (198, 220, 236), (232, 226, 214), (250, 222, 184), (255, 212, 160))
     edges = (0, 14, 28, 40, 51, 61, 70, 78, height)
     for band, top, bottom in zip(bands, edges, edges[1:]):
         box(pen, 0, top, width, bottom, (*band, 255))
-    # Sun low on the right, with a pale ring around it.
     pen.ellipse((222, 46, 258, 82), fill=(255, 232, 178, 255))
     pen.ellipse((227, 51, 253, 77), fill=(255, 246, 214, 255))
-    # Clouds: white tops on lilac undersides.
     for x, y, w in ((24, 18, 44), (96, 34, 30), (168, 12, 52), (268, 30, 36), (132, 56, 24)):
         box(pen, x + 3, y + 5, x + w - 3, y + 7, (206, 212, 236, 255))
         box(pen, x, y + 3, x + w, y + 5, (252, 252, 255, 255))
         box(pen, x + 5, y, x + w * 2 // 3, y + 3, (252, 252, 255, 255))
         box(pen, x + w // 2, y + 1, x + w - 6, y + 3, (252, 252, 255, 255))
-    # Far mountains, then nearer hills.
     far, near, front = (128, 152, 196, 255), (96, 148, 132, 255), (78, 150, 92, 255)
     for peak, top, half in ((40, 62, 46), (118, 56, 58), (206, 66, 50), (286, 58, 54)):
         pen.polygon(((peak - half, 90), (peak, top), (peak + half, 90)), fill=far)
@@ -315,7 +267,6 @@ def backdrop(width=320, height=100):
 
 
 def house():
-    """Home: the backyard and its gate on the left, the house on the right. 150 x 100."""
     image, pen = canvas(150, 100)
     wall, wall_dark = (246, 232, 204, 255), (222, 204, 172, 255)
     roof, roof_dark = (198, 78, 64, 255), (160, 58, 52, 255)
@@ -325,13 +276,11 @@ def house():
     leaf, leaf_light = (62, 142, 84, 255), (112, 186, 108, 255)
     fence = (244, 240, 230, 255)
 
-    # Lawn, with a path up to the gate.
     box(pen, 0, 76, 149, 99, lawn)
     for x in range(4, 150, 13):
         box(pen, x, 88 + x % 3 * 3, x + 3, 88 + x % 3 * 3, lawn_dark)
     box(pen, 15, 82, 27, 99, (214, 198, 160, 255))
 
-    # The tree in the yard, and string lights from it across to the house.
     framed(pen, 42, 46, 47, 84, wood)
     for x0, y0, x1, y1 in ((28, 20, 62, 50), (34, 10, 56, 28), (24, 30, 40, 46), (50, 28, 66, 46)):
         pen.ellipse((x0, y0, x1, y1), fill=leaf, outline=INK)
@@ -343,7 +292,6 @@ def house():
         box(pen, x, y, x, y, INK)
         box(pen, x, y + 1, x, y + 2, (lit, (255, 150, 130, 255), (150, 220, 255, 255))[index % 3])
 
-    # The grill, already smoking.
     for x, y, size in ((10, 50, 3), (7, 43, 4), (11, 35, 5)):
         box(pen, x, y, x + size, y + size, (236, 236, 236, 170))
     framed(pen, 5, 58, 15, 64, (44, 46, 58, 255))
@@ -351,7 +299,6 @@ def house():
     for x in (6, 13):
         box(pen, x, 65, x, 76, INK)
 
-    # The house.
     framed(pen, 70, 40, 144, 84, wall)
     box(pen, 71, 76, 143, 83, wall_dark)
     framed(pen, 122, 8, 131, 30, (176, 96, 80, 255))
@@ -371,7 +318,6 @@ def house():
         box(pen, x + 1, 60, x + 15, 60, INK)
         box(pen, x - 1, 69, x + 17, 70, wall_dark)
 
-    # Picket fence along the front, open at the gate.
     for x in range(0, 150, 5):
         if 14 <= x <= 27:
             continue
@@ -388,7 +334,6 @@ def house():
 
 
 def bread_states(path):
-    """The bread health bar with 0, 1, 2 and 3 of its segments still fresh."""
     with PIL.Image.open(path) as source:
         bread = source.convert("RGBA")
     bread = bread.crop(bread.getchannel("A").point(lambda v: 255 if v >= 100 else 0).getbbox())

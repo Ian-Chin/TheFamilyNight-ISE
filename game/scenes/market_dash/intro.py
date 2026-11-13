@@ -13,8 +13,6 @@ from ...core.widgets import TitleCard
 
 
 class StorySlideView(StageView):
-    """Part 1: Dialogue slideshow switching background images and conversation lines."""
-
     def __init__(self):
         super().__init__()
         self.dialog = DialogBox()
@@ -34,48 +32,37 @@ class StorySlideView(StageView):
         ]
 
         self.slides = [
-            # Fully asleep
             ("", None, BG_DIR / "Scene 1.1 - Sleep.jpg"),
 
-            # Half awake
             ("", "*BRRRRR! BRRRRR!*", BG_DIR / "Scene 1.2 - half sleep.jpg"),
             ("Terry", "...Five more minutes, Mom...", BG_DIR / "Scene 1.2 - half sleep.jpg"),
 
-            # Blur awake
             ("", None, BG_DIR / "Scene 1.3 - blur awake.jpg"),
 
-            # Show phone ringing
             ("Phone", "*BRRRRRR*", BG_DIR / "Scene 1.4 - phone ringing.jpg"),
 
-            # Terry confused to mad
             ("Terry", "Ugh... who has the audacity to call this early on a Saturday?", BG_DIR / "Scene 1.5 - confused toward phone.jpg"),
             ("Terry", "If this is CelcomDigi or Maxis asking me to upgrade my plan again, I swear...", BG_DIR / "Scene 1.6 - question towards phone.jpg"),
             (None, None, BG_DIR / "Scene 1.7 - mad towards phone.jpg"),
 
-            # Picking up aggressively
             ("Terry", "Let's see who's volunteering to get chewed out.", BG_DIR / "Scene 1.8 - pick up phone.jpg"),
             ("Terry", "Speak! You have ten seconds before I block this number forever.", BG_DIR / "Scene 1.9 - shout to answer.jpg"),
 
-            # Cousin cheerful contrast
             ("Cousin", "Whoa, morning grumpy! Just checking in—how's prep for the big BBQ tonight?", BG_DIR / "Scene 1.10 - answering phone.jpg"),
             ("Terry", "(...Wait. The BBQ. The family BBQ. TODAY?!)", BG_DIR / "Scene 1.10 - answering phone.jpg"),
             ("Terry", "(I haven't bought a single piece of meat! The fridge is completely empty!)", BG_DIR / "Scene 1.10 - answering phone.jpg"),
 
-            # Terry faking composure on the line
             ("Terry", "Pfft, Dave! My favorite cousin! Haha... prep? Everything is... totally under control. Prime cuts, secret sauce, the works.", BG_DIR / "Scene 1.11 - answering panickly.jpg"),
             ("Cousin", "Awesome! The whole family is hyped. Your legendary grilled steak was the talk of the month last year!", BG_DIR / "Scene 1.11 - answering panickly.jpg"),
             ("Cousin", "We're packing into the car now. See you around 6:00 PM with the kids!", BG_DIR / "Scene 1.11 - answering panickly.jpg"),
             ("Terry", "Haha... yeah. Can't wait. Bring your appetites! Bye!", BG_DIR / "Scene 1.11 - answering panickly.jpg"),
 
-            # Realizing the deadline & rushing
             (None, None, BG_DIR / "Scene 1.12 - standing out bed.jpg"),
             ("Terry", "Six hours. I have exactly six hours before four relatives storm this house.", BG_DIR / "Scene 1.12 - standing out bed.jpg"),
             ("Terry", "If I don't sprint to the market right now, I'm a dead man!", BG_DIR / "Scene 1.12 - standing out bed.jpg"),
 
-            # Running out the door
             (None, None, BG_DIR / "Scene 1.13 - go out.jpg"),
 
-            # Approaching the market
             (None, None, BG_DIR / "Scene 2.1 - supermarket overview.jpg"),
             ("Terry", "Why is the market so crowded today?", BG_DIR / "Scene 2.2 - crowd in front door.jpg"),
             ("Terry", "Okay, okay, I can do this. Just a few more items and I'll be home free.", BG_DIR / "Scene 2.2 - crowd in front door.jpg"),
@@ -185,7 +172,6 @@ class StorySlideView(StageView):
         self.current_slide = index
         speaker, text, img_target = self.slides[index]
 
-        # Slides 0 to 7 are the ringing sequence
         if 0 <= index <= 7:
             self.is_shaking = True
             self.shake_intensity = 6.0
@@ -286,7 +272,6 @@ class StorySlideView(StageView):
         self.skip_modal.draw(ui_camera=self.ui_camera)
 
     def on_key_press(self, key, modifiers):
-       
         if self.skip_modal.visible:
             if key == arcade.key.ESCAPE:
                 self.skip_modal.close()

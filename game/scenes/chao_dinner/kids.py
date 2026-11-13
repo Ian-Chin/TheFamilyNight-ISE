@@ -1,19 +1,3 @@
-"""The kids-at-the-table mini game in the Chao dinner.
-
-Jess and Tom keep hopping off their stools to run about the garden. The
-player clicks a runaway and drags them back: the kid throws a tantrum the
-whole way, every so often yanking the cursor aside, while an escape bar over
-their head fills. Dropped on the glowing box over their stool, they sit back
-down; dropped anywhere else, or carried until the bar is full, they wriggle
-free and run off again. After a little while seated they get up and run.
-
-The game lasts a fixed time and is scored on how much of it the kids spent
-in their seats.
-
-Positions are canvas units throughout, feet first: a runner's `x, y` is the
-point between their shoes.
-"""
-
 import collections
 import functools
 import heapq
@@ -48,10 +32,7 @@ def _mix(a, b, t):
 
 
 def _spring(clock, amount):
-    """A wobble that starts at `amount` and rings down to 0, for squash
-    and stretch."""
     return amount * math.exp(-clock * 7) * math.cos(clock * 24)
-
 
 
 def blocked(x, y):
@@ -75,7 +56,6 @@ def _open(cell):
 
 
 def _nearest_open(cell):
-    """The closest open cell, for a kid let go on top of the scenery."""
     if _open(cell):
         return cell
     for radius in range(1, 40):
@@ -90,7 +70,6 @@ def _nearest_open(cell):
 
 
 def clear_line(a, b):
-    """True if a kid can run straight from a to b without touching scenery."""
     steps = max(1, int(math.dist(a, b) / (KID_GRID / 2)))
     return all(
         not blocked(a[0] + (b[0] - a[0]) * i / steps,
@@ -100,7 +79,6 @@ def clear_line(a, b):
 
 
 def _grid_route(first, last):
-    """Cells from first to last by A*, or None if there is no way through."""
     came = {first: None}
     cost = {first: 0.0}
     queue = [(0.0, first)]
@@ -131,11 +109,6 @@ def _grid_route(first, last):
 
 
 def find_path(start, goal):
-    """Waypoints from start to goal round the scenery, start left out.
-
-    A* on the grid finds the way; it is then cut down to the corners that
-    matter, so the kid runs in straight lines rather than cell to cell.
-    """
     cells = _grid_route(_nearest_open(_cell(*start)), _nearest_open(_cell(*goal)))
     if cells is None:
         return [goal]
@@ -160,7 +133,6 @@ def find_path(start, goal):
 
 
 def random_spot():
-    """Somewhere open in the garden for a runaway to head for."""
     left, right, bottom, top = KID_RUN_AREA
     for _ in range(40):
         x, y = random.uniform(left, right), random.uniform(bottom, top)
@@ -170,11 +142,6 @@ def random_spot():
 
 
 class Runner:
-    """One of the kids: sat at the table, loose in the garden, or carried.
-
-    States: "seated" (drawn by their Diner), "running" and "carried".
-    """
-
     def __init__(self, name, diner):
         self.name = name
         self.diner = diner
@@ -217,12 +184,10 @@ class Runner:
 
     @property
     def loose(self):
-        """Out of their seat, running about or being carried."""
         return self.state != "seated"
 
     @property
     def over_seat(self):
-        """Carried over the drop box on their stool."""
         return _inside(self.x, self.y + KID_HEIGHT / 3, self.seat_box)
 
     @property
@@ -248,11 +213,9 @@ class Runner:
         self.jolt, self.jolt_clock = 0.22, 0.0
 
     def land(self):
-        """Back on their feet: a squash, for the jolt of landing."""
         self.jolt, self.jolt_clock = -0.25, 0.0
 
     def break_free(self):
-        """Wriggled out of the player's grip, or dropped short of the seat."""
         self.state = "running"
         self.cooldown = KID_ESCAPE_COOLDOWN
         self.path = find_path((self.x, self.y), random_spot())
@@ -264,7 +227,6 @@ class Runner:
                 and self.y - KID_HIT_PAD <= y <= self.y + KID_HEIGHT + KID_HIT_PAD)
 
     def walk(self, delta_time, speed):
-        """Step along the path; True once it has run out."""
         step = speed * delta_time
         while self.path and step > 0:
             tx, ty = self.path[0]
@@ -333,7 +295,6 @@ class Runner:
             self.draw_bar()
 
     def draw_trail(self):
-        """Fading, blue-tinted copies along the path the kid was dragged."""
         count = len(self.trail)
         for index, ghost in enumerate(self.ghosts):
             if index >= count:
@@ -349,7 +310,6 @@ class Runner:
         self.ghosts.draw(pixelated=True)
 
     def draw_bar(self):
-        """How close the kid is to wriggling free, over their head."""
         share = min(self.escape / KID_ESCAPE_TIME, 1.0)
         left = self.x - KID_BAR_W / 2
         bottom = self.y + KID_HEIGHT + KID_BAR_GAP
@@ -365,7 +325,6 @@ class Runner:
             )
 
     def draw_seat_box(self, clock):
-        """The glowing drop box over the stool, while they are carried."""
         left, right, bottom, top = self.seat_box
         ready = self.over_seat
         color = KID_SEAT_READY if ready else KID_SEAT_COLOR
@@ -383,15 +342,7 @@ class Runner:
 
 
 class KidsGame:
-    """Runs the mini game: the clock, the runaways, the carrying and the score.
-
-    `pointer` is where the player's cursor is in canvas units while carrying.
-    A tug moves it; the view reads `pointer_moved` each frame and puts the
-    real mouse cursor there to match.
-    """
-
     def __init__(self, diners):
-        """`diners` maps "Tom" and "Jess" to their Diner at the table."""
         self.runners = [Runner(name, diners[name]) for name in ("Jess", "Tom")]
         self.clock = 0.0
         self.sparkles = []
@@ -414,7 +365,6 @@ class KidsGame:
             runner.sit(0.0)
 
     def start(self):
-        """Both kids are off and running; the clock starts."""
         self.reset()
         self.active = True
         for runner in self.runners:
@@ -426,7 +376,6 @@ class KidsGame:
 
     @property
     def share(self):
-        """Share of the time so far that the kids were in their seats."""
         if self.elapsed <= 0:
             return 1.0
         return self.seated_time / self.elapsed
@@ -462,7 +411,6 @@ class KidsGame:
         return events
 
     def sparkle(self, x, y):
-        """A fountain of gold and white bits off the stool, and a ring."""
         y += KID_HEIGHT * 0.6
         for _ in range(KID_SPARKLES):
             angle = random.uniform(0.15, math.pi - 0.15)
@@ -474,7 +422,6 @@ class KidsGame:
         self.sparkles.append([x, y, 0.0, 0.0, 0.0, 0.45, None, 0])
 
     def draw_effects(self):
-        """The sparkles from a kid put back in their seat."""
         for x, y, _, _, age, life, color, size in self.sparkles:
             t = age / life
             if color is None:
@@ -488,7 +435,6 @@ class KidsGame:
                 (*color, round(255 * (1 - t * t))))
 
     def struggle(self, delta_time):
-        """The carried kid yanks the cursor about and may get free."""
         kid = self.carried
         if kid.escape >= KID_ESCAPE_TIME:
             self.carried = None
@@ -516,7 +462,6 @@ class KidsGame:
             self.tug = (dx, dy, left) if left > 0 else None
 
     def move_pointer(self, x, y):
-        """Put the cursor at canvas (x, y), and the carried kid under it."""
         left, right, bottom, top = KID_BOUNDS
         x = min(max(x, left), right)
         y = min(max(y, bottom), top)
@@ -526,7 +471,6 @@ class KidsGame:
             self.carried.y = y - self.grip[1]
 
     def stop(self):
-        """Time is up: everyone back in their seat and staying there."""
         self.active = False
         self.carried = None
         self.tug = None
@@ -534,7 +478,6 @@ class KidsGame:
             runner.sit(0.0)
 
     def press(self, x, y):
-        """Pick up the runaway under the cursor, if there is one."""
         if not self.active or self.carried is not None:
             return False
         for runner in sorted(self.runners, key=lambda r: r.y):
@@ -554,7 +497,6 @@ class KidsGame:
             self.move_pointer(x, y)
 
     def release(self):
-        """Drop the carried kid: into their seat if over it, else they run."""
         kid, self.carried = self.carried, None
         self.tug = None
         if kid is None:
@@ -569,15 +511,11 @@ class KidsGame:
             audio.play("chao_whoops")
 
     def draw_targets(self):
-        """The drop box for the kid being carried, under everyone."""
         if self.carried is not None:
             self.carried.draw_seat_box(self.clock)
 
 
 class KidsHud:
-    """The mini game's clock and seat count, on a plank at the top middle,
-    with the how-to line along the bottom of the screen."""
-
     def __init__(self):
         self.stage = None
         self.shown = None

@@ -1,15 +1,3 @@
-"""Achievements: what has been unlocked and announced.
-
-Unlocks live in memory only, so each launch starts fresh (demo build).
-Scenes call `unlock(key)` when the player earns one. The first unlock
-queues a popup; later calls for the same key do nothing, so a scene can
-call it every time the condition is met.
-
-The popup is drawn over whatever view is showing: `attach(window)` puts a
-draw handler under the views on pyglet's handler stack, so it runs after the
-view has drawn its frame.
-"""
-
 import arcade
 
 from . import audio, textures
@@ -31,7 +19,6 @@ def unlocked(key):
 
 
 def count(scene=None):
-    """(unlocked, total), for one scene or the whole game."""
     keys = [entry[0] for entry in ACHIEVEMENTS if scene in (None, entry[1])]
     return sum(key in _unlocked for key in keys), len(keys)
 
@@ -41,15 +28,12 @@ def for_scene(scene):
 
 
 def unlock(key):
-    """Unlock `key`; True only the first time."""
     if key not in BY_KEY or key in _unlocked:
         return False
     _unlocked.add(key)
     _queue.append(key)
     return True
 
-
-# --- Popup -------------------------------------------------------------------
 
 TOAST_W = 400
 TOAST_LEFT = (WIDTH - TOAST_W) / 2
@@ -60,8 +44,6 @@ ICON = 46
 
 
 class Toast:
-    """The "Achievement unlocked" card that drops in from the top."""
-
     def __init__(self, window):
         self.window = window
         self.key = None
@@ -119,7 +101,6 @@ class Toast:
 
 
 def attach(window):
-    """Show unlock popups over every view this window shows."""
     toast = Toast(window)
     window.push_handlers(on_draw=toast.on_draw, on_update=toast.update)
     window.achievement_toast = toast

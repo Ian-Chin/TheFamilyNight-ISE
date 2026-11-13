@@ -1,11 +1,3 @@
-"""The bus station: talk to the officer, then walk to the door and board.
-
-Built like the walking scenes: Terry and the officer are sprites with ground
-shadows, the same footsteps and dust, the shared dialogue box, portraits and
-interact prompts. Boarding sweeps the bus across the screen, and the cabin
-behind it is round 1.
-"""
-
 import functools
 import math
 
@@ -39,7 +31,6 @@ EVERYWHERE = ((0, WIDTH, 0, HEIGHT),)     # the whole pavement rings as stone
 
 @functools.lru_cache(maxsize=8)
 def trimmed(path):
-    """A picture with its transparent margin cut off."""
     with PIL.Image.open(ASSETS / path) as source:
         image = source.convert("RGBA")
     box = image.getchannel("A").point(lambda v: 255 if v >= 100 else 0).getbbox()
@@ -50,7 +41,6 @@ class BusStationView(BusView):
     def __init__(self):
         super().__init__("Try Again", "")
         self.background = textures.background(STATION_BG)
-        # The cabin is read in the background now, ready for the wipe.
         self.cabin = Cabin()
 
         feet = STATION_FEET_Y
@@ -75,7 +65,6 @@ class BusStationView(BusView):
         self.bounds = (
             STATION_WALK[0] - half_w, STATION_WALK[1] + half_w, ground - half_h, ground + half_h,
         )
-        # The officer is solid at the feet, so Terry walks round rather than through.
         self.obstacles = ((OFFICER_X - 26, OFFICER_X + 26, feet - 6, feet + FEET_HEIGHT + 6),)
 
         self.footsteps = Footsteps(EVERYWHERE)
@@ -105,7 +94,6 @@ class BusStationView(BusView):
             STATION_HINT, WIDTH / 2, 26, TEXT_BRIGHT, 14, anchor_x="center", anchor_y="center",
         )
 
-    # --- State --------------------------------------------------------------
 
     @property
     def talking(self):
@@ -130,12 +118,10 @@ class BusStationView(BusView):
             audio.bank().stop(self.typing_player)
             self.typing_player = None
 
-    # --- Officer ------------------------------------------------------------
 
     def talk(self):
         self.held.clear()
         self.line = 0
-        # Terry turns to face the officer.
         facing = -1 if self.terry.center_x > OFFICER_X else 1
         self.terry.scale_x = abs(self.terry.scale_x) * facing
         self.say()
@@ -163,7 +149,6 @@ class BusStationView(BusView):
         audio.play("bus_engine")
         achievements.unlock("bus_board")
 
-    # --- Frame --------------------------------------------------------------
 
     def on_update(self, delta_time):
         self.music.update(delta_time)
@@ -203,14 +188,11 @@ class BusStationView(BusView):
         self.footsteps.update(delta_time, moving, self.terry.center_x, self.terry.ground_y)
         feet = self.terry.ground_y - abs(self.terry.height) / 2
         self.dust.update(delta_time, moving, self.terry.center_x, feet, dx, 0)
-        # The officer bobs on the spot, unless Terry is talking to him.
         bob = 0 if self.talking else abs(math.sin(self.clock * 3)) * 3
         self.officer.center_y = self.officer.ground_y + bob
 
-    # --- Drawing ------------------------------------------------------------
 
     def draw_wipe(self, progress):
-        """The bus sweeps right; the cabin shows behind it."""
         stage = self.stage
         width = self.wipe.width * WIPE_H / self.wipe.height
         x = -width + (WIDTH + width) * progress
@@ -261,7 +243,6 @@ class BusStationView(BusView):
             self.dialog.draw()
         self.draw_menus()
 
-    # --- Input --------------------------------------------------------------
 
     def click(self, x, y, button):
         if self.mode == "walk" and self.talking and button == arcade.MOUSE_BUTTON_LEFT:

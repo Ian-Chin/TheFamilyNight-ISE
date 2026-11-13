@@ -1,11 +1,3 @@
-"""Achievements page: every scene's achievements, unlocked or still locked.
-
-Scenes run down the left with their own counts; the picked scene's
-achievements fill a grid of cards on the right. The total and a progress bar
-sit along the top. Hidden achievements read "???" until they are earned.
-Up/Down or the scene number picks a scene, Esc goes back to the title menu.
-"""
-
 import arcade
 
 from ...config import (
@@ -14,7 +6,6 @@ from ...config import (
 from ...core import achievements, audio, textures
 from ...core.stage import StageView
 
-# --- Layout, in canvas units -------------------------------------------------
 LIST_LEFT = 56
 LIST_W = 330
 ROW_H = 70
@@ -45,13 +36,11 @@ class AchievementsView(StageView):
         super().__init__()
         self.background_color = (10, 12, 18)
         self.backdrop = textures.background("menu-bg.jpg")
-        # Open on the first scene that has something to show.
         self.scene = next(
             (i for i, name in enumerate(ACHIEVEMENT_SCENES)
              if achievements.for_scene(name)), 0)
         self.relayout()
 
-    # --- Layout -------------------------------------------------------------
 
     def row_rect(self, index):
         top = LIST_TOP - index * (ROW_H + ROW_GAP)
@@ -135,7 +124,6 @@ class AchievementsView(StageView):
             "Up / Down  scene      Esc  back", WIDTH / 2, 18, TEXT_DIM, 12,
             anchor_x="center", anchor_y="center")
 
-    # --- Drawing ------------------------------------------------------------
 
     def draw_backdrop(self):
         texture = self.backdrop
@@ -205,7 +193,6 @@ class AchievementsView(StageView):
         self.draw_cards()
         self.footer_text.draw()
 
-    # --- Input --------------------------------------------------------------
 
     @staticmethod
     def inside(rect, x, y):

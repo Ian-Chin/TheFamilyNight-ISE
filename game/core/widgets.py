@@ -1,10 +1,3 @@
-"""Overlays shared by the story scenes: title card, prompt, quests and portraits.
-
-Each one follows the widget pattern used across the game: `layout(stage)`
-builds textures and text at the window's real pixel size, `draw()` puts them
-on screen. Positions are canvas units throughout.
-"""
-
 import math
 
 import arcade
@@ -30,17 +23,13 @@ def with_alpha(color, alpha):
 
 
 def place(stage, text, x, y):
-    """Move an arcade.Text to canvas point (x, y)."""
     text.x, text.y = stage.to_screen(x, y)
 
 
 class TitleCard:
-    """The scene title, drifting up out of a blur while Terry walks in."""
-
     def __init__(self, kicker=None, title=None, tagline=None):
         self.clock = 0.0
         self.stage = None
-        # Default to Chao dinner constants if no custom strings are provided
         self.kicker_text = kicker if kicker is not None else CHAO_TITLE_KICKER
         self.title_text = title if title is not None else CHAO_TITLE
         self.tagline_text = tagline if tagline is not None else CHAO_TITLE_TAGLINE
@@ -55,11 +44,9 @@ class TitleCard:
 
     @property
     def leaving(self):
-        """The card has had its hold and is fading out, or is gone."""
         return self.clock >= CHAO_TITLE_DELAY + CHAO_TITLE_FADE + CHAO_TITLE_HOLD
 
     def hold(self):
-        """Keep the card fully up, at the end of its hold, until let go."""
         self.clock = min(self.clock, CHAO_TITLE_DELAY + CHAO_TITLE_FADE + CHAO_TITLE_HOLD)
 
     def skip(self):
@@ -70,7 +57,6 @@ class TitleCard:
 
     @property
     def share(self):
-        """0 to 1: how far up the card is, including the blur behind it."""
         clock = self.clock - CHAO_TITLE_DELAY
         if clock <= 0 or self.finished:
             return 0.0
@@ -88,12 +74,9 @@ class TitleCard:
 
     @property
     def rise(self):
-        """Canvas units the words sit above their resting line."""
         clock = self.clock - CHAO_TITLE_DELAY
         if clock < CHAO_TITLE_FADE + CHAO_TITLE_HOLD:
-            # Fading in: start low and drift up into place.
             return -(1 - self.share) * CHAO_TITLE_RISE
-        # Fading out: carry on upwards and away.
         return (1 - self.share) * CHAO_TITLE_RISE
 
     def layout(self, stage):
@@ -103,7 +86,6 @@ class TitleCard:
         )
         center = dict(anchor_x="center", anchor_y="center")
 
-        # Use the stored text strings rather than the hardcoded constants
         self.kicker = stage.text(
             self.kicker_text, 0, 0, TEXT_HOVER, CHAO_KICKER_SIZE,
             bold=True, **center,
@@ -140,7 +122,6 @@ class TitleCard:
         place(stage, self.title, mid_x, y)
         place(stage, self.tagline, mid_x, y - 68)
 
-        # Hairlines either side of the kicker, each ending in a small diamond.
         rule = with_alpha(TEXT_HOVER, alpha * 0.8)
         gap = self.kicker_half + 22
         for side in (-1, 1):
@@ -168,8 +149,6 @@ class TitleCard:
 
 
 class InteractPrompt:
-    """A floating "Interact [Enter]" tag with a pointer down at its target."""
-
     def __init__(self, label=CHAO_PROMPT_LABEL):
         self.label_text = label
         self.stage = None
@@ -207,7 +186,6 @@ class InteractPrompt:
         )
 
     def box(self, tip_x, tip_y):
-        """(left, bottom, width, height) of the plank for a pointer at tip."""
         bob = math.sin(self.clock * 4) * CHAO_PROMPT_BOB
         bottom = tip_y + CHAO_PROMPT_GAP + CHAO_PROMPT_POINTER + bob
         return tip_x - self.width / 2, bottom, self.width, CHAO_PROMPT_H
@@ -223,7 +201,6 @@ class InteractPrompt:
             left - PLANK_PAD, bottom - PLANK_PAD,
             width + 2 * PLANK_PAD, height + 2 * PLANK_PAD,
         ))
-        # The pointer hangs off the bottom edge, in the plank's hover gold.
         tip = bottom - CHAO_PROMPT_POINTER
         arcade.draw_polygon_filled([
             stage.to_screen(tip_x - CHAO_PROMPT_POINTER, bottom - 1),
@@ -243,23 +220,15 @@ class InteractPrompt:
             key_x - 2, middle_y - CHAO_KEYCAP_H / 2 - 2,
             CHAO_KEYCAP_W + 4, CHAO_KEYCAP_H + 4,
         ))
-        # The key face sits above its lip, so its label does too.
         place(stage, self.key, key_x + CHAO_KEYCAP_W / 2, middle_y + 2)
         self.key.draw()
 
 
 class QuestPanel:
-    """The quest list in the top right: bare, right-aligned text on the scene.
-
-    There is no panel behind it, so every line carries a drop shadow to stay
-    legible over the garden.
-    """
-
     SHADOW = (0, 0, 0, 210)
 
     def __init__(self, quests=None):
         self.stage = None
-        # Use custom quests if provided; otherwise fallback to CHAO_QUESTS for teammate compatibility
         self.quest_defs = quests if quests is not None else CHAO_QUESTS
         self.done = {key: False for key, *_ in self.quest_defs}
         self.progress = {}   # key -> text shown after the note, like "1/4"
@@ -273,7 +242,6 @@ class QuestPanel:
         self.refresh()
 
     def shadowed(self, content, y, color, size, bold=False, italic=False):
-        """A right-aligned line and its shadow, as [shadow, text]."""
         right = CHAO_QUEST_RIGHT - 3 * CHAO_QUEST_MARKER
         return [
             self.stage.text(
@@ -315,7 +283,6 @@ class QuestPanel:
         self.refresh()
 
     def plate_rect(self, pad=12):
-        """Screen rect that hugs the header and every line as currently worded."""
         stage = self.stage
         texts = [self.header[1]] + [
             row[part][1] for row in self.rows for part in ("title", "note")
@@ -369,12 +336,6 @@ class QuestPanel:
 
 
 class Portraits:
-    """Terry standing on the left of the dialogue box, his partner on the right.
-
-    Whoever is speaking is drawn full colour and a touch larger; the other
-    is dimmed. Draw this before the dialogue box, which covers their feet.
-    """
-
     def __init__(self, terry):
         self.terry = terry
         self.stage = None
@@ -383,7 +344,6 @@ class Portraits:
         self.stage = stage
 
     def draw(self, partner, speaking):
-        """`partner` is a texture or None; `speaking` is "left" or "right"."""
         bottom = DIALOG_BOTTOM + DIALOG_H - PORTRAIT_SINK
         sides = [("left", self.terry)]
         if partner is not None:

@@ -1,10 +1,3 @@
-"""Round 1: inside the bus, keeping your balance while it brakes and bumps.
-
-balance.py decides how Terry leans and when the driver does something
-dangerous. This view draws the cabin and the balance bar, runs the alerts that
-threaten the shopping, and hands over to round 2 when the ride is done.
-"""
-
 import math
 import random
 
@@ -68,21 +61,21 @@ class BusRideView(BusView):
         self.lives = 3
         self.food = 100
         self.damaged = set()
-        self.event = None              # index of the alert showing, if any
+        self.event = None
         self.previous_event = None
         self.event_key = None
         self.event_left = 0.0
         self.presses = 0
         self.next_event = self.rng.uniform(*FIRST_EVENT_DELAY)
-        self.reaction = None           # scene playing after a missed alert
+        self.reaction = None
         self.reaction_time = 0.0
         self.cues_played = set()
-        self.creep = 0.0               # how far through the wind-up the culprit is
-        self.payback = None            # [event, seconds in, creep when beaten, cues played]
+        self.creep = 0.0
+        self.payback = None
         self.paint = None              # draws the paybacks, built on first use
         self.key_bounce = 0.0          # the keycap dips for a moment on every tap
         self.since_tap = 9.0           # seconds since the last tap, for its kick
-        self.popups = []               # [arcade.Text, age, base y]
+        self.popups = []
         self.sparks = []               # square bits thrown out by a win
         self.relayout()
 
@@ -115,7 +108,6 @@ class BusRideView(BusView):
             KEYCAP_TEXT, 26, **center,
         )
 
-    # --- Frame --------------------------------------------------------------
 
     def retry(self):
         self.go(BusRideView(self.cabin))
@@ -196,7 +188,6 @@ class BusRideView(BusView):
                 self.payback = None
         if self.event is not None:
             self.event_left -= delta_time
-            # They creep in as the clock runs down, less the taps so far.
             taps = self.presses / EVENT_PRESSES[self.event]
             goal = (1 - max(0.0, self.event_left) / EVENT_TIME) * (1 - EVENT_TAP_SHOVE * taps)
             self.creep += (goal - self.creep) * min(1.0, delta_time * 8)
@@ -219,14 +210,11 @@ class BusRideView(BusView):
         self.event_left = EVENT_TIME
         self.presses = 0
         self.creep = 0.0
-        # Read its sheet now, while the countdown runs.
         self.cabin.prepare(EVENT_SCENES[self.event])
         audio.play("bus_warning")
 
     def spoil(self):
-        """The alert ran out: play the scene, and one ingredient is ruined."""
         self.reaction = EVENT_SCENES[self.event]
-        # Carry straight on from wherever the wind-up had got to.
         self.reaction_time = (self.creep * EVENT_APPROACH[self.event]
                               * self.cabin.duration(self.reaction))
         self.cues_played = set()
@@ -237,18 +225,15 @@ class BusRideView(BusView):
         audio.play("hp_reduced")
 
     def tap(self):
-        """One press of the alert key: shove the culprit back a little."""
         self.presses += 1
         self.key_bounce = 0.1
         self.since_tap = 0.0
         self.creep = max(0.0, self.creep - 0.1)
         if self.presses < EVENT_PRESSES[self.event]:
-            # Each tap pushes the culprit one step further, and says so.
             audio.play("ui_click", speed=1 + 0.15 * self.presses)
             self.burst(4, speed=120)
             self.pop(EVENT_TAP_WORDS[self.event][self.presses - 1], WHITE, 24)
             return
-        # That was the last one: their plan comes right back at them.
         audio.play("bus_protect")
         self.payback = [self.event, 0.0, self.creep, set()]
         self.creep = 0.0
@@ -258,11 +243,9 @@ class BusRideView(BusView):
         self.next_event = self.elapsed + self.rng.uniform(*SOLVED_EVENT_DELAY)
 
     def pop(self, words, color, size):
-        """Words floating up over whoever the alert is about."""
         fx, fy = SPOTS[self.event]
         x = fx * CABIN_SIZE[0] / CABIN_FRAME[0]
         y = CABIN_BOTTOM + (CABIN_FRAME[1] - fy) * CABIN_SIZE[1] / CABIN_FRAME[1]
-        # Only the newest line is shown, so quick taps do not pile up.
         self.popups = []
         self.popups.append([arcade.Text(
             words, x, y, color, size, anchor_x="center", bold=True,
@@ -270,7 +253,6 @@ class BusRideView(BusView):
         ), 0.0, y])
 
     def burst(self, count, speed):
-        """Square sparks flung out from where Terry stands."""
         for _ in range(count):
             angle = self.rng.uniform(0, math.tau)
             pace = speed * self.rng.uniform(0.45, 1.0)
@@ -310,18 +292,15 @@ class BusRideView(BusView):
         audio.play("game_failed")
         self.lose_card.open()
 
-    # --- Drawing ------------------------------------------------------------
 
     @staticmethod
     def say(text, words, color=None):
-        # Laying text out again costs more than this comparison.
         if text.text != words:
             text.text = words
         if color is not None and tuple(text.color[:3]) != color:
             text.color = color
 
     def wind_up(self, event, creep):
-        """The cabin `creep` of the way through `event`'s wind-up, as a picture."""
         kind = EVENT_SCENES[event]
         if creep <= 0 or not self.cabin.ready(kind):
             return self.cabin.idle_frame()
@@ -342,8 +321,6 @@ class BusRideView(BusView):
             self.painter().play(frame, event, seconds)
             texture = self.cabin.show(frame, ("payback", event, tick))
         elif self.event is not None and (self.event == 0 or self.presses):
-            # The alert is running and taps have changed things: paint them in.
-            # Once the granny has been tapped she is in her own drawn poses.
             creep = 0.0 if self.event == 1 else self.creep
             frame = self.wind_up(self.event, creep)
             self.painter().stage(frame, self.event, self.presses, self.anim, self.since_tap)
@@ -368,7 +345,6 @@ class BusRideView(BusView):
                 (*spark["color"], round(255 * (1 - share))),
             )
         for text, age, base in self.popups:
-            # Pops up fast, hangs, then drifts off.
             text.y = base + min(1.0, age / 0.15) * 30 + age * 24
             text.color = (*text.color[:3], round(255 * (1 - (age / POPUP_LIFE) ** 3)))
             text.draw()
@@ -380,7 +356,6 @@ class BusRideView(BusView):
         ))
 
     def draw_bar(self):
-        """The bar along the bottom: Terry slides and tips as the bus throws him."""
         b = self.balance
         flash = math.sin(self.anim * 18) > 0
         if b.danger and flash:
@@ -397,7 +372,6 @@ class BusRideView(BusView):
             BAR_CENTER - BAR_REACH * 0.42, BAR_BOTTOM, 2 * BAR_REACH * 0.42, BAR_H), BAR_GREEN)
         arcade.draw_rect_filled(arcade.LBWH(BAR_CENTER - 2, BAR_BOTTOM - 2, 4, BAR_H + 4), WHITE)
 
-        # Chevrons racing the way everyone is about to be thrown.
         cue = b.cue
         if cue and b.jolt != "bump":
             thrown = cue[1]
@@ -499,7 +473,6 @@ class BusRideView(BusView):
             self.draw_fade(255 * self.leave_time / LEAVE_FADE)
         self.draw_menus()
 
-    # --- Input --------------------------------------------------------------
 
     def key_down(self, key):
         if self.mode == "title":

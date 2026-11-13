@@ -1,11 +1,3 @@
-"""The in-scene HUD: the day cycle badge, settings, backpack and map.
-
-Like PauseMenu, a HUD is owned by a view rather than being one: lay it out
-with the other widgets, draw it over the scene, and pass the mouse through in
-canvas units. `on_mouse_press` returns the name of what was clicked, or None.
-The day badge handles its own click and advances the phase.
-"""
-
 import arcade
 
 from ...core import textures
@@ -17,12 +9,6 @@ from .config import (
 
 
 class HudButton:
-    """An icon pinned to the canvas, growing a little under the pointer.
-
-    Unless it brings its own backing art, the icon sits on a dark plate so it
-    stays readable over whatever the scene draws behind it.
-    """
-
     def __init__(self, name, texture, height, plate=True):
         self.name = name
         self.height = height
@@ -33,7 +19,6 @@ class HudButton:
         self.hovered = False
 
     def set_texture(self, texture):
-        """Swap the art, keeping the drawn height."""
         self.texture = texture
         self.width = texture.width * self.height / texture.height
 
@@ -81,8 +66,6 @@ class HudButton:
 
 
 class HUD:
-    """Day cycle badge and settings top left, backpack top right, map bottom right."""
-
     def __init__(self):
         self.badges = textures.day_badges()
         self.phase = 0
@@ -132,12 +115,10 @@ class HUD:
             button.draw(self.stage)
 
     def on_mouse_motion(self, x, y):
-        """`x, y` in canvas units."""
         for button in self.buttons:
             button.hovered = button.contains(x, y)
 
     def on_mouse_press(self, x, y, mouse_button):
-        """Return the name of the button pressed, in canvas units, else None."""
         if mouse_button != arcade.MOUSE_BUTTON_LEFT:
             return None
         for button in self.buttons:

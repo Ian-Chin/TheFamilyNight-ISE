@@ -1,11 +1,3 @@
-"""The in-game pause overlay.
-
-A PauseMenu is owned by a view rather than being a view of its own, so the
-scene underneath keeps drawing while the game is held. Any scene can reuse it:
-lay it out with the other widgets, draw it last, and pass the mouse and key
-events through. The handlers return an action string once a button is chosen.
-"""
-
 import arcade
 
 from . import audio, textures
@@ -18,13 +10,6 @@ from .ui import MenuButton
 
 
 class PauseMenu:
-    """A dimmed screen with a parchment panel of buttons, centred on the canvas.
-
-    With a `message`, a line of text sits between the title and the buttons;
-    the panel is sized for one either way, so it can be changed later with
-    `set_text` without moving anything.
-    """
-
     def __init__(self, items=PAUSE_ITEMS, title=PAUSE_TITLE, message=None,
                  width=PAUSE_PANEL_W):
         self.title = title
@@ -81,7 +66,6 @@ class PauseMenu:
             button.layout(stage)
 
     def set_text(self, title, message=None):
-        """Change the words on the panel; it keeps its size."""
         self.title = title
         if message is not None:
             self.message = message
@@ -105,14 +89,12 @@ class PauseMenu:
             button.draw()
 
     def on_mouse_motion(self, x, y):
-        """`x, y` in canvas units."""
         if not self.visible:
             return
         for button in self.buttons:
             button.hovered = button.contains(x, y)
 
     def on_mouse_press(self, x, y, mouse_button):
-        """Return the action of the button pressed, in canvas units, else None."""
         if not self.visible or mouse_button != arcade.MOUSE_BUTTON_LEFT:
             return None
         for button in self.buttons:
@@ -122,7 +104,6 @@ class PauseMenu:
         return None
 
     def on_key_press(self, key):
-        """Esc closes the menu; return "resume" so the caller unpauses."""
         if self.visible and key == arcade.key.ESCAPE:
             return "resume"
         return None

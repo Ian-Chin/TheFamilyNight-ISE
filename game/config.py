@@ -1,5 +1,3 @@
-"""Shared constants: asset paths, design canvas, tuning and palette."""
-
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -16,14 +14,11 @@ MARKET_PLAYER_DIR = MARKET_SPRITES_DIR / "terry market game"
 MARKET_INGREDIENTS_DIR = ASSETS / "market ingredients"
 MARKET_SNATCHERS_DIR = ASSETS / "market snatchers"
 
-# The game is laid out on this fixed canvas and scaled to the real window.
 WIDTH = 1280
 HEIGHT = 720
 TITLE = "Terry's Story"
 
-# --- Sprite sources ----------------------------------------------------------
 MOVEMENT_SHEET = "terry-movements.png"
-# Terry's two idle drawings, side by side on one white sheet.
 IDLE_SHEET = "terry-idle-sheet.png"
 IDLE_SHEET_COLS = 2
 SHEET_COLS = 4
@@ -31,37 +26,22 @@ SHEET_ROWS = 3
 JUMP_ROW = 1
 WALK_ROWS = (0, 2)
 
-# Terry carrying the food tray from the prep table to the chopping board. One
-# drawing per file; he walks with the tray held low and idles with it overhead.
 CARRY_DIR = "terry-carry"
 CARRY_WALK_FILES = tuple(f"terry-carry-walk-{n}.png" for n in range(1, 7))
 CARRY_JUMP_FILES = tuple(f"terry-carry-jump-{n}.png" for n in range(1, 5))
 CARRY_IDLE_FILES = ("terry-carry-idle-1.png", "terry-carry-idle-2.png")
 
-# The art sits on white paper, so the background is keyed out on a ramp:
-# brighter than CLEAR_ABOVE fades away, darker than OPAQUE_BELOW stays solid.
-# The ramp stops the anti-aliased outline leaving a white fringe.
 CLEAR_ABOVE = 250
 OPAQUE_BELOW = 214
 SOLID_ALPHA = 40
 
-# The source art is around a thousand pixels tall but nothing is drawn taller
-# than about 130 canvas units, so every cut-out is brought down to this height
-# before it is rimmed and uploaded. Ringing a 1024px image costs seconds;
-# ringing a 320px one costs milliseconds, and the result is the same on screen.
 CHARACTER_ART_HEIGHT = 320
 
-# Characters are drawn in the same value range as the garden they stand in, so
-# every cut-out gets a dark contour inside a soft pale halo to hold it apart
-# from the background.
 RIM_DARK = 4     # pixels of hard contour, at CHARACTER_ART_HEIGHT
 RIM_GLOW = 9     # pixels of soft halo outside the contour
 RIM_DARK_COLOR = (24, 18, 30, 255)
 RIM_GLOW_COLOR = (255, 250, 232, 150)
 
-# The family breathing while they stand about: one white sheet per character,
-# frames left to right, baked from their art.
-# Art file -> sheet; art without a sheet just stands still.
 IDLE_SHEETS = {
     "Dave.png": "dave-idle-sheet.png",
     "Christine.png": "christine-idle-sheet.png",
@@ -71,7 +51,6 @@ IDLE_SHEETS = {
 IDLE_SHEET_FRAMES = 4
 NPC_IDLE_FRAME = 0.32    # seconds per breathing frame
 
-# --- Gameplay tuning ---------------------------------------------------------
 WALK_SPEED = 260.0
 WALK_FRAME_TIME = 0.11
 IDLE_PERIOD = 1.6
@@ -79,29 +58,19 @@ JUMP_DURATION = 0.5
 JUMP_HEIGHT = 70.0
 TERRY_HEIGHT = 118
 
-# The ground shadow is an ellipse under Terry's feet, sized off his sprite and
-# shrinking as he leaves the ground.
 SHADOW_WIDTH = 0.58    # fraction of the sprite's width
 SHADOW_ASPECT = 0.34   # ellipse height over its width
-# The ellipse sits just under the bottom of the sprite box, so it reads as
-# ground under Terry's shoes rather than as a stain behind them.
-# The rim pads the art, so the bottom of the sprite box now sits a little
-# below the shoes and the ellipse is lifted back up to meet them.
 SHADOW_RISE = 4        # canvas units the ellipse sits above the sprite box
 SHADOW_COLOR = (18, 14, 10)
 SHADOW_ALPHA = 150
 SHADOW_JUMP_SHRINK = 0.4   # how much of the shadow a full jump takes away
 
-# --- Menu layout, in canvas units --------------------------------------------
 MENU_BUTTON_W = 300
 MENU_BUTTON_H = 62
 MENU_TEXT_SIZE = 22
 MENU_ICON = 30
 MENU_ICON_PAD = 22
 MENU_ICON_GAP = 18
-# One clean sans across the whole game. Segoe UI is the Windows system face
-# and is the nicest of these on screen; Arial and Helvetica cover everywhere
-# else, with the generic family as a last resort.
 MENU_FONT = ("Segoe UI", "Arial", "Helvetica", "sans-serif")
 
 CREDIT_SIZE = 86
@@ -111,9 +80,6 @@ PANEL_H = 200
 PLANK_PAD = 10   # room around a widget for its shadow
 
 
-# --- Chao dinner scene, in canvas units --------------------------------------
-# The title card comes up while Terry walks in: the garden behind it softens
-# into a blur and the words drift up as they fade in, then up and away again.
 CHAO_TITLE_KICKER = "S C E N E   4"
 CHAO_TITLE = "Chao Dinner"
 CHAO_TITLE_TAGLINE = "A family table under the garden lights"
@@ -127,16 +93,11 @@ CHAO_TITLE_HOLD = 1.8    # seconds the card stays fully up
 CHAO_TITLE_RISE = 22     # canvas units the words drift up while fading in
 CHAO_TITLE_BAND_H = 300  # height of the dark band behind the words
 CHAO_TITLE_RULE = 120    # length of the hairline either side of the kicker
-# The stone path runs down the middle of the art; Terry enters along it from
-# above the canvas and stops level with the dinner table.
 CHAO_PATH_X = 528
 CHAO_ENTRY_Y = HEIGHT + 80
 CHAO_STOP_Y = 470
 CHAO_FADE_IN = 1.6   # seconds of black at the top of the scene
-# The garden is fenced in, so Terry walks the ground inside it.
 CHAO_WALK_BOUNDS = (60, WIDTH - 60, 60, HEIGHT - 60)
-# Solid scenery painted into the background, as (left, right, bottom, top) in
-# canvas units. Terry's feet are blocked by these, so he walks around them.
 CHAO_OBSTACLES = (
     (160, 298, 278, 525),     # the dinner table; the stools are walked over
     (825, 1115, 210, 370),    # barbecue and the stone counter
@@ -144,34 +105,22 @@ CHAO_OBSTACLES = (
     (1025, 1220, 530, 720),   # woodpile and the hut
 )
 
-# Ground that rings out as stone under Terry's feet; everywhere else is grass.
 CHAO_STONE_AREAS = (
     (478, 566, 0, HEIGHT),    # the path down the middle of the garden
     (40, 420, 228, 560),      # the patio the dinner table stands on
 )
 
 
-# Seated at the table, everyone plays a frame sheet under assets/sprites:
-# "<name>-eat-sheet.png" for those eating, "<name>-talk-sheet.png" for those
-# chatting. Each sheet is 4 x 3 equal cells read left to right, top to bottom,
-# with the stool at the exact middle of every cell.
 CHAO_DINER_DIR = "chao-diner-frames"
 CHAO_SHEET_COLS = 4
 CHAO_SHEET_ROWS = 3
 CHAO_SHEET_RES = 4       # sheet pixels per canvas unit
 CHAO_HEAD_RISE = 0.47    # stool to the middle of the head, as a share of height
-# Seconds each frame stays up. Eating: reach for the plate (3), lift the bite
-# (3), chew (4), rest, blink. Talking: mouth flaps (8), then quiet with a blink.
 CHAO_EAT_FRAME_TIMES = (0.2, 0.2, 0.2, 0.15, 0.12, 0.12,
                         0.13, 0.13, 0.13, 0.13, 1.1, 0.15)
 CHAO_TALK_FRAME_TIMES = (0.14,) * 8 + (0.5, 0.15, 0.5, 0.5)
 
-# Terry's face when he arrives and the whole family is already there. It
-# replaces his sprite with a few hops, then the opening lines start.
 TERRY_SHOCKED = "terry-shocked.png"
-# Terry's other expressions for the dialogue portrait, under assets/sprites.
-# A dialogue line picks one by name as its optional third item, e.g.
-# ("Terry", "Phew.", "happy").
 TERRY_FACES = {
     "happy": "terry-faces/terry-happy.jpg",
     "nervous": "terry-faces/terry-nervous.jpg",
@@ -179,15 +128,7 @@ TERRY_FACES = {
     "unimpressed": "terry-faces/terry-unimpressed.png",
 }
 
-# --- Kids at the table mini game --------------------------------------------
-# Jess and Tom keep getting up to run around the garden. The player clicks a
-# runaway and drags them back: they throw a tantrum all the way, now and then
-# yanking the cursor aside, and wriggle free if the escape bar fills before
-# they are dropped on the glowing box over their stool. After a while seated
-# they run off again.
 
-# One white sheet per kid, like Terry's movement sheet: read left to right,
-# top to bottom, the running frames come first and the tantrum frames after.
 KID_SHEETS = {"Tom": "tom-run-sheet.png", "Jess": "jess-run-sheet.png"}
 KID_SHEET_COLS = 5
 KID_SHEET_ROWS = 2
@@ -206,8 +147,6 @@ CHAO_PROMPT_GAP = 16     # top of a character's head to the pointer's tip
 CHAO_PROMPT_POINTER = 9  # height of the little arrow under the prompt
 CHAO_PROMPT_BOB = 3
 
-# Quest tracker in the top right corner, dropped a little below the edge.
-# Bare text on the scene, right aligned, with a drop shadow to keep it legible.
 CHAO_QUEST_RIGHT = WIDTH - 30
 CHAO_QUEST_TOP = HEIGHT - 92
 CHAO_QUEST_HEADER = "QUESTS"
@@ -216,14 +155,12 @@ CHAO_QUEST_TITLE_SIZE = 14
 CHAO_QUEST_NOTE_SIZE = 11
 CHAO_QUEST_ROW_GAP = 44  # top of one quest to the top of the next
 CHAO_QUEST_MARKER = 5    # radius of the circle beside each quest
-# (key, title, note under the title, optional)
 CHAO_QUESTS = (
     ("dinner", "Start the Chao dinner", "Head to the dinner table", False),
     ("family", "Talk to the family", "Say hi to everyone", True),
 )
 QUEST_DONE = (126, 214, 150)
 
-# Dust kicked up behind Terry's feet while he walks.
 DUST_INTERVAL = 0.07     # seconds between puffs
 DUST_LIFE = 0.55         # seconds a puff lasts
 DUST_GRAVITY = 520.0     # pulls the stone chips back down
@@ -231,22 +168,16 @@ DUST_GRASS_COLOR = (214, 204, 164, 210)
 DUST_STONE_COLOR = (196, 198, 210, 210)
 DUST_STONE_CHIP = (138, 140, 156, 255)
 
-# Standing portraits over the dialogue box: Terry on the left, whoever he is
-# talking to on the right. The one not speaking is dimmed.
 PORTRAIT_H = 230
 PORTRAIT_INSET = 70      # canvas edge to the near side of a portrait
 PORTRAIT_SINK = 40       # how far a portrait tucks down behind the box
 PORTRAIT_DIM = (95, 98, 112)
 PORTRAIT_SPEAKING_GROW = 1.04
 
-# Collision uses a box around Terry's feet rather than the whole sprite, so
-# his head can overlap scenery drawn behind him.
 FEET_WIDTH = 0.5    # fraction of the sprite's width
 FEET_HEIGHT = 20    # canvas units up from the bottom of the sprite box
 
-# --- In-scene HUD, in canvas units -------------------------------------------
 DAYCYCLE_SHEET = "Daycycle.png"
-# Daycycle.png stacks one badge per phase; these are their boxes in the sheet.
 DAY_BADGE_BOXES = (
     (71, 112, 838, 298),
     (71, 442, 838, 298),
@@ -254,9 +185,6 @@ DAY_BADGE_BOXES = (
     (71, 1099, 838, 298),
 )
 
-# --- Leftover feast typing game ---------------------------------------------
-# Everyone has gone and Terry is left with the food. The table empties a
-# course at a time as words are typed: (still, its looping video), full first.
 FEAST_STAGES = (
     ("chao-dinner-keyword-game/feast-1-full.jpg", "env-stage2.mp4"),
     ("chao-dinner-keyword-game/feast-2-started.jpg", "env-stage3.mp4"),
@@ -265,10 +193,7 @@ FEAST_STAGES = (
     ("chao-dinner-keyword-game/feast-5-cleared.jpg", "env-stage4.mp4"),
 )
 
-# --- Animated backgrounds ----------------------------------------------------
 VIDEO_DIR = BACKGROUND_DIR / "video"
-# Still art -> the looping video drawn in its place in quality mode. The still
-# stays the fallback: performance mode, or a video that fails to open.
 BACKGROUND_VIDEOS = {
     "menu-bg.jpg": "menu.mp4",
     "bbq-scene-bg.jpeg": "garden-food.mp4",
@@ -282,15 +207,12 @@ BACKGROUND_VIDEOS = {
 GRAPHICS_MODES = ("quality", "performance")
 VIDEO_QUEUE = 4   # decoded frames held ahead of the one on screen
 
-# --- Settings screen, in canvas units ----------------------------------------
 SETTINGS_TITLE = "Settings"
-# (mixer channel, label, note under the label)
 SETTINGS_ROWS = (
     ("master", "Master", "everything at once"),
     ("sound", "Sound", "footsteps and the interface"),
     ("music", "Music", "the garden ambience"),
 )
-# (value, caption) for the graphics row under the sliders.
 GRAPHICS_CHOICES = (("quality", "Quality"), ("performance", "Performance"))
 SETTINGS_PANEL_W = 780
 SETTINGS_TITLE_GAP = 84     # panel top to the middle of the title
@@ -313,7 +235,6 @@ SLIDER_FILL_DIM = (128, 134, 148)
 SLIDER_KNOB_COLOR = (250, 244, 232)
 SLIDER_KNOB_EDGE = (16, 18, 24)
 
-# --- Pause overlay, in canvas units ------------------------------------------
 PAUSE_ITEMS = [
     ("Resume", "resume", "play"),
     ("Settings", "settings", "gear"),
@@ -330,9 +251,6 @@ PAUSE_TITLE_GAP = 62   # panel top to the middle of the title
 PAUSE_PANEL_PAD = 34   # panel edge to the button stack
 PAUSE_DIM = (0, 0, 0, 150)
 
-# --- Dialogue box, in canvas units -------------------------------------------
-# The box runs almost the full width of the canvas and sits close to the
-# bottom edge, so the scene above it stays clear.
 DIALOG_MARGIN = 22          # canvas edge to the box on the left, right, bottom
 DIALOG_W = WIDTH - 2 * DIALOG_MARGIN
 DIALOG_H = 196
@@ -351,13 +269,7 @@ DIALOG_BLINK = 0.5
 PAUSE_MESSAGE_SIZE = 16
 PAUSE_MESSAGE_GAP = 40   # room the message line takes under the title
 
-# --- Sound -------------------------------------------------------------------
-# Clips are looked up by base name: a .mp3 or .ogg dropped into assets/audio
-# wins over a .wav of the same name, so a downloaded sound replaces the
-# generated one without any code change. Anything missing
-# entirely is simply silent.
 SOUND_EXTENSIONS = (".mp3", ".ogg", ".wav")
-# name -> (base filename, mixer channel, how loud that clip is on its channel)
 SOUND_FILES = {
     "step_grass": ("step-grass", "sound", 0.5),
     "step_stone": ("step-stone", "sound", 0.55),
@@ -368,16 +280,11 @@ SOUND_FILES = {
     "achievement": ("achievement-unlock", "sound", 0.8),
     "ambience_day": ("ambience-day", "music", 1.0),
     "ambience_night": ("ambience-night", "music", 0.6),
-    # The ending cut scene's burp, chimes and whooshes, timed to its video.
     "ending_sfx": ("ending-sfx", "sound", 1.0),
-    # The title menu's loop, until a game starts.
     "menu_music": ("menu-music", "music", 0.5),
-    # The startup trailer's soundtrack, started with its first frame.
     "trailer": ("trailer", "music", 0.8),
-    # The startup splash's cue, timed to its cards, faded under the trailer.
     "splash_music": ("splash-music", "music", 0.7),
 
-    #market dash scene
     "phone_ring": ("phone-ring", "sound", 0.35),
     "phone_pickup": ("phone-pickup", "sound", 0.8),
     "door_slam": ("door-slam", "sound", 0.85),
@@ -393,7 +300,6 @@ SOUND_FILES = {
     "unlocked_sound": ("Unlocked_sound", "sound", 0.85),
     "walking": ("walking", "sound", 5.10),
 
-    # leftover feast typing game
     "feast_key": ("feast-key", "sound", 0.55),
     "feast_error": ("feast-error", "sound", 0.7),
     "feast_word": ("feast-word", "sound", 0.5),
@@ -407,14 +313,12 @@ SOUND_FILES = {
     "feast_win": ("feast-win", "sound", 0.8),
     "feast_lose": ("feast-lose", "sound", 0.8),
 
-    # chao dinner
     "chao_title": ("chao-title", "sound", 0.8),
     "chao_descend": ("chao-descend", "sound", 0.6),
     "chao_shock": ("chao-shock", "sound", 0.8),
     "chao_popup": ("chao-popup", "sound", 0.6),
     "chao_win": ("chao-win", "sound", 0.75),
     "chao_lose": ("chao-lose", "sound", 0.7),
-    # trimmed from the ending's kids_laugh recordings
     "chao_laugh": ("chao-laugh", "sound", 0.55),
     "chao_laugh_b": ("chao-laugh-b", "sound", 0.55),
     "chao_whoops": ("chao-whoops", "sound", 0.6),
@@ -426,13 +330,11 @@ SOUND_FILES = {
     "chao_clock": ("chao-clock", "sound", 0.6),
     "chao_swoosh": ("chao-swoosh", "sound", 0.6),
 
-    # bus highway (round 2); the clips are shared with the ride inside the bus
     "bus_music": ("bus-scene/bgm/arcade-rush-bgm", "music", 0.8),
     "bus_engine": ("bus-scene/sfx/bus-drive", "sound", 0.3),
     "bus_horn": ("bus-scene/sfx/bus-horn", "sound", 0.7),
     "bus_crash": ("bus-scene/target-rings/cannon", "sound", 0.7),
     "bus_swish": ("bus-scene/sfx/swish", "sound", 0.55),
-    # the bus station and the ride inside the bus
     "bus_jump": ("bus-scene/sfx/jump", "sound", 0.58),
     "bus_land": ("bus-scene/sfx/land", "sound", 0.55),
     "bus_warning": ("bus-scene/sfx/warning", "sound", 0.5),
@@ -459,20 +361,14 @@ SOUND_FILES = {
     "unlocked": ("Unlocked_sound", "sfx", 1.0),
 }
 STEP_INTERVAL = 0.32   # seconds between footsteps while walking
-# surface -> (clip, how many of Terry's steps one play of that clip covers).
-# The grass recording is a left-right pair, so it only fires every other step.
 FOOTSTEP_CLIPS = {
     "grass": ("step_grass", 2),
     "stone": ("step_stone", 1),
 }
 AMBIENCE = "ambience_day"
-# Scene 4 and everything after it happens after dark.
 AMBIENCE_NIGHT = "ambience_night"
-# The garden fades up out of black over CHAO_FADE_IN; the birds come up the
-# same way, a little slower, so the scene does not arrive with a bang.
 AMBIENCE_FADE = 3.0
 
-# The mixer's channels and the level each starts at.
 VOLUME_CHANNELS = (
     ("master", 0.8),
     ("sound", 0.9),
@@ -480,14 +376,8 @@ VOLUME_CHANNELS = (
 )
 
 
-# --- Palette -----------------------------------------------------------------
-# Every widget is the same piece of smoked glass: a near-black translucent
-# panel with a thin bright edge, so the scene reads through it and the text on
-# top stays legible over whatever is behind.
 GLASS_FILL = (8, 10, 14, 165)
 GLASS_FILL_HOVER = (26, 31, 40, 205)
-# Panels that carry body text are darker: a busy scene reading through them
-# would fight the words.
 GLASS_FILL_PANEL = (8, 10, 14, 220)
 GLASS_EDGE = (255, 255, 255, 92)
 GLASS_EDGE_HOVER = (255, 214, 138, 200)
@@ -506,14 +396,8 @@ KEYCAP_TEXT = (36, 30, 26)
 TITLE_BAND_COLOR = (6, 8, 14)
 TITLE_BAND_ALPHA = 170
 
-# --- Achievements ------------------------------------------------------------
-# Scenes in story order; each shows as a tab on the achievements page, even
-# before it has any achievements of its own.
 ACHIEVEMENT_SCENES = ("Market Dash", "Bumpy Bus", "Backyard BBQ", "Chaos Dinner")
-# (key, scene, title, how to get it, hidden). A hidden one shows as "???"
-# until it is unlocked. Unlocks last for the current session only.
 ACHIEVEMENTS = (
-    # Market Dash
     ("market_veg", "Market Dash", "Fresh Greens",
      "Gather all 5 vegetables.", False),
     ("market_meat", "Market Dash", "Prime Cuts",
@@ -541,7 +425,6 @@ ACHIEVEMENTS = (
     ("egg_last_second", "Market Dash", "Last Second",
      "Escape with under 3s remaining.", True),
 
-    # Bumpy Bus
     ("bus_board", "Bumpy Bus", "All Aboard",
      "Board the bus at the station.", False),
     ("bus_brakes", "Bumpy Bus", "Brace Yourself",
@@ -561,7 +444,6 @@ ACHIEVEMENTS = (
     ("egg_bus_shout", "Bumpy Bus", "Road Rage",
      "Shout 5 vehicles off the road in one drive.", True),
 
-     # Backyard BBQ
     ("bbq_prep", "Backyard BBQ", "Prep Time!",
      "Unlock the chopping board to begin prep.", False),
     ("bbq_flawless_chop", "Backyard BBQ", "Master Chef",
@@ -579,7 +461,6 @@ ACHIEVEMENTS = (
     ("bbq_staredown", "Backyard BBQ", "Staring Contest",
      "Let the grill overheat because you forgot to press SPIN.", True),
 
-    # Chaos Dinner
     ("dinner_family", "Chaos Dinner", "Family Reunion",
      "Talk to everyone in the garden before dinner.", False),
     ("dinner_seated", "Chaos Dinner", "Seat Patrol",

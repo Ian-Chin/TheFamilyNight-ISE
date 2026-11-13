@@ -14,8 +14,6 @@ from ..bumpy_bus.view import BumpyBusView
 
 
 class MarketEndingView(StageView):
-    """Ending cutscene view when Terry successfully defends his basket and escapes."""
-
     def __init__(self):
         super().__init__()
         self.backdrop = Backdrop("market-dash/Scene 2.4 - market interior.jpg")

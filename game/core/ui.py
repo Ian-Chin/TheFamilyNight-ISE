@@ -1,10 +1,3 @@
-"""Menu widgets.
-
-Positions are declared in canvas units (1280x720) and laid out into real
-window pixels by a Stage. Textures and fonts are then built at that pixel
-size, so nothing is drawn small and scaled up.
-"""
-
 import arcade
 
 from . import audio, textures
@@ -21,12 +14,6 @@ HOVER_GROW = 5  # canvas units a widget grows by under the pointer
 
 
 class Hoverable:
-    """Shared hover state that ticks the pointer sound as it is entered.
-
-    `hovered` is assigned wholesale by the views every time the mouse moves,
-    so the sound hangs off the change rather than off the assignment.
-    """
-
     _hovered = False
 
     @property
@@ -40,14 +27,11 @@ class Hoverable:
             audio.play("ui_hover")
         self._hovered = value
 
-# The baked icons are white silhouettes, tinted at draw time.
 ICON_TINT = arcade.types.Color(*TEXT_BRIGHT)
 ICON_TINT_HOVER = arcade.types.Color(*TEXT_HOVER)
 
 
 class Stage:
-    """Maps the fixed canvas onto the window, keeping its aspect ratio."""
-
     def __init__(self, window_w, window_h):
         self.resize(window_w, window_h)
 
@@ -67,7 +51,6 @@ class Stage:
         return (x - self.left) / self.scale, (y - self.bottom) / self.scale
 
     def px(self, value):
-        """Canvas units to whole device pixels, for texture sizes."""
         return max(1, round(value * self.scale))
 
     def rect(self, left, bottom, width, height):
@@ -88,8 +71,6 @@ class Stage:
 
 
 class MenuButton(Hoverable):
-    """A glass button with an icon on the left of its label."""
-
     def __init__(self, label, action, icon, left, bottom,
                  width=MENU_BUTTON_W, height=MENU_BUTTON_H):
         self.label = label
@@ -150,8 +131,6 @@ class MenuButton(Hoverable):
 
 
 class CreditsButton(Hoverable):
-    """A round medallion button."""
-
     def __init__(self, icon, center_x, center_y):
         self.icon_name = icon
         self.center_x = center_x
@@ -192,12 +171,6 @@ class CreditsButton(Hoverable):
 
 
 class Slider:
-    """A labelled 0..1 bar, dragged with the mouse or nudged with the arrows.
-
-    The value lives in the mixer, not in the slider: the widget reads it every
-    frame, so a change made here is heard on the next sound played.
-    """
-
     GRAB_PAD = 14   # canvas units either side of the track that still count
 
     def __init__(self, channel, label, note, left, middle_y, mixer):
@@ -274,12 +247,6 @@ class Slider:
 
 
 class Choice:
-    """A labelled pick of one option out of a few, laid out like a Slider.
-
-    Click a segment or step along with the arrows. The value lives in
-    `setting` (anything with a `mode` and a `set(mode)`), read every frame.
-    """
-
     def __init__(self, label, note, options, left, middle_y, setting):
         self.label = label
         self.note = note
@@ -358,12 +325,6 @@ class Choice:
 
 
 class Card:
-    """A centred parchment popup with a title and a few rows of text.
-
-    Rows are plain strings, drawn centred, or (left, right) pairs, drawn as
-    two aligned columns.
-    """
-
     TITLE_SIZE = 27
     ROW_SIZE = 19
     ROW_GAP = 40

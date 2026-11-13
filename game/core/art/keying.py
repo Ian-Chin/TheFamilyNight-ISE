@@ -1,5 +1,3 @@
-"""Turning scanned-looking white-paper art into clean cut-outs."""
-
 import PIL.Image
 import PIL.ImageChops
 import PIL.ImageDraw
@@ -13,7 +11,6 @@ from ...config import (
 
 
 def key_out_white(image):
-    """Return an RGBA copy with the white paper background keyed out."""
     image = image.convert("RGBA")
     red, green, blue, _ = image.split()
     darkest = PIL.ImageChops.darker(PIL.ImageChops.darker(red, green), blue)
@@ -28,19 +25,10 @@ def key_out_white(image):
 
 
 def key_out_paper(image):
-    """Like key_out_white, but only the paper around the figure goes.
-
-    White inside the outline (eyes, a sweat drop, a shine on the hair) is
-    part of the drawing. The paper is the pale area that reaches the edge of
-    the image, so it is found by flood-filling the near-white pixels from the
-    border; everything that fill cannot reach stays fully opaque.
-    """
     keyed = key_out_white(image)
     red, green, blue, _ = keyed.split()
     darkest = PIL.ImageChops.darker(PIL.ImageChops.darker(red, green), blue)
     pale = darkest.point(lambda v: 255 if v > OPAQUE_BELOW else 0)
-    # A pale frame round the outside joins every bit of border paper into
-    # one region, so a single fill from the corner finds all of it.
     pale = PIL.ImageOps.expand(pale, 1, fill=255)
     PIL.ImageDraw.floodfill(pale, (0, 0), 128)
     pale = pale.crop((1, 1, pale.width - 1, pale.height - 1))
@@ -50,7 +38,6 @@ def key_out_paper(image):
 
 
 def solid_bbox(image):
-    """Bounds of the clearly visible pixels, ignoring faint keyed-out edges."""
     solid = image.split()[3].point(lambda v: 255 if v > SOLID_ALPHA else 0)
     return solid.getbbox()
 
@@ -61,7 +48,6 @@ def trim(image):
 
 
 def grown(alpha, radius):
-    """The alpha channel spread outwards by `radius` pixels."""
     if radius < 1:
         return alpha
     return alpha.filter(PIL.ImageFilter.MaxFilter(2 * radius + 1))
@@ -77,31 +63,12 @@ def scaled(image, ratio):
 
 
 def to_art_height(images):
-    """Bring a set of cut-outs down together, keeping their relative sizes.
-
-    Scaling as a group matters: the walk, jump and idle frames are measured
-    against each other later, so they have to come out of the same divide.
-    """
     tallest = max(image.height for image in images)
     ratio = min(1.0, CHARACTER_ART_HEIGHT / tallest)
     return [scaled(image, ratio) for image in images]
 
 
 def add_rim(image, glow=True):
-    """Ring a cut-out in dark ink inside a soft pale halo.
-
-    The garden art is busy and mid-green, and the characters are drawn in
-    much the same value range, so they sink into it. A hard dark line holds
-    their silhouette and the halo behind it separates them from whatever
-    they happen to be standing on.
-
-    Call this on art already brought down to `CHARACTER_ART_HEIGHT`: the rim
-    is in pixels, and dilating a full-size source image is far slower for no
-    visible gain.
-
-    With `glow` off only the dark contour is drawn; the canvas keeps the same
-    margin either way, so frames line up whichever is used.
-    """
     margin = RIM_DARK + RIM_GLOW
     padded = PIL.Image.new(
         "RGBA",

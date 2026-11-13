@@ -1,11 +1,3 @@
-"""The settings screen: audio levels and the graphics mode.
-
-Like PauseMenu, a SettingsPanel is owned by a view rather than being one: lay
-it out with the other widgets, draw it over whatever is behind, and pass the
-mouse and key events through in canvas units. `on_key_press` returns "close"
-once the player is done with it.
-"""
-
 import arcade
 
 from . import audio, textures
@@ -22,8 +14,6 @@ TITLE_SIZE = 32
 
 
 class SettingsPanel:
-    """Volume sliders over a graphics mode switch, centred on the canvas."""
-
     def __init__(self):
         self.visible = False
         self.selected = 0
@@ -37,8 +27,6 @@ class SettingsPanel:
         self.left = (WIDTH - self.width) / 2
         self.bottom = (HEIGHT - self.height) / 2
 
-        # Sliders sit on the right of the panel, labels in the space left of
-        # them, so the rows line up down a single edge.
         slider_left = self.left + self.width - SETTINGS_PANEL_PAD - SLIDER_W - 72
         middle_y = (
             self.bottom + self.height - SETTINGS_TITLE_GAP
@@ -50,7 +38,6 @@ class SettingsPanel:
                 Slider(channel, label, note, slider_left, middle_y, mixer)
             )
             middle_y -= SETTINGS_ROW_GAP
-        # The switch shares the sliders' events, so it rides in the same list.
         self.sliders.append(Choice(
             "Graphics", "animated or still backgrounds", GRAPHICS_CHOICES,
             slider_left, middle_y, graphics,
@@ -106,7 +93,6 @@ class SettingsPanel:
         self.hint_text.draw()
 
     def on_key_press(self, key):
-        """Return "close" when the player is finished, else None."""
         if not self.visible:
             return None
         if key == arcade.key.ESCAPE:
@@ -124,7 +110,6 @@ class SettingsPanel:
         return None
 
     def on_mouse_press(self, x, y, mouse_button):
-        """`x, y` in canvas units. Returns True when the click was ours."""
         if not self.visible or mouse_button != arcade.MOUSE_BUTTON_LEFT:
             return False
         for index, slider in enumerate(self.sliders):
@@ -135,8 +120,6 @@ class SettingsPanel:
                 slider.dragging = True
                 slider.set_from_x(x)
                 return True
-        # Clicks anywhere else are swallowed, so the scene behind the panel
-        # does not also act on them.
         return True
 
     def on_mouse_drag(self, x, y):

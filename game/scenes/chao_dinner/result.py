@@ -1,10 +1,3 @@
-"""The kids game result card: green for a win, red for a loss.
-
-The same glass panel and buttons as the pause menu, with the screen washed in
-the result's colour, a stripe of it along the top of the panel, a round badge
-with a tick or a cross sitting on that edge, and the title in the colour.
-"""
-
 import arcade
 
 from ...config import PLANK_PAD

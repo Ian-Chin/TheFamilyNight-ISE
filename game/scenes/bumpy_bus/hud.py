@@ -1,10 +1,3 @@
-"""The bus scene's HUD: bread, how far along the ride is, and the shopping.
-
-Follows the widget pattern used across the game: `layout(stage)` builds the
-textures and text at the window's real pixel size, `draw()` puts them on
-screen. The same glass plates as the highway round, so the two match.
-"""
-
 import functools
 
 import arcade
@@ -21,7 +14,6 @@ BREAD_ART = "bus-scene/ingredients-v4/bread-three-segments.png"
 CARD_ART = "bus-scene/ingredients-v4/card-{}.png"
 ICON_ART = "bus-scene/pixel-v3/warning-{}.png"
 
-# Plates as (left, bottom, width, height), in canvas units.
 LIVES_PLATE = (24, HEIGHT - 84, 250, 62)
 ALERTS_PLATE = (24, HEIGHT - 142, 250, 46)
 TRIP_PLATE = (WIDTH / 2 - 215, HEIGHT - 68, 430, 46)
@@ -35,13 +27,11 @@ RED = (230, 80, 80)
 
 @functools.lru_cache(maxsize=1)
 def bread_textures():
-    """The bread health bar with 0, 1, 2 and 3 segments still fresh."""
     return [arcade.Texture(image) for image in highway_art.bread_states(UI_DIR / BREAD_ART)]
 
 
 @functools.lru_cache(maxsize=16)
 def art(path, height, trim):
-    """A UI picture shrunk to `height` pixels once, so it is not sampled down."""
     with PIL.Image.open(UI_DIR / path) as source:
         image = source.convert("RGBA")
     if trim:

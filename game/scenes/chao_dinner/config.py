@@ -1,5 +1,3 @@
-"""Constants only the chao dinner scene uses. Shared ones stay in game/config.py."""
-
 from ...config import HEIGHT, WIDTH
 
 
@@ -85,6 +83,15 @@ KIDS_HUD_H = 76
 KIDS_TIMER_SIZE = 26
 KIDS_HUD_NOTE_SIZE = 12
 KIDS_HINT = "Drag a runaway kid onto their glowing seat before they wriggle free"
+KIDS_HOWTO_TITLE = "Chaos Dinner"
+KIDS_HOWTO_PREVIEW = "howto/kids.jpg"
+KIDS_HOWTO_STEPS = (
+    "Jess and Tom keep jumping off their stools to run around the garden.",
+    "Click a runaway kid and hold to drag them back to the table.",
+    "Drop them on their glowing seat before the bar over their head fills up.",
+    f"Keep them seated for {round(100 * KIDS_GOOD_SHARE)}% of the "
+    f"{int(KIDS_GAME_TIME)} seconds to win.",
+)
 
 CHAO_TALK_RANGE = 120
 
@@ -109,6 +116,14 @@ FEAST_STAGE_LINES = (
 )
 FEAST_TIME = 60.0
 FEAST_GOAL_WORDS = 36
+FEAST_HOWTO_TITLE = "Leftover Feast"
+FEAST_HOWTO_PREVIEW = "howto/feast.jpg"
+FEAST_HOWTO_STEPS = (
+    "Type the word in the box. Wrong letters turn red.",
+    "Press Space to finish a word, Backspace to fix a mistake.",
+    "Every word you get right is a bite of the leftovers.",
+    f"Eat {FEAST_GOAL_WORDS} bites in {int(FEAST_TIME)} seconds to clear the table.",
+)
 FEAST_MAX_EXTRA = 8
 FEAST_STAGE_FADE = 0.9
 FEAST_COUNT_STEP = 0.7

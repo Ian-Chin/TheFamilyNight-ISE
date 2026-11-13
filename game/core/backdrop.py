@@ -1,15 +1,3 @@
-"""Scene backgrounds that move.
-
-A Backdrop stands in for a background texture. In quality mode it plays the
-still's looping video: a worker thread decodes frames ahead with PyAV and the
-view's on_update copies the next one due into a single atlas texture, so the
-atlas never grows however long the loop runs. In performance mode, or when the
-video cannot be opened, `texture` is the still and nothing is decoded.
-
-The owning view calls `update(delta_time)` every frame and `stop()` when it is
-hidden, so a scene that is not on screen is not decoding either.
-"""
-
 import queue
 import threading
 
@@ -23,18 +11,13 @@ from .settings import graphics
 try:
     import av
 except ImportError:
-    # Without PyAV the game still runs, on the stills.
     av = None
 
 
 class _Decoder(threading.Thread):
-    """Decodes one video round and round into `frames` as RGBA images."""
-
     def __init__(self, path):
         super().__init__(daemon=True)
         self.path = path
-        # Opening the file is left to the thread too: it takes long enough
-        # to be felt as a hitch when a scene swaps videos mid-play.
         self.period = 1 / 15
         self.failed = False
         self.frames = queue.Queue(VIDEO_QUEUE)
@@ -59,13 +42,11 @@ class _Decoder(threading.Thread):
                         return
                 self.container.seek(0)
         except av.FFmpegError:
-            # A broken file just freezes on its last good frame.
             pass
         finally:
             self.container.close()
 
     def put(self, image):
-        """Wait for room in the queue; False once the decoder is stopped."""
         while not self.stopped.is_set():
             try:
                 self.frames.put(image, timeout=0.2)
@@ -76,8 +57,6 @@ class _Decoder(threading.Thread):
 
 
 class Backdrop:
-    """A scene background: the still art, or its video in quality mode."""
-
     def __init__(self, still):
         self.still = textures.background(still)
         video = BACKGROUND_VIDEOS.get(still)
@@ -89,12 +68,6 @@ class Backdrop:
         self.reserved = None   # an atlas slot made ahead by `reserve`
 
     def reserve(self):
-        """Put the still and a frame-sized slot for the video in the atlas now.
-
-        A texture's first trip into the atlas can make it grow, which is slow
-        enough to drop frames. A scene that swaps backdrops mid-play calls
-        this while loading, so the swap itself costs nothing.
-        """
         atlas = arcade.get_window().ctx.default_atlas
         atlas.add(self.still)
         if self.video is None or self.reserved is not None:
@@ -138,8 +111,6 @@ class Backdrop:
         except queue.Empty:
             return
         self.show(image)
-        # A long hitch is not caught up on frame by frame: the video just
-        # carries on from where it is.
         self.clock = max(0.0, self.clock + self.decoder.period)
 
     def start(self):
@@ -158,8 +129,6 @@ class Backdrop:
             self.frame = self.reserved
             self.frame.image = image
         elif self.frame is None or self.frame.image.size != image.size:
-            # Named after the video, so every Backdrop of one video shares a
-            # single region in the atlas.
             self.frame = arcade.Texture(
                 image, hash=f"video:{self.video.name}",
                 hit_box_algorithm=arcade.hitbox.algo_bounding_box,

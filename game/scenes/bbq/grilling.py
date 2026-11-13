@@ -563,7 +563,6 @@ class GrillingView(StageView):
             return
 
     def continue_dialog(self):
-        """Enter, Space or a click on an open line: finish it, or move on."""
         self.stop_typing_sound()
         self.dialog.advance()
 

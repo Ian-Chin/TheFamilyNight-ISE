@@ -1,13 +1,3 @@
-"""Round 2 without the pictures: the bus, the traffic and what hits what.
-
-The bus drives down a three-lane road and gains on everything ahead of it.
-The player only steers. Positions are on the road, not on screen: `x` runs
-from -1 to +1 across it and `z` is the distance ahead of the camera, as
-described in config.py. highway.py draws whatever this says is there.
-
-Needs no window, and a seeded `random.Random` makes a run repeatable.
-"""
-
 import random
 
 from .config import (
@@ -75,7 +65,6 @@ class Traffic:
 
     @property
     def pace(self):
-        """How much of its speed the bus has, knocked back by a crash."""
         return 1.0 - 0.5 * self.slowed
 
     @property
@@ -91,21 +80,12 @@ class Traffic:
     def bus_lane(self):
         return min(range(len(LANE_X)), key=lambda lane: abs(LANE_X[lane] - self.x))
 
-    # --- Traffic ------------------------------------------------------------
 
     def window(self, vehicle):
-        """(from, to) in seconds from now that `vehicle` is level with the bus."""
         return ((vehicle.z - BUS_Z - HALF_LENGTH) / vehicle.closing,
                 (vehicle.z - BUS_Z + HALF_LENGTH) / vehicle.closing)
 
     def escape_exists(self, extra):
-        """With `extra` added, can the bus still thread through everything?
-
-        Time is cut into steps of one lane change. Each step the bus may stay
-        put or move one lane over, and a lane counts as shut while a vehicle
-        is level with the bus (give or take SAFE_MARGIN). If some lane can be
-        reached at every step, starting from where the bus is, there is a way.
-        """
         windows = [(v.lane, *self.window(v)) for v in self.vehicles if not v.hit]
         windows.append((extra.lane, *self.window(extra)))
         horizon = max(end for _, _, end in windows) + SAFE_MARGIN
@@ -121,7 +101,6 @@ class Traffic:
         while clock < horizon:
             clock += LANE_CHANGE
             open_lanes = {lane for lane in range(len(LANE_X)) if free(lane, clock)}
-            # Sliding over needs both lanes clear for that step.
             reach = {
                 lane for lane in open_lanes
                 if lane in reach or (open_lanes & reach & {lane - 1, lane + 1})
@@ -138,8 +117,6 @@ class Traffic:
                 break
             roll -= share
         closing = self.rng.uniform(*CLOSING_SPEED) * (1 + 0.35 * self.difficulty)
-        # Never gaining faster than the one nearer in the same lane, so the
-        # two cannot run into each other.
         nearer = [v.closing for v in self.vehicles if v.lane == lane and not v.hit]
         if nearer:
             closing = min(closing, min(nearer))
@@ -149,17 +126,14 @@ class Traffic:
         )
 
     def spawn(self):
-        """Add one vehicle, but only where it leaves the bus a way through."""
         lanes = list(range(len(LANE_X)))
         self.rng.shuffle(lanes)
         if self.rng.random() < AIM_AT_BUS:
-            # Usually straight ahead of the bus, so sitting still is never safe.
             here = self.bus_lane()
             lanes.remove(here)
             lanes.insert(0, here)
         for lane in lanes:
             vehicle = self.make_vehicle(lane)
-            # Room behind the last one in this lane.
             if any(v.lane == lane and v.z > FAR_Z - 4 * HALF_LENGTH for v in self.vehicles):
                 continue
             if not self.escape_exists(vehicle):
@@ -169,10 +143,6 @@ class Traffic:
         return False
 
     def shout(self):
-        """The driver yells: what is close ahead in the bus's lane pulls over.
-
-        Returns the vehicles that moved, or None if he is still out of breath.
-        """
         if self.shout_wait > 0 or self.safe:
             return None
         self.shout_wait = SHOUT_COOLDOWN
@@ -187,7 +157,6 @@ class Traffic:
             elif lane == len(LANE_X) - 1:
                 side = 1
             else:
-                # From the middle, toward whichever side has less in the way.
                 busy = [sum(1 for v in self.vehicles
                             if v.lane == other and not v.hit and abs(v.z - vehicle.z) < 2.5)
                         for other in (lane - 1, lane + 1)]
@@ -200,7 +169,6 @@ class Traffic:
         return moved
 
     def fly(self, vehicle, delta_time):
-        """A rammed vehicle: up, away and round and round."""
         vehicle.air += delta_time
         vehicle.z += FLY_FORWARD * delta_time
         vehicle.x += vehicle.drift * delta_time
@@ -209,8 +177,6 @@ class Traffic:
         vehicle.fade = max(0.0, min(1.0, (FLY_TIME - vehicle.air) / 0.2))
 
     def coast(self, delta_time, speed, toward):
-        """The round is won and the bus drives itself: at `speed`, easing
-        across to `toward`. Whatever traffic is left pulls away ahead."""
         cruising = mix(*BUS_SPEED, 1.0)
         self.cruise = speed
         self.distance += speed * delta_time
@@ -226,13 +192,8 @@ class Traffic:
         self.vehicles = [v for v in self.vehicles
                          if v.fade > 0 and GONE_Z < v.z < FAR_Z + 1]
 
-    # --- Frame --------------------------------------------------------------
 
     def update(self, delta_time, steer, traffic=True):
-        """Advance by `delta_time` with the player steering -1, 0 or +1.
-
-        Returns what just happened: "crash", "near", "overtake".
-        """
         events = []
         if delta_time <= 0:
             return events
@@ -265,8 +226,6 @@ class Traffic:
                 step = PULL_SPEED * delta_time
                 vehicle.x += max(-step, min(step, vehicle.target_x - vehicle.x))
             if vehicle.z < BUS_Z - HALF_LENGTH:
-                # Dropping behind: it slips out of view rather than swelling
-                # up over the bottom of the screen.
                 vehicle.fade = max(0.0, (vehicle.z - GONE_Z) / (BUS_Z - HALF_LENGTH - GONE_Z))
                 if not vehicle.counted:
                     vehicle.counted = True

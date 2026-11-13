@@ -1,5 +1,3 @@
-"""Constants only the bbq scene uses. Shared ones stay in game/config.py."""
-
 BBQ_SCENE_BG = "bbq-scene-bg.jpeg"
 BBQ_PREP_SCENE_BG = "BBQ-Scene/BBQ_Prep_BG.jpg"
 BBQ_SCENE_EMPTY_BG = "chao-dinner-bg.jpg"

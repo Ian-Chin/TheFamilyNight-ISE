@@ -1,13 +1,3 @@
-"""Round 1: staying on your feet while the bus brakes, surges and bumps.
-
-Terry's lean runs from -1 (falling toward the driver, on the left of the
-screen) to +1 (falling toward the back). Standing is slightly unstable, the
-road always rumbles a little, and every few seconds the driver does something
-that shoves everyone one way. The player leans against it with A and D.
-
-No window is needed here: given a seeded `random.Random` the whole ride is
-deterministic, so it can be tested headless.
-"""
 import math
 import random
 
@@ -19,8 +9,6 @@ DAMPING = 2.2
 RECOVER_TIME = 1.4   # seconds on the floor after a stumble, safe from jolts
 DANGER = .72         # |lean| past this is shown as about to fall
 
-# kind -> (which way passengers are thrown, cue text). The driver sits on the
-# left facing left, so braking throws everyone left and speeding up right.
 JOLTS = {
     'brake': (-1, 'BRAKE!'),
     'surge': (1, 'SPEED UP!'),
@@ -44,14 +32,14 @@ class BusBalance:
         self.fell_toward = 0
         self.stumbles = 0
         self.brakes_held = 0       # hard brakes ridden out without falling
-        self.jolt = None           # kind being warned about or happening
+        self.jolt = None
         self.jolt_time = 0.
         self.jolt_warn = self.jolt_length = 0.
         self.jolt_dir = 0
         self.jolt_peak = 0.
         self.jolt_clean = True
         self.kicks = []            # bump only: times left to kick at
-        self.push = 0.             # the bus's force on Terry this frame
+        self.push = 0.
         self.bump_shake = 0.
         self.phases = (self.rng.uniform(0, math.tau), self.rng.uniform(0, math.tau))
         self.next_jolt = self.rng.uniform(3.2, 4.4)
@@ -63,7 +51,6 @@ class BusBalance:
 
     @property
     def warning(self):
-        """True while a jolt is announced but has not hit yet."""
         return self.jolt is not None and self.jolt_time < self.jolt_warn
 
     @property
@@ -72,7 +59,6 @@ class BusBalance:
 
     @property
     def cue(self):
-        """(text, direction thrown) for the jolt on the way, else None."""
         if self.jolt is None:
             return None
         return JOLTS[self.jolt][1], self.jolt_dir
@@ -82,14 +68,12 @@ class BusBalance:
         return self.recover <= 0 and abs(self.lean) >= DANGER
 
     def envelope(self):
-        """0..1 strength of a brake or surge: a sharp start, a softer end."""
         if not self.active or self.jolt == 'bump':
             return 0.
         t = self.jolt_time - self.jolt_warn
         return max(0., min(1., t / .12, (self.jolt_length - t) / .3))
 
     def shake(self):
-        """(dx, dy) to draw the bus interior at, in canvas pixels."""
         dx = self.jolt_dir * 11 * self.envelope()
         dy = math.sin(self.clock * 31) * .8
         if self.envelope():
@@ -101,7 +85,6 @@ class BusBalance:
 
     def start_jolt(self):
         kinds = [kind for kind in JOLTS if kind != self.previous]
-        # Brakes are what a bus does most.
         self.jolt = self.rng.choice(kinds + ['brake'] * ('brake' in kinds))
         self.previous = self.jolt
         d = self.difficulty
@@ -127,11 +110,6 @@ class BusBalance:
         self.next_jolt = self.clock + self.rng.uniform(mix(2.8, 1.7, d), mix(4.2, 2.8, d))
 
     def update(self, dt, steer):
-        """Advance by `dt` with the player leaning -1, 0 or +1.
-
-        Returns the names of what just happened: 'warn', 'brake', 'surge',
-        'bump', 'stumble'.
-        """
         events = []
         if dt <= 0:
             return events

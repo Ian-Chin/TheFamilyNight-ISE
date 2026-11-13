@@ -1,10 +1,3 @@
-"""What every view in the bus scene shares.
-
-The canvas camera, the pause overlay and settings screen, a card for losing,
-the keys being held and the bus tune, which carries on from one view to the
-next and only stops when the player leaves the scene.
-"""
-
 import arcade
 
 from ...config import HEIGHT, WIDTH
@@ -37,20 +30,17 @@ class BusView(StageView):
 
     @property
     def held_up(self):
-        """A menu or card is over the game, so everything stands still."""
         return (self.pause_menu.visible or self.settings_panel.visible
                 or self.lose_card.visible)
 
-    # --- Moving on ----------------------------------------------------------
 
     def go(self, view):
-        """Show the next view, with the music carrying straight on."""
         self.keep_music = True
         self.held.clear()
         self.window.show_view(view)
 
     def retry(self):
-        """Start this view's game again. Each view says how."""
+        pass
 
     def on_show_view(self):
         self.music.start()
@@ -59,7 +49,6 @@ class BusView(StageView):
         if not self.keep_music:
             self.music.stop()
 
-    # --- Drawing ------------------------------------------------------------
 
     def draw_menus(self):
         self.window.default_camera.use()
@@ -75,14 +64,12 @@ class BusView(StageView):
                 (0, 0, 0, round(min(255, alpha))),
             )
 
-    # --- Input --------------------------------------------------------------
 
     def key_down(self, key):
-        """A key pressed with nothing over the game. Views extend this."""
         self.held.add(key)
 
     def click(self, x, y, button):
-        """A click with nothing over the game, in canvas units."""
+        pass
 
     def on_key_press(self, key, modifiers):
         if self.settings_panel.visible:

@@ -20,7 +20,6 @@ from ...core.widgets import TitleCard, QuestPanel, Portraits
 
 
 class MarketStageView(StageView):
-    """Explorable market with 2 Red Exclamation zones and 1 Central Padlock defense zone."""
     def __init__(self, veg_done=False, meat_done=False, last_completed=None):
         super().__init__()
         self.veg_done = veg_done
@@ -383,7 +382,6 @@ class MarketStageView(StageView):
 
         
         if not self.dialog.visible and not self.pause_menu.visible and not self.settings_panel.visible:
-          
             plate = self.quests.plate_rect()
             arcade.draw_rect_filled(plate, (12, 10, 14, 215))
             arcade.draw_rect_outline(plate, (180, 140, 90, 160), max(1, 2 * self.stage.scale))

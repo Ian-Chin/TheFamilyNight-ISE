@@ -1,31 +1,3 @@
-"""The Chao family dinner scene.
-
-Terry walks in down the night garden path while the opening black fades away.
-As he walks, the "Scene 4 / Chao Dinner" title drifts up over a blurred
-garden and fades off again; once he has settled by the dinner table he says
-his opening line. The player takes over from there: a quest panel in the top
-right asks him to start the dinner at the table (marked with a "!"), and
-walking up to the table or to a family member brings up an
-"Interact [Enter]" prompt. Talking to someone plays a short exchange with
-Terry standing on the left of the dialogue box and them on the right.
-
-Terry arrives to find the family already there, and pulls a shocked face
-with a few hops before his opening lines.
-
-Once the kids are dealt with, the clock skips on half an hour. The family
-are full and head off, leaving Terry alone with a table of food; he gets up,
-and the table now offers the leftover feast typing game (feast.py),
-which the player can start straight away or after a wander. The quest panel
-is only up until the dinner game starts.
-
-Setting up the dinner at the table first asks whether to start the mini game.
-Going ahead fades the food onto the table, dips to black and comes back up
-with the whole family sat on the stools round it, tucking in. A little table
-talk later, Jess and Tom run off, and the player has to keep catching them
-and sending them back to their seats until the clock runs out
-(see kids.py). Each round opens on a 3, 2, 1 count.
-"""
-
 import math
 import random
 
@@ -60,11 +32,13 @@ from .config import (
     CHAO_FOCUS_SPOT, CHAO_FOCUS_TIME, CHAO_GRAIN, CHAO_LIGHTS, CHAO_PUNCH, CHAO_PUNCH_TIME,
     CHAO_SHOCK_FADE, CHAO_SHOCK_FOCUS, CHAO_SKIP_SPEED, CHAO_SPEED_LINES,
     CHAO_VIGNETTE,
-    KIDS_GOOD_SHARE, KIDS_LOSE_ITEMS, KIDS_LOSE_TITLE, KIDS_RESULT_MESSAGE,
+    KIDS_GOOD_SHARE, KIDS_HOWTO_PREVIEW, KIDS_HOWTO_STEPS, KIDS_HOWTO_TITLE,
+    KIDS_LOSE_ITEMS, KIDS_LOSE_TITLE, KIDS_RESULT_MESSAGE,
     KIDS_RETRY_MESSAGE, KIDS_WIN_ITEMS, KIDS_WIN_TITLE,
 )
 from ...core.dialogue import DialogBox
 from ...core.effects import WalkDust
+from ...core.howto import HowToPlay
 from ...core.options import SettingsPanel
 from ...core.pause import PauseMenu
 from ...core.sprites import NPC, Diner, Terry
@@ -75,7 +49,6 @@ TABLE = CHAO_OBSTACLES[0]
 
 
 def cover_rect(texture, rect):
-    """Fill `rect` with `texture` without distorting it."""
     scale = max(rect.width / texture.width, rect.height / texture.height)
     return arcade.XYWH(
         rect.x, rect.y, texture.width * scale, texture.height * scale
@@ -90,8 +63,6 @@ def distance_to_box(x, y, box):
 
 
 class ChaoDinnerView(StageView):
-    """Scripted entrance, then free roaming with quests and interactions."""
-
     def __init__(self):
         super().__init__()
         self.backdrop = Backdrop(CHAO_DINNER_BG)
@@ -175,13 +146,14 @@ class ChaoDinnerView(StageView):
         self.feast_card = PauseMenu(
             CHAO_FEAST_ITEMS, CHAO_FEAST_TITLE, CHAO_FEAST_MESSAGE, width=480,
         )
+        self.kids_howto = HowToPlay(KIDS_HOWTO_TITLE, KIDS_HOWTO_PREVIEW, KIDS_HOWTO_STEPS)
         self.kids_hud = KidsHud()
         self.pause_menu = PauseMenu()
         self.settings_panel = SettingsPanel()
         self.widgets = [
             self.title_card, self.prompt, self.table_prompt, self.quests,
             self.portraits, self.dialog, self.setup_card, self.win_card,
-            self.lose_card, self.feast_card,
+            self.lose_card, self.feast_card, self.kids_howto,
             self.kids_hud, self.pause_menu, self.settings_panel,
         ]
 
@@ -211,7 +183,6 @@ class ChaoDinnerView(StageView):
         self.stop_typing_sound()
 
     def sort_by_depth(self):
-        """Back to front, so whoever stands lower down overlaps the rest."""
         self.sprites.sort(key=lambda sprite: -sprite.ground_y)
 
     def relayout(self):
@@ -237,7 +208,6 @@ class ChaoDinnerView(StageView):
         ]
 
     def zoom_in(self):
-        """Close the camera in on the table, so CHAO_ZOOM_VIEW fills the stage."""
         self.zoomed = True
         left, bottom = CHAO_ZOOM_ORIGIN
         self.camera_rest = ((left + WIDTH / CHAO_ZOOM / 2,
@@ -246,7 +216,6 @@ class ChaoDinnerView(StageView):
         self.focus_target = 1.0
 
     def scene_point(self, x, y):
-        """Window pixels to scene units, through the camera's zoom."""
         x, y = self.canvas_point(x, y)
         if not self.zoomed:
             return x, y
@@ -267,7 +236,6 @@ class ChaoDinnerView(StageView):
 
     @property
     def sky_lift(self):
-        """1 with the camera on the sky, easing to 0 as it tilts down."""
         if self.sky_clock is None:
             return 0.0
         t = min(max((self.sky_clock - CHAO_SKY_HOLD) / CHAO_SKY_PAN, 0.0), 1.0)
@@ -275,7 +243,6 @@ class ChaoDinnerView(StageView):
 
     @property
     def serve_share(self):
-        """How far the food has faded onto the table, 0 to 1."""
         if self.diners is not None:
             return 1.0
         if self.serve_clock is None:
@@ -284,7 +251,6 @@ class ChaoDinnerView(StageView):
 
     @property
     def seat_alpha(self):
-        """The black dipped to while everyone takes their seat."""
         if self.serve_clock is None:
             return 0
         t = self.serve_clock - CHAO_SERVE_FADE - CHAO_SERVE_HOLD
@@ -305,12 +271,12 @@ class ChaoDinnerView(StageView):
 
     @property
     def card_open(self):
-        """The set-up question or the results are up, holding the scene."""
         return any(card.visible for card in self.cards)
 
     @property
     def cards(self):
-        return (self.setup_card, self.win_card, self.lose_card, self.feast_card)
+        return (self.setup_card, self.win_card, self.lose_card, self.feast_card,
+                self.kids_howto)
 
     @property
     def entrance_over(self):
@@ -318,8 +284,6 @@ class ChaoDinnerView(StageView):
 
     @property
     def playing(self):
-        """True while Terry is free to roam: after the entrance, outside any
-        dialogue, and before he sits down to dinner."""
         return (self.entrance_over and not self.dialog.visible
                 and not self.dinner_started)
 
@@ -333,7 +297,6 @@ class ChaoDinnerView(StageView):
         return CHAO_TABLE_MARK_H * self.table_mark.width / self.table_mark.height
 
     def target_tip(self):
-        """Canvas point the interact prompt points down at."""
         kind, npc = self.target
         if kind == "table":
             x, y = CHAO_TABLE_MARK_POS
@@ -358,8 +321,6 @@ class ChaoDinnerView(StageView):
             )
 
     def draw_with_sky(self, garden, sky, alpha=255):
-        """The garden filling the stage, with the sky stacked on top of it,
-        both slid down by however far the camera is still up in the sky."""
         viewport = self.stage.viewport()
         rect = cover_rect(garden, viewport)
         lift = self.sky_lift
@@ -375,7 +336,6 @@ class ChaoDinnerView(StageView):
             alpha=alpha, pixelated=True)
 
     def aim_camera(self):
-        """The camera at rest, or pulled toward Terry by a punch-in."""
         (x, y), zoom = self.camera_rest
         if self.punch > 0:
             k = math.sin(self.punch * math.pi / 2)
@@ -386,19 +346,16 @@ class ChaoDinnerView(StageView):
         self.camera.position, self.camera.zoom = (x, y), zoom
 
     def shock_point(self):
-        """Terry's face, in scene units: on his stool or on his feet."""
         diner = self.diner_by_name.get("Terry")
         if diner is not None and diner.visible:
             return diner.head_rest
         return self.terry.center_x, self.terry.ground_y + self.body_mid
 
     def on_screen(self, x, y):
-        """Scene units to window pixels, through the camera as it is now."""
         point = self.camera.project((x, y))
         return point[0], point[1]
 
     def grade(self):
-        """The post-processing for this frame: lights, grade and moments."""
         scale = self.stage.scale * self.camera.zoom
         lights = []
         for index, (x, y, radius, strength, color, wobble) in enumerate(CHAO_LIGHTS):
@@ -430,8 +387,6 @@ class ChaoDinnerView(StageView):
         return lights, settings
 
     def draw_speed_lines(self):
-        """Manga burst lines closing in on Terry, rerolled a dozen times a
-        second so they flicker."""
         self.window.default_camera.use()
         cx, cy = self.on_screen(*self.shock_point())
         inner = CHAO_SHOCK_FOCUS * self.stage.scale * self.camera.zoom
@@ -542,7 +497,6 @@ class ChaoDinnerView(StageView):
         self.settings_panel.draw()
 
     def draw_countdown(self):
-        """3, 2, 1, each popping in and fading, then "GO!" as the game starts."""
         clock = self.count_clock
         step = min(int(clock), CHAO_COUNTDOWN)
         part = clock - step
@@ -560,7 +514,6 @@ class ChaoDinnerView(StageView):
             text.draw()
 
     def draw_time_skip(self, alpha):
-        """A clock face with its hands spinning round, over the black."""
         stage = self.stage
         s = stage.scale
         x, y = stage.to_screen(WIDTH / 2, HEIGHT / 2 + 20)
@@ -586,7 +539,6 @@ class ChaoDinnerView(StageView):
 
 
     def draw_shocked(self):
-        """Terry's shocked face in place of his sprite, hopping as it lands."""
         hop = 0.0
         if self.shock_clock < CHAO_SHOCK_HOPS * CHAO_SHOCK_HOP_TIME:
             index = int(self.shock_clock / CHAO_SHOCK_HOP_TIME)
@@ -614,7 +566,6 @@ class ChaoDinnerView(StageView):
         self.portraits.terry = self.terry_portrait
 
     def play_script(self, lines, then=None):
-        """Run lines of dialogue in order, then call `then`, if given."""
         self.script = list(lines[1:])
         self.after_script = then
         if not self.shocked:
@@ -638,7 +589,6 @@ class ChaoDinnerView(StageView):
         self.typing_player = None
 
     def find_target(self):
-        """The table or the nearest family member within reach, if any."""
         feet_y = self.terry.ground_y - abs(self.terry.height) / 2
         if (not self.dinner_started
                 and distance_to_box(self.terry.center_x, feet_y, TABLE)
@@ -682,7 +632,6 @@ class ChaoDinnerView(StageView):
         self.play_script(lines)
 
     def advance_dialog(self):
-        """Enter in a dialogue: finish the line, or move on to the next one."""
         self.stop_typing_sound()
         if not self.dialog.advance():
             return
@@ -697,14 +646,12 @@ class ChaoDinnerView(StageView):
             then()
 
     def start_dinner(self):
-        """Bring the food on; update_serving seats everyone after it."""
         self.dinner_started = True
         self.quests.complete("dinner")
         self.serve_clock = 0.0
         audio.play("chao_serve")
 
     def seat_family(self):
-        """Swap the people standing about for the family sat at the table."""
         self.diner_by_name = {}
         for index, (name, x, y, height, eating) in enumerate(CHAO_SEATS):
             self.diner_by_name[name] = Diner(name, x, y, height, eating, index * 0.7)
@@ -717,7 +664,6 @@ class ChaoDinnerView(StageView):
         return self.kids is not None and self.kids.active
 
     def start_kids_game(self):
-        """Count 3, 2, 1 first; update_countdown lets the kids go after it."""
         self.count_clock = 0.0
         audio.play("feast_count")
 
@@ -736,7 +682,6 @@ class ChaoDinnerView(StageView):
             self.count_clock = None
 
     def end_kids_game(self):
-        """Time is up: everyone sits back down and the results come up."""
         share = round(100 * self.kids.share)
         passed = self.kids.share >= KIDS_GOOD_SHARE
         self.kids.stop()
@@ -756,7 +701,6 @@ class ChaoDinnerView(StageView):
             self.lose_card.open()
 
     def update_serving(self, delta_time):
-        """Step the food fading in, then the dip to black that seats everyone."""
         self.serve_clock += delta_time
         seat_at = CHAO_SERVE_FADE + CHAO_SERVE_HOLD + CHAO_SEAT_FADE
         if self.diners is None and self.serve_clock >= seat_at:
@@ -765,18 +709,11 @@ class ChaoDinnerView(StageView):
             self.backdrop = self.served
         if self.serve_clock >= seat_at + CHAO_SEAT_FADE + CHAO_SEATED_HOLD:
             self.serve_clock = None
-            self.play_script(CHAO_TABLE_TALK, then=self.start_kids_game)
+            self.play_script(CHAO_TABLE_TALK, then=self.kids_howto.open)
 
 
     def start_dip(self, fade, hold, at_black=None, after=None, time_skip=False,
                   iris=False):
-        """Dip to black over `fade` seconds, hold, and come back up.
-
-        `at_black` is called once the screen is fully black, `after` once it
-        is clear again. With `time_skip`, a spinning clock and "30 minutes
-        later" show on the black. With `iris`, the picture closes down to a
-        circle on Terry instead of fading (quality mode only).
-        """
         self.held.clear()
         self.target = None
         self.dip = {"clock": 0.0, "fade": fade, "hold": hold, "at_black": at_black,
@@ -800,7 +737,6 @@ class ChaoDinnerView(StageView):
                 dip["after"]()
 
     def time_skip(self):
-        """Half an hour on: everyone is full."""
         self.start_dip(CHAO_SKIP_FADE, CHAO_SKIP_HOLD, time_skip=True,
                        after=lambda: self.play_script(CHAO_FULL_DIALOG, then=self.family_leaves))
 
@@ -809,7 +745,6 @@ class ChaoDinnerView(StageView):
                        after=lambda: self.play_script(CHAO_ALONE_DIALOG, then=self.get_up))
 
     def leave_table(self):
-        """Under the black: only Terry is left on his stool, looking shocked."""
         for name, diner in self.diner_by_name.items():
             diner.visible = name == "Terry"
         self.kids = None
@@ -824,7 +759,6 @@ class ChaoDinnerView(StageView):
                        after=lambda: self.open_card(self.feast_card))
 
     def stand_alone(self):
-        """Under the black: Terry stands by the table, free to walk again."""
         self.diners = None
         self.diner_by_name = {}
         self.zoomed = False
@@ -853,7 +787,6 @@ class ChaoDinnerView(StageView):
         self.dust.update(delta_time, moving, self.terry.center_x, feet_y, dx, dy)
 
     def finish_entrance(self):
-        """Terry is in place: say the opening line, now or after the title."""
         self.walking_in = False
         self.opening_pending = True
 
@@ -926,10 +859,6 @@ class ChaoDinnerView(StageView):
                     self.hit = 1.0
                 if self.kids.pointer_moved:
                     x, y = self.scene_to_screen(*self.kids.pointer)
-                    # pyglet divides mouse events by the display's DPI scale
-                    # but places the cursor in raw pixels; without scaling
-                    # back, each tug on a scaled display pulls the cursor
-                    # towards the bottom left corner.
                     scale = getattr(self.window, "_mouse_scale", 1.0) or 1.0
                     self.window.set_mouse_position(round(x * scale), round(y * scale))
                 if self.kids.finished:
@@ -987,7 +916,6 @@ class ChaoDinnerView(StageView):
         self.target = self.find_target()
 
     def update_effects(self, delta_time):
-        """Ease the screen effects toward where the scene wants them."""
         step = delta_time / CHAO_FOCUS_TIME
         if self.focus < self.focus_target:
             self.focus = min(self.focus_target, self.focus + step)
@@ -1015,7 +943,7 @@ class ChaoDinnerView(StageView):
             card = next(card for card in self.cards if card.visible)
             if key in (arcade.key.ENTER, arcade.key.NUM_ENTER):
                 self.run_action(card.buttons[0].action)
-            elif key == arcade.key.ESCAPE:
+            elif key == arcade.key.ESCAPE and card is not self.kids_howto:
                 self.run_action(card.buttons[-1].action)
             return
 
@@ -1119,6 +1047,9 @@ class ChaoDinnerView(StageView):
         elif action == "feast":
             self.feast_card.close()
             self.start_feast()
+        elif action == "start":
+            self.kids_howto.close()
+            self.start_kids_game()
         elif action == "retry":
             self.win_card.close()
             self.lose_card.close()

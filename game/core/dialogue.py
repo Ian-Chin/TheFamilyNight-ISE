@@ -1,5 +1,3 @@
-"""The dialogue box: a speaker's nameplate over a typed-out line."""
-
 import arcade
 
 from . import textures
@@ -14,7 +12,6 @@ WRAP_CHARS = 74   # characters per line before the text is broken
 
 
 def wrap(text, limit=WRAP_CHARS):
-    """Break `text` into lines of at most `limit` characters, on spaces."""
     lines = []
     for paragraph in text.split("\n"):
         line = ""
@@ -30,12 +27,6 @@ def wrap(text, limit=WRAP_CHARS):
 
 
 class DialogBox:
-    """A speech panel that types its line out and waits for Enter.
-
-    While `typing`, Enter fills the line in at once; once it is complete,
-    Enter closes the box. The scene decides what that means.
-    """
-
     def __init__(self):
         self.visible = False
         self.stage = None
@@ -73,7 +64,6 @@ class DialogBox:
         self.revealed = self.total
 
     def advance(self):
-        """Handle Enter. Returns True when the box has just closed."""
         if self.typing:
             self.finish_typing()
             return False
@@ -85,8 +75,6 @@ class DialogBox:
         self.texture = textures.dialog_box(
             stage.px(DIALOG_W), stage.px(DIALOG_H), stage.px(PLANK_PAD)
         )
-        # The speaker's name floats on the panel itself, with no plate of its
-        # own; the box is dark enough for it to read.
         if self.side == "right":
             name_x, anchor = self.left + DIALOG_W - DIALOG_PAD, "right"
         else:
@@ -97,7 +85,6 @@ class DialogBox:
             bold=True,
         )
 
-        # One Text object per line, refilled as characters are revealed.
         first_y = self.top - DIALOG_FIRST_LINE
         self.line_texts = [
             stage.text(
@@ -125,7 +112,6 @@ class DialogBox:
             self.revealed += 1
 
     def visible_lines(self):
-        """The lines as far as the typing has got."""
         left = self.revealed
         for line in self.lines:
             if left >= len(line):
@@ -156,7 +142,6 @@ class DialogBox:
             self.draw_arrow()
 
     def draw_arrow(self):
-        """A small triangle in the bottom right, nudging the player on."""
         half = DIALOG_ARROW / 2
         points = [
             self.stage.to_screen(self.arrow_x - half, self.arrow_y + half),

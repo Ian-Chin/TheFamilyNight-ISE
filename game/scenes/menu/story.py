@@ -1,12 +1,3 @@
-"""Story select: jump to any scene, or any chapter inside one.
-
-Scenes run down the left, the picked chapter fills a big preview on the
-right, and a strip of thumbnails under it skips between chapters. The
-preview also washes the whole screen behind everything, crossfading as the
-pick moves. Mouse, arrows (Up/Down scene, Left/Right chapter), or the scene
-number all work; Enter or a click plays, Esc goes back to the title menu.
-"""
-
 import importlib
 import math
 import traceback
@@ -21,7 +12,6 @@ from ...core.stage import StageView
 from ...core.ui import MenuButton
 from .config import MENU_MUSIC, STORY
 
-# --- Layout, in canvas units -------------------------------------------------
 LIST_LEFT = 56
 LIST_W = 360
 ROW_H = 70
@@ -45,7 +35,6 @@ LEAVE_TIME = 0.3    # fade to black before the scene opens
 
 
 def find_view(module_name, class_name):
-    """Return the view class, or None when that scene is not written yet."""
     try:
         module = importlib.import_module(module_name)
     except ModuleNotFoundError as error:
@@ -74,7 +63,6 @@ class StoryView(StageView):
         self.widgets = [self.play_button]
         self.relayout()
 
-    # --- Picking ------------------------------------------------------------
 
     @property
     def chapters(self):
@@ -117,7 +105,6 @@ class StoryView(StageView):
         from .view import MenuView
         self.window.show_view(MenuView())
 
-    # --- Layout -------------------------------------------------------------
 
     def row_rect(self, index):
         top = LIST_TOP - index * (ROW_H + ROW_GAP)
@@ -207,10 +194,8 @@ class StoryView(StageView):
             anchor_x="center", anchor_y="center",
         )
 
-    # --- Drawing ------------------------------------------------------------
 
     def draw_backdrop(self):
-        """The picked chapter, slowly drifting, washed out behind everything."""
         zoom = 1.06 + 0.03 * math.sin(self.clock * 0.25)
         width = self.stage.window_w * zoom
         height = width * 9 / 16
@@ -226,7 +211,6 @@ class StoryView(StageView):
             arcade.LBWH(0, 0, self.stage.window_w, self.stage.window_h),
             (8, 10, 16, 190),
         )
-        # A darker band under the scene list so it reads over busy art.
         arcade.draw_rect_filled(
             arcade.LBWH(0, 0, self.stage.left + (LIST_LEFT + LIST_W + 30)
                         * self.stage.scale, self.stage.window_h),
@@ -321,7 +305,6 @@ class StoryView(StageView):
             self.fade = min(1.0, self.fade + delta_time / FADE_TIME)
         if self.leaving:
             self.leave_clock += delta_time
-            # Wait one frame fully black, so the scene's build pause hides.
             if self.leave_clock >= LEAVE_TIME + 0.05:
                 view_class, kwargs, title = self.leaving
                 audio.ambience(MENU_MUSIC).stop()
@@ -333,7 +316,6 @@ class StoryView(StageView):
                     self.message = f"{title} crashed on start, see console."
                     self.relayout()
 
-    # --- Input --------------------------------------------------------------
 
     @staticmethod
     def inside(rect, x, y):

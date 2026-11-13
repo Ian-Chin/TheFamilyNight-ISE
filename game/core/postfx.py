@@ -1,27 +1,3 @@
-"""Full-screen post-processing: a scene drawn off-screen, then graded.
-
-A view draws its world between `begin()` and `end(...)`. Instead of going
-straight to the window, the world lands in an off-screen framebuffer; `end`
-then draws that framebuffer to the window through one fragment shader that
-can, per frame:
-
-  - light it: a cool ambient multiplier with warm point lights added in
-    (a light map worked out per pixel, no light texture needed),
-  - drain the colour out of everything but a circle (selective colour),
-  - tone it sepia and smear it sideways (a fast-forward look),
-  - close it down to an iris around a point,
-  - darken the corners (vignette), flush them red (a hit pulse),
-  - jitter it (screen shake) and add film grain.
-
-`blur_background()` is a second, smaller pass for depth of field: whatever
-was drawn between `begin_background()` and it is copied into the scene
-softened by a disc blur, so the sharp sprites drawn after sit in focus.
-
-Everything here is skipped in performance mode, where `enabled` is False,
-`begin` and `end` do nothing and the view draws straight to the window as
-it always did; views keep their plain fades as the fallback.
-"""
-
 import array
 import math
 
@@ -160,7 +136,6 @@ void main() {
 }
 """
 
-# The shader's defaults: no light map, no grade.
 NEUTRAL = {
     "ambient": (1.0, 1.0, 1.0), "desaturate": 0.0, "focus": (0.0, 0.0, 1.0),
     "sepia": 0.0, "smear": 0.0, "darken": 0.0, "iris": (0.0, 0.0, -1.0),
@@ -183,7 +158,6 @@ class PostFX:
         return graphics.animated
 
     def _fit(self):
-        """(Re)build the framebuffers whenever the window changes size."""
         size = self.window.get_framebuffer_size()
         if size == self.size:
             return
@@ -194,7 +168,6 @@ class PostFX:
             color_attachments=[self.ctx.texture(size, components=4)])
 
     def begin_background(self):
-        """Draw the background into its own buffer, to blur in a moment."""
         if not self.enabled:
             return
         self._fit()
@@ -202,11 +175,6 @@ class PostFX:
         self.back.clear()
 
     def blur_background(self, radius, spot=(0.0, 0.0, 0.0, 0.0)):
-        """The background, softened by up to `radius` pixels, under the scene.
-
-        `spot` is (x, y, sharp within, fully blurred past) in window pixels;
-        the default blurs everywhere.
-        """
         if not self.enabled:
             return
         self.begin()
@@ -218,7 +186,6 @@ class PostFX:
         self.quad.render(self.blur)
 
     def begin(self):
-        """Start the world; it lands off-screen until `end`."""
         if not self.enabled or self.drawing:
             return
         self._fit()
@@ -227,11 +194,6 @@ class PostFX:
         self.scene.clear()
 
     def end(self, time=0.0, lights=(), **settings):
-        """Put the world on the window, graded by `settings` (see NEUTRAL).
-
-        `time` is any running clock in seconds; it moves the film grain.
-        `lights` are (x, y, radius, strength, (r, g, b)) in window pixels.
-        """
         if not self.drawing:
             return
         self.drawing = False
@@ -254,16 +216,13 @@ class PostFX:
             program[name] = value
         self.scene.color_attachments[0].use(0)
         self.quad.render(program)
-        # Views go on to draw their interface with the window's own camera.
         self.window.default_camera.use()
 
     def _full(self, framebuffer):
-        """Cover the whole buffer, whatever viewport a camera left on it."""
         framebuffer.viewport = (0, 0, *self.size)
 
 
 def for_window(window):
-    """The window's one PostFX, built the first time a view asks for it."""
     fx = getattr(window, "postfx", None)
     if fx is None:
         fx = window.postfx = PostFX(window)
@@ -271,7 +230,6 @@ def for_window(window):
 
 
 def flicker(clock, seed, amount):
-    """A gentle uneven wobble around 1, for firelight."""
     wave = (math.sin(clock * 7.3 + seed) * 0.5 + math.sin(clock * 13.1 + seed * 2.7) * 0.3
             + math.sin(clock * 2.1 + seed * 0.6) * 0.2)
     return 1.0 + amount * wave

@@ -1,14 +1,3 @@
-"""Developer test menu. Run `python test.py` (add `--fullscreen` if wanted).
-
-Jumps straight into one scene so each dev can work on theirs without
-playing through the others. Pick with the mouse, arrow keys + Enter, or the
-number shown beside each entry. Esc quits.
-
-To hook up a new scene, add a row to SCENES: (label, module, class, kwargs).
-A module that does not exist yet shows as "not built yet" instead of crashing.
-"Main Menu" inside a scene comes back here, not to the game's title menu.
-"""
-
 import importlib
 import sys
 import traceback
@@ -20,7 +9,6 @@ from game.core import achievements
 from game.scenes.menu import view as menu_view
 from game.core.stage import StageView
 
-# (label, module, class name, constructor kwargs).
 SCENES = [
     ("Scene 1: Market Dash", "game.scenes.market_dash", "MarketDashView", {}),
     ("Scene 2: Bumpy Bus", "game.scenes.bumpy_bus", "BumpyBusView", {}),
@@ -41,7 +29,6 @@ ERROR = (235, 110, 110)
 
 
 def find_view(module_name, class_name):
-    """Return the view class, or None when the scene is not written yet."""
     try:
         module = importlib.import_module(module_name)
     except ModuleNotFoundError as error:
@@ -157,8 +144,6 @@ class TestMenuView(StageView):
 
 
 def main():
-    # Scenes send "Main Menu" to game.scenes.menu.view.MenuView (imported when pressed),
-    # so pointing that name here brings devs back to this menu instead.
     menu_view.MenuView = TestMenuView
 
     fullscreen = "--fullscreen" in sys.argv

@@ -1,17 +1,3 @@
-"""The closing cut scene, after the leftover feast.
-
-Terry has eaten until he is full; the camera tilts up from the cleared table
-into the night sky, the title fades in among the stars and out again, and the
-game ends on black. The whole thing is one pre-rendered video
-(ENDING_VIDEO) played through once, with the
-night ambience underneath it fading away as it ends, and its sound effects
-(ending-sfx, baked alongside it) started with the first frame. Any key or a click skips
-it. Either way the player lands back on the title menu.
-
-Without PyAV the video cannot be played, so the title just fades in and out
-over black instead.
-"""
-
 import queue
 import threading
 
@@ -30,8 +16,6 @@ except ImportError:
 
 
 class _OneShot(threading.Thread):
-    """Decodes a video once, start to finish, into `frames`; then None."""
-
     def __init__(self, path):
         super().__init__(daemon=True)
         self.path = path
@@ -84,7 +68,7 @@ class EndingView(StageView):
         self.frame_clock = 0.0
         self.clock = 0.0
         self.done = False
-        self.sfx = None   # the effects track, started with the first frame
+        self.sfx = None
 
     @staticmethod
     def video_length(path):
@@ -130,7 +114,6 @@ class EndingView(StageView):
         ambience.update(delta_time)
         delta_time = min(delta_time, 1 / 30)
         self.clock += delta_time
-        # The crickets fade out with the picture over the last seconds.
         left = self.length - self.clock
         if ambience.player is not None and left < 1.5:
             ambience.player.volume = (audio.bank().volume(AMBIENCE_NIGHT)
@@ -141,7 +124,6 @@ class EndingView(StageView):
                 self.finish()
             return
         if self.clock >= self.length + 1.0:
-            # A decoder that fell behind or stalled does not hold the game up.
             self.finish()
             return
         self.frame_clock -= delta_time
@@ -155,7 +137,6 @@ class EndingView(StageView):
             self.finish()
             return
         if self.frame is None:
-            # In step with the picture: the burp lands on the burp.
             self.sfx = audio.play("ending_sfx")
         self.show(image)
         self.frame_clock = max(0.0, self.frame_clock + self.decoder.period)
@@ -166,7 +147,6 @@ class EndingView(StageView):
             arcade.draw_texture_rect(self.frame, self.stage.viewport())
             return
         if self.decoder is None or self.decoder.failed:
-            # The title alone, faded in and out over black.
             t = self.clock / ENDING_FALLBACK
             alpha = round(255 * max(0.0, min(1.0, t * 4, (1 - t) * 3)))
             width = 720
@@ -174,7 +154,6 @@ class EndingView(StageView):
             arcade.draw_texture_rect(self.logo, self.stage.rect(
                 (WIDTH - width) / 2, (HEIGHT - height) / 2, width, height), alpha=alpha)
 
-    # A moment's grace first, so the key that pressed Continue cannot skip it.
     def on_key_press(self, key, modifiers):
         if self.clock > 0.5:
             self.finish()

@@ -4,56 +4,39 @@ import arcade
 from ...config import ASSETS, HEIGHT, WIDTH
 from ...core import audio
 
-# The market crowd loop. One shared loop runs on under the walk-around floor,
-# every catch round and the ending, so it never drops out between views; only
-# leaving the market for the bus or the menu stops it. Being an Ambience it
-# fades in and follows the music slider.
 MARKET_AMBIENCE = "market_ambience"
 
 
 def market_ambience():
     return audio.ambience(MARKET_AMBIENCE)
 
-# Base asset paths
 ASSETS_DIR = ASSETS
 BG_DIR = ASSETS_DIR / "backgrounds" / "market-dash"
 TERRY_GAME_DIR = ASSETS_DIR / "sprites" / "terry market game"
 SNATCHERS_BASE_DIR = ASSETS_DIR / "market snatchers"
 INGREDIENTS_BASE_DIR = ASSETS_DIR / "market ingredients"
 
-# --- Cleaned Walk Bounds and Precise Obstacle Footprints ---
 MARKET_WALK_BOUNDS = (72, 1280 - 40, 0, 720 - 40)
 
-# Scenery obstacle boxes (left, right, bottom, top) blocking Terry's feet
 MARKET_OBSTACLES = (
-    # 1. Leftmost wall rack (Grains & Pasta / Canned Goods)
-    (0, 10, 0, 720), #right: 78
+    (0, 10, 0, 720),
 
-    # 2. Canned Goods trellis hanging wall corner (top left corner)
     (0, 155, 540, 720),
 
-    # 3. Top back wall & produce shelves (across the top behind the patio)
     (78, 705, 510, 720),
 
-    # 4. Center aisle: Packaged Snacks shelf
     (470, 580, 220, 530),
 
-    # 5. Center aisle: Cereals & Breakfast shelf
     (705, 805, 220, 530),
 
-    # 6. Meat and deli counter (across the middle right)
     (705, 1280, 200, 395),
 
-    # 7. Bottom-left vertical aisle rack
-    (185, 230, 0, 205), # left: 130, right: 245
+    (185, 230, 0, 205),
 
-    # 8. Household Goods shelf (horizontal bottom shelf)
-    (300, 465, 0, 160), # right: 285
+    (300, 465, 0, 160),
 
-    # 9. Bottom fruit bin 1 (left crate of the right corner)
     (815, 990, 0, 160), 
 
-    # 10. Bottom fruit bin 2 (rightmost produce crates)
     (1120, 1280, 0, 160), 
 )
 
@@ -62,13 +45,11 @@ MARKET_STONE_AREAS = (
     (65, 375, 145, 510),     # Left patio area (red circle)
 )
 
-# Playfield bounding coordinates
 PLAY_LEFT = 155
 PLAY_RIGHT = 1125
 PLAY_BOTTOM = 45
 PLAY_TOP = 675
 
-# 16 Wall-Shelf slot anchor coordinates corresponding to the wooden shelf cubbies
 SHELF_LEFT_X = 85
 SHELF_RIGHT_X = 1195
 SHELF_Y_LEVELS = [68, 148, 232, 314, 398, 480, 562, 644]
@@ -79,7 +60,6 @@ SHELF_SLOT_WEIGHTS = SHELF_Y_WEIGHTS + SHELF_Y_WEIGHTS
 
 
 def pick_weighted_shelf_slot():
-    """Selects a random shelf slot with heavy bias toward the middle row levels."""
     import random
     return random.choices(SHELF_SLOTS, weights=SHELF_SLOT_WEIGHTS, k=1)[0]
 
@@ -88,14 +68,12 @@ AISLE_MAX_X = PLAY_RIGHT - 15
 AISLE_MIN_Y = 55
 AISLE_MAX_Y = 665
 
-# Checkout Exit Doors Zone (Defend Mode)
 CHECKOUT_MIN_X = 480
 CHECKOUT_MAX_X = 800
 CHECKOUT_MIN_Y = 615
 
 
 def cover_rect(texture, rect):
-    """Fill `rect` with `texture` without distorting it."""
     scale = max(rect.width / texture.width, rect.height / texture.height)
     return arcade.XYWH(
         rect.x, rect.y, texture.width * scale, texture.height * scale
@@ -103,7 +81,6 @@ def cover_rect(texture, rect):
 
 
 class DialogueHistoryPanel:
-    """Scrollable board displaying dialogue history read so far."""
     def __init__(self):
         self.visible = False
         self.history = []  # list of (speaker, text)
@@ -118,7 +95,6 @@ class DialogueHistoryPanel:
     def toggle(self):
         self.visible = not self.visible
         if self.visible:
-            # Show up to 8 entries at once; scroll to the latest
             self.scroll_offset = max(0, len(self.history) - 8)
 
     def on_mouse_scroll(self, dy):
@@ -158,8 +134,6 @@ class DialogueHistoryPanel:
 
 
 class DialogueController:
-    """Manages Auto, Skip, and History UI buttons."""
-
     def __init__(self, on_advance_cb, on_skip_cb):
         self.on_advance = on_advance_cb
         self.on_skip = on_skip_cb
@@ -185,7 +159,6 @@ class DialogueController:
         self.history_panel.add_entry(speaker, text)
 
     def update(self, delta_time, is_dialog_visible, is_typing):
-        """Ticks auto-advance for both spoken dialogue and picture-only slides."""
         if not self.auto_mode or self.history_panel.visible:
             self.auto_timer = 0.0
             return
@@ -199,7 +172,6 @@ class DialogueController:
             else:
                 self.auto_timer = 0.0
         else:
-            # Picture-only slide (no dialog box): proceed automatically after short delay
             self.auto_timer += delta_time
             if self.auto_timer >= self.auto_delay_silent:
                 self.auto_timer = 0.0
@@ -247,7 +219,6 @@ class DialogueController:
         return False
 
 class RetryModal:
-    """Centered confirmation modal for minigame retry/give-up."""
     def __init__(self):
         self.visible = False
         self.title = "FAILED!"
@@ -359,8 +330,6 @@ class RetryModal:
         return True
 
 class SkipConfirmModal:
-    """Centered confirmation modal for skipping intro cutscenes."""
-
     def __init__(self):
         self.visible = False
         self.on_confirm = None
@@ -441,7 +410,6 @@ class SkipConfirmModal:
         arcade.draw_rect_outline(arcade.XYWH(skip_x, btn_y, btn_w, btn_h), (230, 100, 100), 2)
         arcade.draw_text("Skip", skip_x, btn_y, (255, 255, 255), 11, bold=True, anchor_x="center", anchor_y="center")
 
-        # Cancel button (Green)
         arcade.draw_rect_filled(arcade.XYWH(cancel_x, btn_y, btn_w, btn_h), (40, 140, 65, 230))
         arcade.draw_rect_outline(arcade.XYWH(cancel_x, btn_y, btn_w, btn_h), (100, 220, 130), 2)
         arcade.draw_text("Cancel", cancel_x, btn_y, (255, 255, 255), 11, bold=True, anchor_x="center", anchor_y="center")
@@ -479,8 +447,6 @@ class SkipConfirmModal:
 
 
 class InstructionModal:
-    """Displays a wooden instruction board before gameplay starts with an OK button."""
-
     def __init__(self):
         self.visible = False
         self.mode = "veg"

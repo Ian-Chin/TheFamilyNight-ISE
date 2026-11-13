@@ -1,10 +1,8 @@
-"""In-place white background removal and 16-frame shopper sheet slicer."""
 from pathlib import Path
 from PIL import Image
 import numpy as np
 
 from ...config import ASSETS
-
 
 
 TERRY_DIR = ASSETS / "sprites" / "terry market game"
@@ -13,7 +11,6 @@ INGREDIENTS_DIR = ASSETS / "market ingredients"
 
 
 def has_transparency(img: Image.Image) -> bool:
-    """Returns True if image already has transparent/semi-transparent pixels."""
     if img.mode not in ("RGBA", "LA") and "transparency" not in img.info:
         return False
     alpha = img.convert("RGBA").split()[-1]
@@ -21,7 +18,6 @@ def has_transparency(img: Image.Image) -> bool:
 
 
 def strip_white(img: Image.Image) -> Image.Image:
-    """Keys out near-white backgrounds with soft edge ramping using fast NumPy vectorization."""
     arr = np.array(img.convert("RGBA"))
     r, g, b = arr[:, :, 0], arr[:, :, 1], arr[:, :, 2]
     min_rgb = np.minimum(np.minimum(r, g), b)
@@ -37,12 +33,10 @@ def strip_white(img: Image.Image) -> Image.Image:
 
 
 def process_folder(folder_path: Path):
-    """Processes static standalone sprites (Terry, Ingredients) to strip white backgrounds."""
     if not folder_path.exists():
         return
     for file in folder_path.glob("*.*"):
         if file.suffix.lower() in (".jpg", ".jpeg", ".png"):
-            # Skip sliced frames
             if any(k in file.name for k in ("_0", "_1", "_2", "_3", "_4", "_5", "fall_", "grab_")):
                 continue
             try:
@@ -60,10 +54,6 @@ def process_folder(folder_path: Path):
 
 
 def find_row_character_segments(row_arr_l: np.ndarray, expected_cols: int = 6):
-    """
-    Finds horizontal character bounds by detecting non-white column clusters.
-    Avoids hardcoded column widths cutting through limbs or extended poses.
-    """
     w = row_arr_l.shape[1]
     col_sums = (row_arr_l < 230).sum(axis=0)
 
@@ -93,11 +83,6 @@ def find_row_character_segments(row_arr_l: np.ndarray, expected_cols: int = 6):
 
 
 def slice_shopper_sheet(sheet_path: Path, output_dir: Path, prefix: str):
-    """
-    Slices a 6x2 grid spritesheet (12 distinct poses) into a smooth 16-frame loop.
-    Uses dynamic whitespace column detection to prevent limb/arm clipping.
-    Also produces legacy fall_0..5.png and grab_0..5.png for full backward compatibility.
-    """
     output_dir.mkdir(parents=True, exist_ok=True)
 
     with Image.open(sheet_path) as sheet:
@@ -163,7 +148,6 @@ _prep_done = False
 
 
 def run_prep(force: bool = False):
-    """Main preparatory runner triggered before minigame initialization."""
     global _prep_done
     if _prep_done and not force:
         return
@@ -196,7 +180,6 @@ def run_prep(force: bool = False):
 
                 for key, prefix in sheet_mappings:
                     if key in lower_name:
-                        # Slice if all 16 frames do not exist yet or force=True
                         all_frames_exist = all((sub / f"{prefix}_{i}.png").exists() for i in range(16))
                         if not all_frames_exist or force:
                             slice_shopper_sheet(file, sub, prefix)

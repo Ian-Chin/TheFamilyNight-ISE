@@ -1,9 +1,6 @@
-"""Constants only the menu scene uses. Shared ones stay in game/config.py."""
-
 from ...config import WIDTH
 
 
-# --- Menu layout, in canvas units --------------------------------------------
 MENU_ITEMS = [
     ("Play", "play", "play"),
     ("Story", "story", "book"),
@@ -20,21 +17,12 @@ CREDIT_ICON = "award"
 CREDITS_W = 560
 CREDITS_H = 320
 
-# The loop under the title, story and achievement screens; starting a game
-# stops it.
 MENU_MUSIC = "menu_music"
-# Coming from the splash, the menu opens on a white flash and zooms out
-# from close up into place.
 REVEAL_ZOOM = 1.35       # how close the zoom starts
 REVEAL_TIME = 0.9        # seconds to settle
 REVEAL_FLASH = 0.45      # seconds for the flash to clear
 
 
-# --- Story screen ------------------------------------------------------------
-# (scene title, blurb, chapters). Each chapter is
-# (title, blurb, module, view class, constructor kwargs, preview still).
-# Previews are paths under assets/backgrounds. A chapter whose module or
-# class is missing shows as locked instead of crashing.
 STORY = (
     ("Market Dash", "A Saturday morning call sends Terry racing to the market.", (
         ("Wake-up Call", "An early phone call drags Terry out of bed.",
@@ -95,7 +83,6 @@ STORY = (
 )
 
 
-# --- Credits -----------------------------------------------------------------
 CREDITS_NAMES = (
     ("TP076848", "Ee Jin Xing"),
     ("TP076218", "Ian Chin Jun Sheng"),

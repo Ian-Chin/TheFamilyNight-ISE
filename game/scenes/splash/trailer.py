@@ -1,12 +1,3 @@
-"""The startup trailer, between the studio card and the title menu.
-
-The splash builds it while the studio card is up, so frames are decoded
-ahead, then hands over with the card still showing. The card fades out over
-the trailer already playing, which plays once with its soundtrack started on
-the first frame and hands over to the menu with its flash zoom. A click or any key skips to the menu. Without PyAV, or
-without the file, it goes straight to the menu.
-"""
-
 import queue
 
 import arcade
@@ -22,8 +13,6 @@ from .config import (
 
 class TrailerView(StageView):
     def __init__(self, cover=None, music=None):
-        """`cover` is the (logo, width) card the trailer fades in from under,
-        `music` the splash's cue, faded out with it."""
         super().__init__()
         self.cover = cover
         self.music = music
@@ -46,17 +35,11 @@ class TrailerView(StageView):
         self.clock = 0.0
         self.done = False
         self.skipped = True   # anything short of the last frame cuts the sound
-        self.sound = None   # the soundtrack, started with the first frame
+        self.sound = None
         self.menu = None      # built ahead by `prepare_menu`
         self.relayout()
 
     def prepare_menu(self):
-        """Build the menu now rather than on the trailer's last frame.
-
-        The work stalls for a moment, and at the handover it lands right on
-        the reveal's flash. The splash calls this while the studio card is
-        holding still, where a stall cannot be seen.
-        """
         if self.menu is None:
             from ..menu.view import MenuView
             self.menu = MenuView(reveal=True)
@@ -74,7 +57,6 @@ class TrailerView(StageView):
             self.decoder.stopped.set()
         if self.skipped:
             audio.bank().stop(self.sound)
-        # Played through, the score's last hit rings on under the menu.
         self.sound = None
         audio.bank().stop(self.music)
         self.music = None
@@ -109,7 +91,6 @@ class TrailerView(StageView):
         delta_time = min(delta_time, 1 / 30)
         self.clock += delta_time
         if self.decoder is None or self.decoder.failed or self.clock >= self.length + 1.0:
-            # A decoder that failed or stalled does not hold the game up.
             self.finish()
             return
         if self.music is not None and self.frame is not None:
@@ -130,7 +111,6 @@ class TrailerView(StageView):
             return
         if self.frame is None:
             self.sound = audio.play(TRAILER_SOUND)
-            # The card's fade starts with the picture, not with the decoder.
             self.clock = 0.0
         self.show(image)
         self.frame_clock = max(0.0, self.frame_clock + self.decoder.period)
@@ -139,7 +119,6 @@ class TrailerView(StageView):
         self.clear()
         if self.frame is not None:
             arcade.draw_texture_rect(self.frame, self.stage.viewport())
-        # The studio card, held until the first frame, then faded away.
         fade = 0.0 if self.frame is None else min(1.0, self.clock / TRAILER_FADE)
         if self.cover is not None and fade < 1.0:
             alpha = round(255 * (1 - fade) ** 2)

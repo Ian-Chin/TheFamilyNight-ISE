@@ -16,7 +16,6 @@ STATE_STUNNED = "STUNNED"
 
 
 def get_separated_x(existing_sprites, min_gap=110, attempts=12):
-    """Generates an X coordinate spaced away from existing entities."""
     for gap in (min_gap, min_gap * 0.75, min_gap * 0.5):
         for _ in range(attempts // 3):
             candidate_x = random.randint(AISLE_MIN_X + 20, AISLE_MAX_X - 20)
@@ -26,8 +25,6 @@ def get_separated_x(existing_sprites, min_gap=110, attempts=12):
 
 
 class DroppedIngredient(arcade.Sprite):
-    """Temporary floor pickup dropped when a fleeing shopper is stunned or food is spilled."""
-
     def __init__(self, item_name, texture, x, y, persists_indefinitely=False):
         target_size = 46.0
         calc_scale = target_size / max(texture.width, texture.height)
@@ -56,13 +53,10 @@ class DroppedIngredient(arcade.Sprite):
         return False
 
 
-
 IngredientDrop = DroppedIngredient
 
 
 class SnatcherSprite(arcade.Sprite):
-    """2D floor NPC with 4 AI states: WANDERING, RUSHING_SHELF, FLEEING_WITH_ITEM, STUNNED."""
-
     def __init__(self, anim_data_or_falls, grab_textures=None, initial_x=None, initial_y=None, rush_speed=5.2, player_pos=None, min_dist=200):
         self.base_scale = 0.38
 
@@ -394,14 +388,12 @@ class SnatcherSprite(arcade.Sprite):
                 self.has_fled_with_item = True
 
     def draw_shadow(self):
-        """Draws a soft ground contact shadow beneath the shopper's feet."""
         feet_y = (self.bottom + 6) if self.angle == 180 else (self.center_y - (abs(self.height) / 2) + (10 * abs(self.scale_y)))
         shadow_w = 46.0 * (abs(self.scale_x) / self.base_scale)
         shadow_h = 16.0 * (abs(self.scale_y) / self.base_scale)
         arcade.draw_ellipse_filled(self.center_x, feet_y, shadow_w, shadow_h, (15, 15, 25, 75))
 
     def draw_overlays(self):
-        """Draws carried items, reaction alert bubbles, or stun indicators above shopper."""
         if self.state == STATE_FLEEING_WITH_ITEM and self.carried_texture:
             bob = math.sin(time.time() * 8) * 3
             icon_x = self.center_x

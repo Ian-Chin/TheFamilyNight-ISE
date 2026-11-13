@@ -1,5 +1,3 @@
-"""Screens: the title menu and the playable field."""
-
 import arcade
 
 from ...core import audio, textures
@@ -21,7 +19,6 @@ from ...core.ui import Card, CreditsButton, MenuButton
 
 
 def cover_rect(texture, window_w, window_h):
-    """Fill the window with `texture` without distorting it."""
     scale = max(window_w / texture.width, window_h / texture.height)
     return arcade.XYWH(
         window_w / 2, window_h / 2, texture.width * scale, texture.height * scale
@@ -30,7 +27,6 @@ def cover_rect(texture, window_w, window_h):
 
 class MenuView(StageView):
     def __init__(self, reveal=False):
-        """`reveal` opens the menu with a white flash, zooming out into place."""
         super().__init__()
         self.reveal = reveal
         self.reveal_clock = 0.0
@@ -68,13 +64,6 @@ class MenuView(StageView):
         self.panel = None
 
     def prepare(self):
-        """Do the slow first-frame work now, for a menu built ahead of time.
-
-        Putting the art in the atlas and opening the backdrop's video both
-        stall long enough to be felt, and on the reveal they land right on
-        the flash. Called while the trailer is still loading, the menu opens
-        with its first video frames already decoded.
-        """
         atlas = self.window.ctx.default_atlas
         atlas.add(self.logo)
         self.backdrop.reserve()
@@ -96,11 +85,9 @@ class MenuView(StageView):
         self.backdrop.stop()
 
     def reveal_progress(self):
-        """0 as the flash starts, 1 once the menu has settled."""
         return min(1.0, self.reveal_clock / REVEAL_TIME)
 
     def draw_flash(self):
-        """The white flash, gone in the first part of the zoom."""
         p = min(1.0, self.reveal_clock / REVEAL_FLASH)
         arcade.draw_rect_filled(
             arcade.LBWH(0, 0, self.stage.window_w, self.stage.window_h),
@@ -110,7 +97,6 @@ class MenuView(StageView):
     def on_draw(self):
         self.clear()
         if self.reveal:
-            # The whole menu drawn through a camera easing back from close up.
             camera = self.reveal_camera
             camera.match_window()
             camera.zoom = 1 + (REVEAL_ZOOM - 1) * (1 - self.reveal_progress()) ** 3
@@ -123,8 +109,6 @@ class MenuView(StageView):
         arcade.draw_texture_rect(self.logo, self.stage.rect(
             self.logo_left, self.logo_bottom, LOGO_WIDTH, self.logo_h,
         ))
-        # The settings panel is see-through enough that the button stack
-        # reads straight through it, so the menu steps out of the way.
         if not self.settings_panel.visible:
             for button in self.buttons:
                 button.draw()
@@ -206,8 +190,6 @@ class MenuView(StageView):
 
 
 class GameView(StageView):
-    """An empty white field Terry can walk around."""
-
     def __init__(self):
         super().__init__()
         self.background_color = arcade.color.WHITE
@@ -219,8 +201,6 @@ class GameView(StageView):
         self.widgets = [self.pause_menu]
         self.widgets = [self.pause_menu]
 
-        # A Camera2D projection is measured from its position, so the camera
-        # sits at the middle of the canvas and projects half of it each way.
         self.camera = arcade.camera.Camera2D(
             position=(WIDTH / 2, HEIGHT / 2),
             projection=arcade.LRBT(-WIDTH / 2, WIDTH / 2, -HEIGHT / 2, HEIGHT / 2),

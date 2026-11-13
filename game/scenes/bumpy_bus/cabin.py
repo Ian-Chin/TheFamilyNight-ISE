@@ -1,14 +1,3 @@
-"""The inside of the bus, played from frame sheets.
-
-Each scene (the idle ride and the four things that go wrong) is one big sheet
-of 48 frames. A sheet is about 90 MB once decoded, so only the ones in use are
-kept: the idle sheet stays, a reaction sheet is read in the background while
-its alert is still counting down and dropped once it has played.
-
-The frames do not fit in the texture atlas all at once, so one texture is kept
-and its picture is swapped in place whenever the frame changes.
-"""
-
 import json
 import threading
 
@@ -34,10 +23,8 @@ class Cabin:
         self.shown = None
         self.prepare("idle")
 
-    # --- Sheets -------------------------------------------------------------
 
     def prepare(self, kind):
-        """Start reading `kind`'s sheet in the background, if it is not already."""
         if kind in self.sheets or kind in self.threads:
             return
         thread = threading.Thread(target=self.read, args=(kind,), daemon=True)
@@ -55,22 +42,18 @@ class Cabin:
         return self.sheets[kind]
 
     def ready(self, kind):
-        """True once `kind` can be shown without waiting for its sheet."""
         return kind in self.sheets
 
     def release(self, kind):
-        """Let go of a reaction sheet once its scene has played."""
         if kind != "idle":
             self.sheets.pop(kind, None)
             self.threads.pop(kind, None)
 
-    # --- Frames -------------------------------------------------------------
 
     def duration(self, kind):
         return sum(self.scenes[kind]["durationsMs"]) / 1000
 
     def frame_at(self, kind, seconds):
-        """Which frame `kind` is on `seconds` in; the idle scene loops."""
         durations = self.scenes[kind]["durationsMs"]
         ms = seconds * 1000
         if kind == "idle":
@@ -87,14 +70,12 @@ class Cabin:
         return self.sheet(kind).crop((x, y, x + self.frame_w, y + self.frame_h))
 
     def idle_frame(self):
-        """The cabin with everyone standing still, as a picture to paint on."""
         return self.frame_image("idle", 0)
 
     def image_at(self, kind, seconds):
         return self.frame_image(kind, self.frame_at(kind, seconds))
 
     def show(self, image, key):
-        """Show a picture built by the caller; `key` says when it has changed."""
         if key != self.shown:
             self.upload(image)
             self.shown = key
@@ -110,7 +91,6 @@ class Cabin:
         atlas.update_texture_image(self.texture)
 
     def at(self, kind, seconds):
-        """The texture showing `kind` at `seconds`."""
         frame = (kind, self.frame_at(kind, seconds))
         if frame == self.shown:
             return self.texture

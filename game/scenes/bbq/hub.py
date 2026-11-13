@@ -243,7 +243,6 @@ class BbqView(StageView):
             then()
 
     def continue_dialog(self):
-        """Enter, Space or a click on an open line: finish it, or move on."""
         self.advance_dialog()
         if not self.dialog.visible and self.ending_sequence_triggered:
             self.walking_to_top = True
@@ -575,7 +574,6 @@ class BbqView(StageView):
             return
 
         if key in (arcade.key.ENTER, arcade.key.NUM_ENTER, arcade.key.RETURN) and self.playing:
-            
             if self.near_table:
                 if not self.chop_unlocked:
                     self.held.clear() 

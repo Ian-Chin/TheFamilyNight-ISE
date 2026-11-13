@@ -1,10 +1,3 @@
-"""Small particle effects drawn in canvas units, under the sprites.
-
-WalkDust kicks up little square puffs from behind a walker's feet: soft dust
-on grass, and a few hopping grey chips on stone. Squares rather than circles,
-so the bits sit with the pixel art around them.
-"""
-
 import random
 
 import arcade
@@ -28,17 +21,12 @@ class WalkDust:
         )
 
     def update(self, delta_time, moving, x, feet_y, dx, dy):
-        """Age the bits, and kick up new ones while `moving`.
-
-        (dx, dy) is the walking direction; bits land behind it.
-        """
         for bit in self.particles:
             bit["age"] += delta_time
             bit["x"] += bit["vx"] * delta_time
             bit["y"] += bit["vy"] * delta_time
             if bit["chip"]:
                 bit["vy"] -= DUST_GRAVITY * delta_time
-                # Chips bounce off the ground once and settle.
                 if bit["y"] < bit["floor"]:
                     bit["y"] = bit["floor"]
                     bit["vy"] = abs(bit["vy"]) * 0.3

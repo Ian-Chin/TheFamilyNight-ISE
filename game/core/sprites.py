@@ -1,5 +1,3 @@
-"""Playable characters and the family standing around the garden."""
-
 import random
 
 import arcade
@@ -14,8 +12,6 @@ from ..config import (
 
 
 class Character(arcade.Sprite):
-    """A sprite that stands on the ground and casts a shadow there."""
-
     def __init__(self, texture, height, center_x, center_y):
         super().__init__(
             texture,
@@ -26,12 +22,6 @@ class Character(arcade.Sprite):
         self.ground_y = center_y
 
     def draw_shadow(self):
-        """Draw the ground shadow; call this before the sprite itself.
-
-        It follows `ground_y` rather than the drawn position, so it stays on
-        the floor while the character is in the air, fading and shrinking as
-        they rise.
-        """
         lift = max(0.0, self.center_y - self.ground_y) / JUMP_HEIGHT
         shrink = 1 - SHADOW_JUMP_SHRINK * min(lift, 1.0)
         width = abs(self.width) * SHADOW_WIDTH * shrink
@@ -44,16 +34,12 @@ class Character(arcade.Sprite):
 
 
 class NPC(Character):
-    """A family member standing in the garden, breathing gently if their art
-    has an idle sheet (see IDLE_SHEETS). The owning view calls `animate`."""
-
     def __init__(self, name, art_file, center_x, center_y, height, glow=True):
         self.idle_frames = textures.idle_frames(art_file, glow)
         texture = (self.idle_frames[0] if self.idle_frames
                    else textures.character(art_file, glow))
         super().__init__(texture, height, center_x, center_y)
         self.name = name
-        # Everyone breathes on their own beat.
         self.idle_clock = random.uniform(0, NPC_IDLE_FRAME * 4)
 
     def animate(self, delta_time):
@@ -65,14 +51,6 @@ class NPC(Character):
 
 
 class Diner:
-    """Someone sat on a stool at the dinner table, playing a frame sheet.
-
-    Eaters loop their "eat" sheet (reach, bite, chew, rest, blink); the rest
-    loop "talk" (mouth flapping, then a quiet spell). Each frame stays up for
-    its time in CHAO_EAT_FRAME_TIMES or CHAO_TALK_FRAME_TIMES. `phase` starts
-    everyone at a different point so the table does not move in step.
-    """
-
     def __init__(self, name, x, y, height, eating, phase=0.0):
         kind = "eat" if eating else "talk"
         self.frames = textures.diner_frames(name, kind)
@@ -82,7 +60,6 @@ class Diner:
         self.visible = True    # off while they are away from the table
         self.clock = phase
 
-        # The stool is the middle of every cell, so the sprite sits right on it.
         self.sprite = arcade.Sprite(self.frames[0], scale=1 / CHAO_SHEET_RES,
                                     center_x=x, center_y=y)
         self.sprites = arcade.SpriteList()
@@ -91,7 +68,6 @@ class Diner:
 
     @property
     def ground_y(self):
-        """Depth for sorting, like a standing character's."""
         return self.stool[1]
 
     def draw(self):
@@ -99,7 +75,6 @@ class Diner:
             self.sprites.draw(pixelated=True)
 
     def update_seat(self, delta_time):
-        """Move the clock on and show whichever frame it has landed in."""
         self.clock += delta_time
         t = self.clock % sum(self.frame_times)
         for index, time in enumerate(self.frame_times):
@@ -110,19 +85,10 @@ class Diner:
 
 
 class Terry(Character):
-    """Terry walks in eight directions and hops on demand.
-
-    With `carrying`, he holds the food tray from the prep table instead.
-    With `glow` off, his art has the dark contour but no pale halo.
-    """
-
     def __init__(self, center_x, center_y, carrying=False, glow=True):
         walk, jump, idle = textures.terry_frames(glow)
         height = TERRY_HEIGHT
         if carrying:
-            # The tray rides above his head in some frames, so the carry art
-            # is sized to match his body on the shortest walk frame, where
-            # the tray is held low, not on the frame box.
             body = TERRY_HEIGHT * textures.body_share(walk[0])
             walk, jump, idle = textures.terry_carry_frames()
             height = body / min(map(textures.body_share, walk))
@@ -144,11 +110,6 @@ class Terry(Character):
 
     @property
     def feet_box(self):
-        """(left, right, bottom, top) of the box Terry collides with.
-
-        Only his feet are solid, so scenery drawn behind him may overlap the
-        rest of the sprite without pushing him away.
-        """
         half_w = abs(self.width) * FEET_WIDTH / 2
         bottom = self.ground_y - abs(self.height) / 2
         return (
@@ -157,7 +118,6 @@ class Terry(Character):
         )
 
     def block_x(self, obstacles, moved_right):
-        """Undo a step into scenery along x by resting against its edge."""
         for left, right, bottom, top in obstacles:
             f_left, f_right, f_bottom, f_top = self.feet_box
             if f_right <= left or f_left >= right:
@@ -168,14 +128,12 @@ class Terry(Character):
             self.center_x = left - half_w if moved_right else right + half_w
 
     def block_y(self, obstacles, moved_up):
-        """Undo a step into scenery along y by resting against its edge."""
         for left, right, bottom, top in obstacles:
             f_left, f_right, f_bottom, f_top = self.feet_box
             if f_right <= left or f_left >= right:
                 continue
             if f_top <= bottom or f_bottom >= top:
                 continue
-            # `ground_y` sits above the feet box, so shift by the overlap.
             self.ground_y += (bottom - f_top) if moved_up else (top - f_bottom)
 
     def update_movement(self, delta_time, dx, dy, bounds, obstacles=()):
@@ -183,8 +141,6 @@ class Terry(Character):
         half_w = abs(self.width) / 2
         half_h = abs(self.height) / 2
 
-        # One axis at a time, so a blocked direction still slides along the
-        # other one instead of sticking to the corner of an obstacle.
         if dx or dy:
             length = (dx * dx + dy * dy) ** 0.5
             if dx:
@@ -204,8 +160,6 @@ class Terry(Character):
         self.ground_y = min(max(self.ground_y, bottom + half_h), top - half_h)
 
         if dx:
-            # The art only draws a front-facing Terry, so mirror him to face
-            # the direction of travel.
             self.scale_x = abs(self.scale_x) * (1 if dx > 0 else -1)
 
         self.animate(delta_time, moving=bool(dx or dy))

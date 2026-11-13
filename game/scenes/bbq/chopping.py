@@ -389,7 +389,6 @@ class ChoppingView(StageView):
         if self.heart_anim_timer > 0:
             self.heart_anim_timer -= delta_time
             if self.heart_anim_timer <= 0 and self.breaking_idx != -1:
-                
                 if self.heart_anim_state == 1:
                     self.hearts[self.breaking_idx].texture = textures.ui_image("Character_HP_Fragmented.png")
                     self.heart_anim_timer = 0.2  
@@ -608,7 +607,6 @@ class ChoppingView(StageView):
             return
 
     def continue_dialog(self):
-        """Enter, Space or a click on an open line: finish it, or move on."""
         self.advance_dialog()
 
         if not self.dialog.visible:
