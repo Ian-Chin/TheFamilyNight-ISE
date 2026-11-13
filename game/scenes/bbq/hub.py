@@ -492,7 +492,7 @@ class BbqView(StageView):
                         self.board_lock.scale = 0.2 + (pop_curve * 0.08)
                         self.board_lock.center_y = self.board_lock.base_y + (pop_curve * 15.0)
     
-                if hasattr(self, 'grill_lock_timer') and self.grill_lock_timer > 0:
+                if hasattr(self, 'grill_lock') and hasattr(self, 'grill_lock_timer') and self.grill_lock_timer > 0:
                     self.grill_lock_timer -= delta_time
                     
                     if self.grill_lock_timer <= 4.0 and not self.grill_unlock_sound_played:
@@ -511,7 +511,11 @@ class BbqView(StageView):
                         self.grill_lock.scale = 0.2
                         self.grill_lock.center_y = self.grill_lock.base_y
                     else:
-                        pass
+                        self.grill_lock.alpha = 255
+                        progress = 5.0 - self.grill_lock_timer 
+                        pop_curve = math.sin(progress * math.pi)
+                        self.grill_lock.scale = 0.2 + (pop_curve * 0.08)
+                        self.grill_lock.center_y = self.grill_lock.base_y + (pop_curve * 15.0)
 
             in_table_x = 90 <= self.terry.center_x <= 368
             in_table_y = 208 <= self.terry.ground_y <= 595
