@@ -12,9 +12,6 @@ from .common import BG_DIR, DialogueController, cover_rect, SkipConfirmModal
 from ...core.widgets import TitleCard
 
 
-# ============================================================================
-# PART 1: Story Intro (Slideshow + Dialogue)
-# ============================================================================
 class StorySlideView(StageView):
     """Part 1: Dialogue slideshow switching background images and conversation lines."""
 
@@ -31,7 +28,7 @@ class StorySlideView(StageView):
         )
         self.title_card_active = True
 
-        # Include title_card so relayout() initializes self.band!
+        
         self.widgets = [
             self.dialog, self.pause_menu, self.settings_panel, self.title_card
         ]
@@ -133,14 +130,14 @@ class StorySlideView(StageView):
         self.is_shaking = False
         self.shake_intensity = 0.0
 
-        # 1. World Camera (vibrates with screen shake)
+        
         self.camera = arcade.camera.Camera2D(
             position=(WIDTH / 2, HEIGHT / 2),
             projection=arcade.LRBT(-WIDTH / 2, WIDTH / 2, -HEIGHT / 2, HEIGHT / 2),
             viewport=self.stage.viewport()
         )
 
-        # 2. UI Camera (stable in letterboxed canvas space for widgets/dialog)
+        
         self.ui_camera = arcade.camera.Camera2D(
             position=(WIDTH / 2, HEIGHT / 2),
             projection=arcade.LRBT(-WIDTH / 2, WIDTH / 2, -HEIGHT / 2, HEIGHT / 2),
@@ -251,13 +248,13 @@ class StorySlideView(StageView):
     def on_draw(self):
         self.clear()
 
-        # 1. Use the virtual canvas camera (1280x720) so canvas_x/canvas_y match 1:1
+        
         if hasattr(self, "camera"):
             self.camera.use()
         elif hasattr(self, "stage"):
             self.stage.use()
 
-        # 1. Background image (with camera shake)
+      
         self.camera.use()
         if self.current_texture:
             arcade.draw_texture_rect(
@@ -265,31 +262,31 @@ class StorySlideView(StageView):
                 arcade.XYWH(WIDTH / 2, HEIGHT / 2, WIDTH, HEIGHT)
             )
 
-        # Draw entering title card over the scene
+       
         if self.title_card_active:
             self.window.default_camera.use()
             self.title_card.draw()
 
-        # 2. Dialog box & Hint in native screen space
+      
         self.window.default_camera.use()
         if self.dialog.visible and getattr(self.dialog, "texture", None):
             self.dialog.draw()
 
-        # 3. Canvas UI layer: Option buttons (upper-right) & History log panel
+        
         self.ui_camera.use()
         self.dialog_ctrl.draw(show_controls=True)
 
-        # 4. Modals in native screen space
+       
         self.window.default_camera.use()
         if not self.settings_panel.visible:
             self.pause_menu.draw()
         self.settings_panel.draw()
 
-        # 5. Skip confirmation modal (always on topmost layer)
+       
         self.skip_modal.draw(ui_camera=self.ui_camera)
 
     def on_key_press(self, key, modifiers):
-        # Prevent input if skip modal is active
+       
         if self.skip_modal.visible:
             if key == arcade.key.ESCAPE:
                 self.skip_modal.close()
@@ -315,13 +312,13 @@ class StorySlideView(StageView):
             self.pause_menu.open()
             return
 
-        # Close history log with Enter/Space
+        
         if self.dialog_ctrl.history_panel.visible:
             if key in (arcade.key.ENTER, arcade.key.SPACE, arcade.key.NUM_ENTER):
                 self.dialog_ctrl.history_panel.toggle()
             return
 
-        # Advance slides
+      
         if key in (arcade.key.ENTER, arcade.key.SPACE, arcade.key.NUM_ENTER):
             if self.dialog.visible:
                 if self.dialog.typing:
@@ -337,7 +334,7 @@ class StorySlideView(StageView):
     def on_mouse_press(self, x, y, button, modifiers):
         canvas_x, canvas_y = self.canvas_point(x, y)
 
-        # 1. Skip modal captures clicks first
+       
         if self.skip_modal.visible:
             self.skip_modal.handle_mouse_press(canvas_x, canvas_y)
             return
@@ -350,11 +347,10 @@ class StorySlideView(StageView):
             self.run_action(action)
             return
 
-        # 2. UI Control buttons (LOG, AUTO, SKIP)
+        
         if self.dialog_ctrl.handle_mouse_press(canvas_x, canvas_y):
             return
 
-        # 3. Advance dialogue on left click
         if button == arcade.MOUSE_BUTTON_LEFT and not self.pause_menu.visible:
             if self.dialog.visible:
                 if self.dialog.typing:

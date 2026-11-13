@@ -91,7 +91,6 @@ class BbqView(StageView):
         self.grill_unlocked = grill_unlocked
         self.grill_completed = grill_completed
         
-        # --- Flags for the ending sequence and smooth exit fade ---
         self.ending_sequence_triggered = False
         self.walking_to_top = False
         self.fading_out = False
@@ -145,7 +144,6 @@ class BbqView(StageView):
             
             self.indicators.append(self.grill_lock)
             
-        # --- FIX: Create board_lock if not yet unlocked OR if playing the unlock animation from prep ---
         if not self.chop_unlocked or play_chop_unlock:
             self.board_lock = arcade.Sprite(textures.ui_image("Lock Symbol.png"), scale=0.2)
             self.board_lock.center_x = 1000 
@@ -169,7 +167,6 @@ class BbqView(StageView):
         self.pause_menu = PauseMenu()
         self.settings_panel = SettingsPanel()
         
-        # --- Setup dynamic emotion portraits matching chopping.py/grilling.py ---
         self.default_face = textures.terry_frames(glow=False)[2][0]
         self.terry_faces = textures.terry_faces()
         self.portraits = Portraits(self.default_face)
@@ -218,7 +215,6 @@ class BbqView(StageView):
         )
         self.relayout()
 
-    # --- Dialogue Management Methods matching chopping.py/grilling.py ---
     def play_script(self, lines, then=None):
         self.script = list(lines[1:])
         self.after_script = then
@@ -256,8 +252,6 @@ class BbqView(StageView):
         audio.ambience().start()
 
     def on_hide_view(self):
-        # The birds carry on under prep, chopping and grilling; only leaving
-        # the backyard for dinner or the menu stops them.
         self.backdrop.stop()
         self.stop_typing_sound()
 
@@ -396,7 +390,6 @@ class BbqView(StageView):
             if self.active_notification.finished:
                 self.active_notification = None
 
-        # --- Handle Terry walking to the top, then smooth fade out ---
         if self.walking_to_top:
             if self.fading_out:
                 self.exit_fade_clock += delta_time
@@ -427,7 +420,6 @@ class BbqView(StageView):
                 self.stop_typing_sound()
             return
 
-        # --- Trigger completion dialog with an emotion ("happy") ---
         if self.grill_completed and not self.show_title_card and not self.ending_sequence_triggered:
             self.ending_sequence_triggered = True
             self.play_script([

@@ -26,9 +26,8 @@ def strip_white(img: Image.Image) -> Image.Image:
     r, g, b = arr[:, :, 0], arr[:, :, 1], arr[:, :, 2]
     min_rgb = np.minimum(np.minimum(r, g), b)
 
-    # Near-white (> 240): completely transparent
+    
     full_mask = (r > 240) & (g > 240) & (b > 240)
-    # Soft ramp threshold (214 < min_rgb <= 240)
     ramp_mask = (r > 214) & (g > 214) & (b > 214) & (~full_mask)
 
     arr[full_mask, 3] = 0
@@ -54,7 +53,7 @@ def process_folder(folder_path: Path):
                     target_path = file.with_suffix(".png")
                     clean_im.save(target_path, "PNG")
                     if file.suffix.lower() != ".png":
-                        file.unlink()  # Remove old non-transparent jpg
+                        file.unlink() 
                     print(f"[CLEANED] {target_path.name}")
             except Exception as err:
                 print(f"[ERROR] Could not process {file}: {err}")
@@ -81,14 +80,14 @@ def find_row_character_segments(row_arr_l: np.ndarray, expected_cols: int = 6):
     if in_char:
         segs.append((start_x, w))
 
-    # If whitespace gap detection neatly found expected_cols, use them with a 4px safety buffer
+    
     if len(segs) == expected_cols:
         buffered = []
         for sx, ex in segs:
             buffered.append((max(0, sx - 4), min(w, ex + 4)))
         return buffered
 
-    # Fallback to evenly spaced cells if gap detection didn't match expected count
+    
     fw = w // expected_cols
     return [(c * fw + 6, (c + 1) * fw - 6) for c in range(expected_cols)]
 
@@ -105,7 +104,7 @@ def slice_shopper_sheet(sheet_path: Path, output_dir: Path, prefix: str):
         sheet = strip_white(sheet)
         w, h = sheet.size
 
-        # Find horizontal row split around mid_y
+        
         gray_arr = np.array(sheet.convert("L"))
         row_sums = (gray_arr < 230).sum(axis=1)
         mid_y = h // 2
@@ -114,7 +113,7 @@ def slice_shopper_sheet(sheet_path: Path, output_dir: Path, prefix: str):
         row_defs = [(0, split_y), (split_y, h)]
         base_frames = []
 
-        # Target uniform canvas dimensions to avoid sprite jitter/bouncing
+       
         target_w = 224
         target_h = 340
         bottom_pad = 12
@@ -126,7 +125,7 @@ def slice_shopper_sheet(sheet_path: Path, output_dir: Path, prefix: str):
             for seg_left, seg_right in segs:
                 char_crop = sheet.crop((seg_left, r_top, seg_right, r_bot))
 
-                # Find tightly trimmed bounding box of the non-transparent character
+                
                 alpha = np.array(char_crop)[:, :, 3]
                 nz_y, nz_x = np.where(alpha > 10)
                 if len(nz_y) > 0 and len(nz_x) > 0:
@@ -136,21 +135,20 @@ def slice_shopper_sheet(sheet_path: Path, output_dir: Path, prefix: str):
                 else:
                     trimmed = char_crop
 
-                # Paste centered horizontally and bottom-aligned onto standard uniform canvas
+                
                 canvas = Image.new("RGBA", (target_w, target_h), (0, 0, 0, 0))
                 paste_x = (target_w - trimmed.width) // 2
                 paste_y = max(0, target_h - trimmed.height - bottom_pad)
                 canvas.paste(trimmed, (paste_x, paste_y), trimmed)
                 base_frames.append(canvas)
 
-        # 16-frame ping-pong loop: [0..11] forward + [9, 6, 4, 1] smooth easing back to start
-        # This gives a smooth seamless wrap back to frame 0
+        
         loop_indices = list(range(12)) + [9, 6, 4, 1]
         for frame_no, src_idx in enumerate(loop_indices):
             target_path = output_dir / f"{prefix}_{frame_no}.png"
             base_frames[src_idx].save(target_path, "PNG")
 
-        # Backward compatibility: generate fall_*.png or grab_*.png if applicable
+       
         if prefix == "walk":
             for i in range(min(6, len(base_frames))):
                 base_frames[i].save(output_dir / f"fall_{i}.png", "PNG")
@@ -178,8 +176,7 @@ def run_prep(force: bool = False):
             if not sub.is_dir():
                 continue
 
-            # Mapping filenames to animation state prefixes
-            # Checks longer matches first ('walk to right' before 'walk')
+            
             sheet_mappings = [
                 ("walk to right", "walk_right"),
                 ("walk", "walk"),
@@ -188,7 +185,7 @@ def run_prep(force: bool = False):
                 ("grab", "grab"),
             ]
 
-            # Only check source character sheets (ignore previously sliced output frames)
+           
             source_sheets = [
                 f for f in sorted(sub.glob("character *.*"))
                 if f.suffix.lower() in (".jpg", ".jpeg", ".png")

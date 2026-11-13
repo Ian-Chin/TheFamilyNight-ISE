@@ -26,9 +26,9 @@ class MarketEndingView(StageView):
         self.widgets = [self.dialog, self.pause_menu, self.settings_panel]
 
         self.in_wave_dialogue = False
-        self.dialogue_bg = None  # Holds the current scene cutscene image
+        self.dialogue_bg = None 
 
-        # Pass the background/cutscene texture as the 3rd tuple element
+       
         end_scene = textures.background("market-dash/Scene 3 - returning home.jpg")
 
         self.dialogue_queue = [
@@ -120,7 +120,7 @@ class MarketEndingView(StageView):
     def on_draw(self):
         self.clear()
 
-        # 1. Background image in camera space
+       
         self.camera.use()
         if self.in_wave_dialogue and self.dialogue_bg:
             arcade.draw_texture_rect(
@@ -133,17 +133,17 @@ class MarketEndingView(StageView):
                 arcade.XYWH(WIDTH / 2, HEIGHT / 2, WIDTH, HEIGHT)
             )
 
-        # 2. Dialogue Box (Screen Space)
+       
         self.window.default_camera.use()
         if self.dialog.visible:
             self.dialog.draw()
 
-        # 3. Canvas UI layer: Option buttons (LOG, AUTO, SKIP) & History log panel
+       
         self.ui_camera.use()
         if self.in_wave_dialogue:
             self.dialog_ctrl.draw(show_controls=True)
 
-        # 4. Modals / Pause Menus
+       
         self.window.default_camera.use()
         if not self.settings_panel.visible:
             self.pause_menu.draw()
@@ -184,7 +184,7 @@ class MarketEndingView(StageView):
             self.run_action(self.pause_menu.on_mouse_press(canvas_x, canvas_y, button))
             return
 
-        # UI controls (LOG, AUTO, SKIP)
+       
         if self.dialog_ctrl.handle_mouse_press(canvas_x, canvas_y):
             return
 

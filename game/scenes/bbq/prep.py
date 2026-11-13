@@ -18,18 +18,15 @@ class BBQPrepView(StageView):
     def __init__(self):
         super().__init__()
         self.backdrop = Backdrop(BBQ_PREP_SCENE_BG)
-        
-        # --- Setup the Start Button Sprite at virtual canvas coordinates ---
+
         self.button_list = arcade.SpriteList()
         self.start_button = arcade.Sprite(textures.ui_image("Start_Prep_button.png"), scale=0.6)
         self.start_button.center_x = WIDTH - 150
         self.start_button.center_y = 60
         self.button_list.append(self.start_button)
-        
-        # --- Setup Dialogue and Portraits using your friend's method ---
+
         self.dialog = DialogBox()
-        
-        # Load your friend's optimized texture dictionary for dynamic emotions
+
         self.default_face = textures.terry_frames(glow=False)[2][0]
         self.terry_faces = textures.terry_faces()
         
@@ -38,7 +35,6 @@ class BBQPrepView(StageView):
         self.widgets = [self.dialog, self.portraits]
         self.typing_player = None
 
-        # --- Setup stage camera for responsive scaling across windowed & fullscreen ---
         self.camera = arcade.camera.Camera2D(
             position=(WIDTH / 2, HEIGHT / 2),
             projection=arcade.LRBT(-WIDTH / 2, WIDTH / 2, -HEIGHT / 2, HEIGHT / 2),
@@ -46,7 +42,6 @@ class BBQPrepView(StageView):
         )
         self.relayout()
 
-    # --- Dialogue Management Methods matching chopping.py ---
     def play_script(self, lines, then=None):
         self.script = list(lines[1:])
         self.after_script = then
@@ -80,7 +75,6 @@ class BBQPrepView(StageView):
 
     def on_show_view(self):
         audio.ambience().start()
-        # Uses play_script with an emotion key ("unimpressed" or whichever you prefer)
         self.play_script([("Terry", "Hmm, there is a lot of food. I need to chop it first...", "unimpressed")])
 
     def on_hide_view(self):
@@ -102,21 +96,18 @@ class BBQPrepView(StageView):
 
     def on_draw(self):
         self.clear()
-        
-        # 1. Draw Background
+
         self.window.default_camera.use()
         background = self.backdrop.texture
         arcade.draw_texture_rect(
             background, 
             cover_rect(background, self.stage.viewport())
         )
-        
-        # 2. Use stage camera so the button scales and locks to the corner responsively
+
         self.camera.use()
         if not self.dialog.visible:
             self.button_list.draw(pixelated=True)
-        
-        # 3. Draw Dialogue and Portrait
+
         self.window.default_camera.use()
         if self.dialog.visible:
             self.portraits.draw(partner=None, speaking="left")

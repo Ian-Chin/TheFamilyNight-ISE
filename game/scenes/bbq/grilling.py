@@ -2,7 +2,6 @@ import math
 import random
 import arcade
 
-# --- NEW: Added achievements and PauseMenu to the core imports ---
 from ...core import achievements, audio, textures
 from ...core.pause import PauseMenu
 from ...config import HEIGHT, WIDTH
@@ -19,7 +18,6 @@ def cover_rect(texture, rect):
     scale = max(rect.width / texture.width, rect.height / texture.height)
     return arcade.XYWH(rect.x, rect.y, texture.width * scale, texture.height * scale)
 
-# --- NEW: Floating Combat/Action Text ---
 class FloatingText:
     def __init__(self, text, x, y, color):
         self.text = text
@@ -49,8 +47,6 @@ class FloatingText:
     def is_dead(self):
         return self.age >= self.lifetime
 
-
-# --- Customizable Layered Smoke Particle (Bigger & Color-Tinted) ---
 class SmokeParticle:
     def __init__(self, x, y, color=(160, 160, 160)):
         self.x = x + random.uniform(-8, 8)
@@ -90,7 +86,6 @@ class SmokeParticle:
         return self.age >= self.lifetime
 
 
-# --- Continuous Smoke Emitter for Realistic BBQ Smoking ---
 class SmokeEmitter:
     def __init__(self, x, y, color=(160, 160, 160)):
         self.x = x
@@ -144,7 +139,6 @@ class GrillingView(StageView):
         self.floating_texts = []         
         self.fire_flash_alpha = 0.0      
 
-        # --- NEW: Dialogue Delay System ---
         self.pending_dialog = None
         self.pending_emotion = None
         self.dialog_timer = 0.0
@@ -172,7 +166,6 @@ class GrillingView(StageView):
 
         self.dialog = DialogBox()
 
-        # --- NEW: Exit confirmation popup menu ---
         self.exit_popup = PauseMenu(
             [
                 ("Resume", "resume_grilling", "play"),
@@ -283,7 +276,6 @@ class GrillingView(StageView):
         if self.exit_popup.visible:
             return
 
-        # 1. Always update active visual effects
         for p in self.particles:
             p.update(delta_time)
         self.particles = [p for p in self.particles if not p.is_dead]
@@ -298,7 +290,6 @@ class GrillingView(StageView):
         for emitter in self.smoke_emitters:
             emitter.update(delta_time, self.particles)
 
-        # Ambient grilling sound
         if not self.game_over and not self.dialog.visible:
             if self.grilling_player is None:
                 self.grilling_player = audio.play("grilling", loop=True)
@@ -307,14 +298,12 @@ class GrillingView(StageView):
                 audio.bank().stop(self.grilling_player)
                 self.grilling_player = None
 
-        # 2. Block game logic if dialog is actively visible
         if self.dialog.visible:
             self.dialog.update(delta_time)
             if not self.dialog.typing:
                 self.stop_typing_sound()
             return  
 
-        # 3. Block game logic if we are in the "Freeze Frame" dialog delay
         if self.dialog_timer > 0:
             self.dialog_timer -= delta_time
             if self.dialog_timer <= 0 and self.pending_dialog:
@@ -325,7 +314,6 @@ class GrillingView(StageView):
                 self.pending_dialog = None
             return
 
-        # 4. Standard Game Logic
         if not self.game_over:
             self.temperature = min(300.0, self.temperature + (15.0 * delta_time))
             self.time_since_last_action += delta_time
@@ -354,7 +342,6 @@ class GrillingView(StageView):
             else:
                 self.temp_bar.texture = self.temp_textures["maxed"]
 
-            # --- 300°C OVERHEAT / BURN STRIKE CHECK ---
             if self.temperature >= 300.0:
                 self.burn_strikes += 1
                 
@@ -607,7 +594,6 @@ class GrillingView(StageView):
             return
         if action in ("resume_grilling", "resume"):
             self.exit_popup.close()
-            # Resume grilling sound if gameplay is active
             if not self.game_over and not self.dialog.visible:
                 if self.grilling_player is None:
                     self.grilling_player = audio.play("grilling", loop=True)
@@ -619,5 +605,4 @@ class GrillingView(StageView):
             if self.grilling_player is not None:
                 audio.bank().stop(self.grilling_player)
                 self.grilling_player = None
-            # Returns back to hub with chopping completed and grill unlocked
             self.window.show_view(BbqView(chop_unlocked=True, grill_unlocked=True, grill_completed=False))
