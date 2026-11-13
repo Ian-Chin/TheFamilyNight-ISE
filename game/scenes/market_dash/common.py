@@ -10,9 +10,6 @@ TERRY_GAME_DIR = ASSETS_DIR / "sprites" / "terry market game"
 SNATCHERS_BASE_DIR = ASSETS_DIR / "market snatchers"
 INGREDIENTS_BASE_DIR = ASSETS_DIR / "market ingredients"
 
-# ============================================================================
-# PART 2: Catcher Mini-Game (3 Waves)
-# ============================================================================
 # --- Cleaned Walk Bounds and Precise Obstacle Footprints ---
 MARKET_WALK_BOUNDS = (72, 1280 - 40, 0, 720 - 40)
 
@@ -75,9 +72,8 @@ def pick_weighted_shelf_slot():
     import random
     return random.choices(SHELF_SLOTS, weights=SHELF_SLOT_WEIGHTS, k=1)[0]
 
-# Top-down checkered aisle bounds for player and floor shoppers
-AISLE_MIN_X = PLAY_LEFT + 15   # approx 170
-AISLE_MAX_X = PLAY_RIGHT - 15  # approx 1110
+AISLE_MIN_X = PLAY_LEFT + 15  
+AISLE_MAX_X = PLAY_RIGHT - 15 
 AISLE_MIN_Y = 55
 AISLE_MAX_Y = 665
 
@@ -129,15 +125,15 @@ class DialogueHistoryPanel:
         cx = WIDTH / 2
         cy = HEIGHT / 2
 
-        # 1. Dark Backdrop & Border
+        
         arcade.draw_rect_filled(arcade.XYWH(cx, cy, panel_w, panel_h), (18, 14, 12, 245))
         arcade.draw_rect_outline(arcade.XYWH(cx, cy, panel_w, panel_h), (180, 130, 70), 2)
 
-        # 2. Header & Footer
+        
         arcade.draw_text("DIALOGUE LOG / HISTORY", cx, cy + (panel_h / 2) - 30, (255, 220, 150), 16, bold=True, anchor_x="center")
         arcade.draw_text("Scroll: Wheel | Click anywhere or Esc to close", cx, cy - (panel_h / 2) + 20, (170, 160, 150), 12, anchor_x="center")
 
-        # 3. Compact Entries (reduced gap: 44px step instead of 80px)
+       
         visible_entries = self.history[self.scroll_offset:self.scroll_offset + 8]
         start_y = cy + (panel_h / 2) - 75
 
@@ -159,12 +155,12 @@ class DialogueController:
 
         self.auto_mode = False
         self.auto_timer = 0.0
-        self.auto_delay_text = 2.0   # Delay after typing completes
-        self.auto_delay_silent = 1.4 # Delay for picture-only slides
+        self.auto_delay_text = 2.0   
+        self.auto_delay_silent = 1.4
 
         self.history_panel = DialogueHistoryPanel()
 
-        # Upper-right corner with balanced margin from the right edge
+        
         btn_y = HEIGHT - 36
         btn_w = 88
         btn_h = 26
@@ -264,14 +260,14 @@ class RetryModal:
 
         window = arcade.get_window()
 
-        # 1. Full-screen dimmer overlay (covers entire window)
+        
         window.default_camera.use()
         arcade.draw_rect_filled(
             arcade.XYWH(window.width / 2, window.height / 2, window.width, window.height),
             (0, 0, 0, 185)
         )
 
-        # 2. Centered Modal Box in canvas coordinates
+        
         if ui_camera is None:
             current_view = getattr(window, 'current_view', None)
             if current_view is not None:
@@ -285,36 +281,36 @@ class RetryModal:
         box_w = 560
         box_h = 240
 
-        # Wooden Box
+        
         arcade.draw_rect_filled(arcade.XYWH(cx, cy, box_w, box_h), (50, 30, 20, 245))
         arcade.draw_rect_filled(arcade.XYWH(cx, cy, box_w - 6, box_h - 6), (75, 45, 30, 250))
         arcade.draw_rect_outline(arcade.XYWH(cx, cy, box_w, box_h), (180, 140, 90, 220), 2)
 
-        # Title Text
+       
         arcade.draw_text(
             self.title, cx, cy + 68, (235, 75, 75), 16, bold=True,
             anchor_x="center", anchor_y="center"
         )
 
-        # Message Text (multiline & bounded to prevent exceeding box borders)
+       
         arcade.draw_text(
             self.message, cx, cy + 16, (240, 230, 215), 11,
             width=box_w - 60, align="center", anchor_x="center", anchor_y="center",
             multiline=True
         )
 
-        # Buttons
+       
         btn_w, btn_h = 136, 38
         btn_y = cy - 50
         retry_x = cx - 85
         giveup_x = cx + 85
 
-        # "TRY AGAIN" button
+        
         arcade.draw_rect_filled(arcade.XYWH(retry_x, btn_y, btn_w, btn_h), (40, 140, 65, 230))
         arcade.draw_rect_outline(arcade.XYWH(retry_x, btn_y, btn_w, btn_h), (100, 220, 130), 2)
         arcade.draw_text("TRY AGAIN", retry_x, btn_y, (255, 255, 255), 11, bold=True, anchor_x="center", anchor_y="center")
 
-        # "GIVE UP" button
+       
         arcade.draw_rect_filled(arcade.XYWH(giveup_x, btn_y, btn_w, btn_h), (160, 45, 45, 230))
         arcade.draw_rect_outline(arcade.XYWH(giveup_x, btn_y, btn_w, btn_h), (230, 100, 100), 2)
         arcade.draw_text("GIVE UP", giveup_x, btn_y, (255, 255, 255), 11, bold=True, anchor_x="center", anchor_y="center")
@@ -330,7 +326,7 @@ class RetryModal:
         retry_x = cx - 85
         giveup_x = cx + 85
 
-        # Hit test for "TRY AGAIN"
+       
         if (retry_x - btn_w / 2 <= mouse_x <= retry_x + btn_w / 2) and \
            (btn_y - btn_h / 2 <= mouse_y <= btn_y + btn_h / 2):
             callback = self.on_retry
@@ -339,7 +335,7 @@ class RetryModal:
                 callback()
             return True
 
-        # Hit test for "GIVE UP"
+   
         if (giveup_x - btn_w / 2 <= mouse_x <= giveup_x + btn_w / 2) and \
            (btn_y - btn_h / 2 <= mouse_y <= btn_y + btn_h / 2):
             callback = self.on_give_up
@@ -348,7 +344,7 @@ class RetryModal:
                 callback()
             return True
 
-        # Absorb the click so it doesn't trigger game actions behind the modal
+     
         return True
 
 class SkipConfirmModal:
@@ -387,14 +383,14 @@ class SkipConfirmModal:
 
         window = arcade.get_window()
 
-        # 1. Full-screen dimmer overlay (covers 100% of entire physical window)
+     
         window.default_camera.use()
         arcade.draw_rect_filled(
             arcade.XYWH(window.width / 2, window.height / 2, window.width, window.height),
             (0, 0, 0, 185)
         )
 
-        # 2. Centered Modal Box in canvas coordinates
+     
         if ui_camera is None:
             current_view = getattr(window, 'current_view', None)
             if current_view is not None:
@@ -408,30 +404,28 @@ class SkipConfirmModal:
         box_w = 640
         box_h = 320
 
-        # Outer border & dark wooden frame
+     
         arcade.draw_rect_filled(arcade.XYWH(cx, cy, box_w, box_h), (50, 30, 20, 245))
         arcade.draw_rect_filled(arcade.XYWH(cx, cy, box_w - 6, box_h - 6), (75, 45, 30, 250))
         arcade.draw_rect_outline(arcade.XYWH(cx, cy, box_w, box_h), (180, 140, 90, 220), 2)
 
-        # Title
+       
         arcade.draw_text(
             self.title, cx, cy + 120, (255, 235, 185), 15, bold=True,
             anchor_x="center", anchor_y="center"
         )
 
-        # Body text / synopsis
+       
         arcade.draw_text(
             self.message, cx - (box_w / 2) + 32, cy + 80, (235, 225, 210), 11,
             width=box_w - 64, multiline=True
         )
 
-        # Buttons geometry
         btn_w, btn_h = 120, 36
         btn_y = cy - 115
         skip_x = cx - 75
         cancel_x = cx + 75
 
-        # Skip button (Red)
         arcade.draw_rect_filled(arcade.XYWH(skip_x, btn_y, btn_w, btn_h), (160, 45, 45, 230))
         arcade.draw_rect_outline(arcade.XYWH(skip_x, btn_y, btn_w, btn_h), (230, 100, 100), 2)
         arcade.draw_text("Skip", skip_x, btn_y, (255, 255, 255), 11, bold=True, anchor_x="center", anchor_y="center")
@@ -453,7 +447,7 @@ class SkipConfirmModal:
         skip_x = cx - 75
         cancel_x = cx + 75
 
-        # Hit test for Skip button
+       
         if (skip_x - btn_w / 2 <= mouse_x <= skip_x + btn_w / 2) and \
            (btn_y - btn_h / 2 <= mouse_y <= btn_y + btn_h / 2):
             self.close()
@@ -461,7 +455,7 @@ class SkipConfirmModal:
                 self.on_confirm()
             return True
 
-        # Hit test for Cancel button (closes modal regardless of whether callback exists)
+     
         if (cancel_x - btn_w / 2 <= mouse_x <= cancel_x + btn_w / 2) and \
            (btn_y - btn_h / 2 <= mouse_y <= btn_y + btn_h / 2):
             self.close()
@@ -469,7 +463,7 @@ class SkipConfirmModal:
                 self.on_cancel()
             return True
 
-        # Block mouse clicks from bleeding through to dialogue underneath
+        
         return True
 
 
@@ -499,14 +493,14 @@ class InstructionModal:
 
         window = arcade.get_window()
 
-        # 1. Full-screen dimmer overlay
+       
         window.default_camera.use()
         arcade.draw_rect_filled(
             arcade.XYWH(window.width / 2, window.height / 2, window.width, window.height),
             (0, 0, 0, 195)
         )
 
-        # 2. Centered Modal Box in canvas coordinates
+      
         if ui_camera is None:
             current_view = getattr(window, 'current_view', None)
             if current_view is not None:
@@ -520,7 +514,6 @@ class InstructionModal:
         box_w = 760
         box_h = 500
 
-        # Outer drop shadow & rich wooden frame
         arcade.draw_rect_filled(arcade.XYWH(cx, cy - 4, box_w + 10, box_h + 10), (12, 6, 3, 190))
         arcade.draw_rect_filled(arcade.XYWH(cx, cy, box_w, box_h), (48, 28, 16, 255))
         arcade.draw_rect_filled(arcade.XYWH(cx, cy, box_w - 8, box_h - 8), (78, 48, 28, 255))
@@ -528,7 +521,7 @@ class InstructionModal:
         arcade.draw_rect_outline(arcade.XYWH(cx, cy, box_w - 8, box_h - 8), (180, 140, 90, 220), 2)
         arcade.draw_rect_outline(arcade.XYWH(cx, cy, box_w, box_h), (35, 18, 10, 255), 2)
 
-        # Title configuration
+        
         if self.mode == "veg":
             title = "🥕 HOW TO PLAY: FRESH VEGETABLES 🥦"
             obj_title = "OBJECTIVE:"
@@ -542,15 +535,14 @@ class InstructionModal:
             obj_title = "OBJECTIVE:"
             obj_desc = "Escort your basket with all ingredients to the exit door!"
 
-        # Title text
         arcade.draw_text(
             title, cx, cy + 200, (255, 235, 175), 16, bold=True,
             anchor_x="center", anchor_y="center"
         )
-        # Decorative divider line
+       
         arcade.draw_line(cx - 330, cy + 175, cx + 330, cy + 175, (180, 140, 90, 180), 2)
 
-        # Objective Banner Box
+       
         obj_box_y = cy + 130
         obj_box_w = box_w - 48
         obj_box_h = 60
@@ -560,10 +552,10 @@ class InstructionModal:
         arcade.draw_text(obj_title, obj_left, obj_box_y + 14, (255, 215, 110), 11, bold=True, anchor_y="center")
         arcade.draw_text(obj_desc, obj_left, obj_box_y - 12, (230, 225, 215), 10, width=obj_box_w - 40, anchor_y="center")
 
-        # Controls Cards Header
+        
         arcade.draw_text("CONTROLS & ACTIONS", cx, cy + 78, (255, 215, 110), 12, bold=True, anchor_x="center", anchor_y="center")
 
-        # Control Rows
+        
         if self.mode == "defend":
             controls = [
                 ("WASD  /  ARROWS", "Move Terry", "Navigate through the crowded market aisle"),
@@ -586,11 +578,11 @@ class InstructionModal:
 
         for idx, (badge_text, act_label, desc_text) in enumerate(controls):
             ry = row_start_y - (idx * row_h)
-            # Subtle row backdrop
+         
             arcade.draw_rect_filled(arcade.XYWH(cx, ry, row_w, 34), (42, 24, 14, 180))
             arcade.draw_rect_outline(arcade.XYWH(cx, ry, row_w, 34), (90, 60, 40, 140), 1)
 
-            # Key Badge pill (Column 1)
+          
             badge_w = 170
             badge_h = 24
             badge_x = row_left + 14 + (badge_w / 2)
@@ -598,21 +590,21 @@ class InstructionModal:
             arcade.draw_rect_outline(arcade.XYWH(badge_x, ry, badge_w, badge_h), (210, 160, 90, 220), 1.5)
             arcade.draw_text(badge_text, badge_x, ry, (255, 240, 200), 10, bold=True, anchor_x="center", anchor_y="center")
 
-            # Action Label (Column 2)
+         
             act_x = row_left + 14 + badge_w + 16
             arcade.draw_text(act_label, act_x, ry, (255, 220, 130), 11, bold=True, anchor_x="left", anchor_y="center")
 
-            # Description (Column 3) - well spaced with ample width to prevent any overflow
+           
             desc_x = act_x + 130
             desc_w = (row_left + row_w - 14) - desc_x
             arcade.draw_text(desc_text, desc_x, ry, (225, 220, 210), 10, anchor_x="left", anchor_y="center", width=int(desc_w))
 
-        # OK / START Button
+     
         btn_w, btn_h = 180, 42
         btn_y = cy - 188
         btn_x = cx
 
-        # Pulsing gold/green button
+      
         pulse = 0.5 + 0.5 * math.sin(time.time() * 5.0)
         btn_col = (38, 135, 62, 245)
         border_col = (110 + int(70 * pulse), 235, 140)
@@ -648,7 +640,7 @@ class InstructionModal:
             self.close()
             return True
 
-        # Consume clicks on the modal so they don't bleed through
+  
         return True
 
     def handle_key_press(self, key):
