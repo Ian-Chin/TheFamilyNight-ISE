@@ -22,7 +22,6 @@ def cover_rect(texture, rect):
     scale = max(rect.width / texture.width, rect.height / texture.height)
     return arcade.XYWH(rect.x, rect.y, texture.width * scale, texture.height * scale)
 
-# --- NEW: Light Slash Visual Effect ---
 class SlashEffect:
     def __init__(self, x, y):
         self.x = x + random.uniform(-15, 15)
@@ -61,7 +60,6 @@ class SlashEffect:
     def is_dead(self):
         return self.age >= self.lifetime
 
-# --- Food Particle System for Chopping Visual Effects ---
 class FoodParticle:
     def __init__(self, x, y, color):
         self.x = x + random.uniform(-30, 30)
@@ -97,7 +95,6 @@ class FoodParticle:
     @property
     def is_dead(self):
         return self.age >= self.lifetime
-# -------------------------------------------------------------
 
 class ChoppingView(StageView):
     def __init__(self):
@@ -141,7 +138,6 @@ class ChoppingView(StageView):
         self.knife_target_x = self.knife_base_x
         self.knife_target_y = self.knife_base_y
         
-        # --- Top-Right UI Sprite (Remains completely untouched) ---
         self.terry_portrait = arcade.Sprite("assets/emotions/Terry_original.png", scale=0.8)
         self.terry_portrait.center_x = 1150
         self.terry_portrait.center_y = 600
@@ -170,7 +166,6 @@ class ChoppingView(StageView):
         
         self.dialog = DialogBox()
 
-        # --- NEW: Exit confirmation popup menu ---
         self.exit_popup = PauseMenu(
             [
                 ("Resume", "resume_chopping", "play"),
@@ -181,7 +176,6 @@ class ChoppingView(StageView):
             width=460,
         )
         
-        # Load the base texture and dynamic faces for the dialogue box ONLY
         self.default_face = textures.terry_frames(glow=False)[2][0]
         self.terry_faces = textures.terry_faces()
         
@@ -206,7 +200,6 @@ class ChoppingView(StageView):
     def start_dialog(self, speaker, text, face=None):
         side = "left" if speaker == "Terry" else "right"
         
-        # --- FIX: Update only the Portraits widget without breaking DialogBox.open() ---
         if speaker == "Terry":
             self.portraits.terry = self.terry_faces.get(face, self.default_face)
             
@@ -492,7 +485,6 @@ class ChoppingView(StageView):
             self.portraits.draw(partner=None, speaking="left")
             self.dialog.draw()
 
-        # --- NEW: Draw exit popup if open ---
         if self.exit_popup.visible:
             self.exit_popup.draw()
 
@@ -671,5 +663,4 @@ class ChoppingView(StageView):
         elif action == "exit_chopping":
             self.exit_popup.close()
             self.stop_typing_sound()
-            # Keep chopping station unlocked, but chopping progress is not completed
             self.window.show_view(BbqView(chop_unlocked=True, grill_unlocked=False, grill_completed=False))
