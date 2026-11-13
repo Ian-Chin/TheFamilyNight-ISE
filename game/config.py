@@ -378,7 +378,7 @@ SOUND_FILES = {
     "splash_music": ("splash-music", "music", 0.7),
 
     #market dash scene
-    "phone_ring": ("phone-ring", "sound", 0.75),
+    "phone_ring": ("phone-ring", "sound", 0.35),
     "phone_pickup": ("phone-pickup", "sound", 0.8),
     "door_slam": ("door-slam", "sound", 0.85),
     "market_ambience": ("market-ambience", "music", 0.55),

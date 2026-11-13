@@ -112,8 +112,10 @@ class StorySlideView(StageView):
                 self.window.show_view(MarketStageView())
 
             def do_cancel():
-                pass  # Modal closes and slideshow continues normally
+                self.start_ring_sound()
 
+            self.stop_ring_sound()
+            self.stop_typing_sound()
             self.skip_modal.open(
                 on_confirm=do_confirm_skip,
                 on_cancel=do_cancel,
@@ -151,11 +153,18 @@ class StorySlideView(StageView):
         self.title_card_active = True
         self.trigger_slide(0)
 
-    def cleanup_audio(self):
-        self.stop_typing_sound()
+    def stop_ring_sound(self):
         if self.ring_player:
             audio.bank().stop(self.ring_player)
             self.ring_player = None
+
+    def start_ring_sound(self):
+        if 0 <= self.current_slide <= 7 and not self.ring_player:
+            self.ring_player = audio.play("phone_ring", loop=True)
+
+    def cleanup_audio(self):
+        self.stop_typing_sound()
+        self.stop_ring_sound()
 
     def on_hide_view(self):
         self.cleanup_audio()
@@ -169,12 +178,6 @@ class StorySlideView(StageView):
         if hasattr(self, "title_card"):
             self.title_card.layout(self.stage)
 
-        self.hint = self.stage.text(
-            "Press Enter/Space to advance    Esc to pause",
-            WIDTH - 80, 44, (200, 205, 215, 180), 12,
-            anchor_x="right", anchor_y="center"
-        )
-
     def trigger_slide(self, index):
         if index >= len(self.slides):
             self.cleanup_audio()
@@ -185,17 +188,14 @@ class StorySlideView(StageView):
         self.current_slide = index
         speaker, text, img_target = self.slides[index]
 
-        # Slides 0 to 3 are the ringing sequence
+        # Slides 0 to 7 are the ringing sequence
         if 0 <= index <= 7:
             self.is_shaking = True
             self.shake_intensity = 6.0
-            if not self.ring_player:
-                self.ring_player = audio.play("phone_ring", loop=True)
+            self.start_ring_sound()
         else:
             self.is_shaking = False
-            if self.ring_player:
-                audio.bank().stop(self.ring_player)
-                self.ring_player = None
+            self.stop_ring_sound()
 
         if index == 7:  # Terry picks up phone
             audio.play("phone_pickup")
@@ -274,7 +274,6 @@ class StorySlideView(StageView):
         self.window.default_camera.use()
         if self.dialog.visible and getattr(self.dialog, "texture", None):
             self.dialog.draw()
-            self.hint.draw()
 
         # 3. Canvas UI layer: Option buttons (upper-right) & History log panel
         self.ui_camera.use()
@@ -294,6 +293,8 @@ class StorySlideView(StageView):
         if self.skip_modal.visible:
             if key == arcade.key.ESCAPE:
                 self.skip_modal.close()
+                if self.skip_modal.on_cancel:
+                    self.skip_modal.on_cancel()
             return
 
         if self.settings_panel.visible:
@@ -309,6 +310,8 @@ class StorySlideView(StageView):
             if self.dialog_ctrl.history_panel.visible:
                 self.dialog_ctrl.history_panel.toggle()
                 return
+            self.stop_ring_sound()
+            self.stop_typing_sound()
             self.pause_menu.open()
             return
 
@@ -380,6 +383,9 @@ class StorySlideView(StageView):
     def run_action(self, action):
         if action == "resume":
             self.pause_menu.close()
+            self.start_ring_sound()
+            if self.dialog.visible and self.dialog.typing and not self.typing_player:
+                self.typing_player = audio.play("dialog_type", loop=True)
         elif action == "settings":
             self.settings_panel.open()
         elif action == "menu":
