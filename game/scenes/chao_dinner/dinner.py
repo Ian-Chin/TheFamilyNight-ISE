@@ -926,7 +926,12 @@ class ChaoDinnerView(StageView):
                     self.hit = 1.0
                 if self.kids.pointer_moved:
                     x, y = self.scene_to_screen(*self.kids.pointer)
-                    self.window.set_mouse_position(round(x), round(y))
+                    # pyglet divides mouse events by the display's DPI scale
+                    # but places the cursor in raw pixels; without scaling
+                    # back, each tug on a scaled display pulls the cursor
+                    # towards the bottom left corner.
+                    scale = getattr(self.window, "_mouse_scale", 1.0) or 1.0
+                    self.window.set_mouse_position(round(x * scale), round(y * scale))
                 if self.kids.finished:
                     self.end_kids_game()
             return
@@ -1083,6 +1088,10 @@ class ChaoDinnerView(StageView):
             if card.visible:
                 self.run_action(card.on_mouse_press(canvas_x, canvas_y, button))
                 return
+        if self.dialog.visible:
+            if button == arcade.MOUSE_BUTTON_LEFT:
+                self.advance_dialog()
+            return
         if (self.game_running and not self.dialog.visible
                 and button == arcade.MOUSE_BUTTON_LEFT):
             self.kids.press(*self.scene_point(x, y))

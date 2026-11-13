@@ -16,6 +16,7 @@ the food got finished.
 
 import math
 import random
+from typing import Any
 
 import arcade
 import PIL.Image
@@ -76,6 +77,7 @@ def gradient_texture(color, name):
     """A tall strip of `color` going from solid at the bottom to clear on top."""
     image = PIL.Image.new("RGBA", (4, 256))
     pixels = image.load()
+    assert pixels is not None
     for y in range(256):
         alpha = round(255 * (y / 255) ** 1.6)
         for x in range(4):
@@ -203,7 +205,7 @@ class TypingFeastView(StageView):
         self.second_errors = 0
         self.next_second = 1
         self.course = 0
-        self.old_course = None
+        self.old_course: int | None = None
         self.course_clock = FEAST_STAGE_FADE
         self.meter = 0.0
         self.bump = 0.0
@@ -219,7 +221,7 @@ class TypingFeastView(StageView):
         self.sparks = arcade.SpriteList()
         self.floaters = []
         self.banner = None
-        self.results = None
+        self.results: dict[str, Any] | None = None
         self.dirty = True
 
     def more_words(self, count):
@@ -458,7 +460,8 @@ class TypingFeastView(StageView):
         """The word being typed as runs of same-coloured letters:
         (first column, text, colour), and how many columns it takes."""
         word, typed = self.words[self.index], self.typed[self.index]
-        runs, current = [], None
+        runs: list = []
+        current: list | None = None
         width = max(len(word), len(typed))
         for j in range(width):
             if j < len(typed):
@@ -641,28 +644,28 @@ class TypingFeastView(StageView):
             if self.mode != "play":
                 return
 
-    def on_key_press(self, key, modifiers):
+    def on_key_press(self, symbol, modifiers):
         if self.settings_panel.visible:
-            if self.settings_panel.on_key_press(key) == "close":
+            if self.settings_panel.on_key_press(symbol) == "close":
                 self.settings_panel.close()
             return
         if self.pause_menu.visible:
-            self.run_action(self.pause_menu.on_key_press(key))
+            self.run_action(self.pause_menu.on_key_press(symbol))
             return
-        if key == arcade.key.ESCAPE:
+        if symbol == arcade.key.ESCAPE:
             self.pause_menu.open()
             return
-        if key == arcade.key.TAB:
+        if symbol == arcade.key.TAB:
             self.restart()
             return
         if self.mode == "intro":
             self.start_count()
             return
         if self.mode == "results":
-            if self.mode_clock > 1.0 and key in (arcade.key.ENTER, arcade.key.NUM_ENTER):
+            if self.mode_clock > 1.0 and symbol in (arcade.key.ENTER, arcade.key.NUM_ENTER):
                 self.run_action("continue")
             return
-        if self.mode == "play" and key == arcade.key.BACKSPACE:
+        if self.mode == "play" and symbol == arcade.key.BACKSPACE:
             self.backspace(bool(modifiers & (arcade.key.MOD_CTRL | arcade.key.MOD_ALT)))
 
     def on_mouse_motion(self, x, y, dx, dy):
@@ -686,7 +689,7 @@ class TypingFeastView(StageView):
                     self.run_action(item.action)
                     return
 
-    def on_mouse_drag(self, x, y, dx, dy, buttons, modifiers):
+    def on_mouse_drag(self, x, y, dx, dy, _buttons, _modifiers):
         self.settings_panel.on_mouse_drag(*self.canvas_point(x, y))
 
     def on_mouse_release(self, x, y, button, modifiers):
@@ -791,6 +794,7 @@ class TypingFeastView(StageView):
 
     def build_results(self):
         r = self.results
+        assert r is not None
         left, bottom = RESULT_LEFT, RESULT_BOTTOM
         top = bottom + RESULT_H
         stage = self.stage
@@ -850,6 +854,7 @@ class TypingFeastView(StageView):
     def draw_results(self):
         stage = self.stage
         r = self.results
+        assert r is not None
         t = self.mode_clock
         rise = (1 - ease_out(t / 0.5)) * -40
         alpha = 255 * ease_out(t / 0.35)
@@ -895,6 +900,7 @@ class TypingFeastView(StageView):
             text.draw()
         if not self.history or reveal <= 0:
             return
+        assert self.results is not None
         span = max(1.0, self.results["time"])
         shown = [h for h in self.history if h[0] <= span * reveal + 1e-6]
         if not shown:
@@ -1037,8 +1043,7 @@ class TypingFeastView(StageView):
     def on_draw(self):
         self.clear(color=FEAST_FLOOR)
         stage = self.stage
-        fading = self.old_course is not None and self.course_clock < FEAST_STAGE_FADE
-        if fading:
+        if self.old_course is not None and self.course_clock < FEAST_STAGE_FADE:
             self.draw_course(self.courses[self.old_course], 255)
             self.draw_course(self.courses[self.course],
                              255 * ease_out(self.course_clock / FEAST_STAGE_FADE))

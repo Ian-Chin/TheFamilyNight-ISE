@@ -249,6 +249,7 @@ class ChoppingView(StageView):
             self.particles.append(FoodParticle(x, y, color))
 
     def on_show_view(self):
+        audio.ambience().start()
         self.play_script([("Terry", "Let's prep! Click exactly on the CHOP button. Don't miss, and don't chop too fast!", "happy")])
 
     def on_hide_view(self):
@@ -333,6 +334,7 @@ class ChoppingView(StageView):
                 elif 16 <= self.stage_idx < 21: self.stage_idx = 20  
 
     def on_update(self, delta_time):
+        audio.ambience().update(delta_time)
         if self.exit_popup.visible:
             return
         
@@ -506,6 +508,8 @@ class ChoppingView(StageView):
             return
 
         if self.dialog.visible:
+            if button == arcade.MOUSE_BUTTON_LEFT:
+                self.continue_dialog()
             return
         
         if button == arcade.MOUSE_BUTTON_LEFT:
@@ -608,49 +612,54 @@ class ChoppingView(StageView):
             
         if self.dialog.visible:
             if key in (arcade.key.ENTER, arcade.key.NUM_ENTER, arcade.key.SPACE):
-                self.advance_dialog()
-                
-                if not self.dialog.visible:
-                    if self.lives <= 0:
-                        self.window.show_view(ChoppingView())
-                        return
-                    
-                    if self.stage_idx in (2, 3):
-                        self.set_emotion("Terry_nervous" if self.stage_idx == 3 else "Terry_original")
-                        self.streak = 0
-                        self.stage_idx = 4
-                        emotion = "nervous" if self.stage_idx == 3 else "happy"
-                        self.play_script([("Terry", "Let's slice up these fresh carrots next!", emotion)])
-                    elif self.stage_idx in (6, 7):
-                        self.set_emotion("Terry_nervous" if self.stage_idx == 7 else "Terry_original")
-                        self.streak = 0
-                        self.stage_idx = 8
-                        emotion = "nervous" if self.stage_idx == 7 else "happy"
-                        self.play_script([("Terry", "Alright, onions are next. Let's chop fast before I cry!", emotion)])
-                    elif self.stage_idx in (10, 11):
-                        self.set_emotion("Terry_nervous" if self.stage_idx == 11 else "Terry_original")
-                        self.streak = 0
-                        self.stage_idx = 12
-                        emotion = "nervous" if self.stage_idx == 11 else "happy"
-                        self.play_script([("Terry", "Time for the green peppers!", emotion)])
-                    elif self.stage_idx in (14, 15):
-                        self.set_emotion("Terry_nervous" if self.stage_idx == 15 else "Terry_original")
-                        self.streak = 0
-                        self.stage_idx = 16
-                        emotion = "nervous" if self.stage_idx == 15 else "happy"
-                        self.play_script([("Terry", "Last but not least, the eggplant!", emotion)])
-                    elif self.stage_idx in (19, 20):
-                        self.stage_idx = 21
-                        audio.play("game_success")
-                        self.play_script([("Terry", "All ingredients are prepped! Time to fire up the BBQ.", "happy")])
-                    elif self.stage_idx == 21:
-                        if self.lives == self.max_lives:
-                            achievements.unlock("bbq_flawless_chop")
-                            
-                        self.window.show_view(BbqView(chop_unlocked=True, grill_unlocked=True, grill_completed=False, play_grill_unlock=True))
-                    else:
-                        if not self.button_active:
-                            self.spawn_button()
+                self.continue_dialog()
+            return
+
+    def continue_dialog(self):
+        """Enter, Space or a click on an open line: finish it, or move on."""
+        self.advance_dialog()
+
+        if not self.dialog.visible:
+            if self.lives <= 0:
+                self.window.show_view(ChoppingView())
+                return
+
+            if self.stage_idx in (2, 3):
+                self.set_emotion("Terry_nervous" if self.stage_idx == 3 else "Terry_original")
+                self.streak = 0
+                self.stage_idx = 4
+                emotion = "nervous" if self.stage_idx == 3 else "happy"
+                self.play_script([("Terry", "Let's slice up these fresh carrots next!", emotion)])
+            elif self.stage_idx in (6, 7):
+                self.set_emotion("Terry_nervous" if self.stage_idx == 7 else "Terry_original")
+                self.streak = 0
+                self.stage_idx = 8
+                emotion = "nervous" if self.stage_idx == 7 else "happy"
+                self.play_script([("Terry", "Alright, onions are next. Let's chop fast before I cry!", emotion)])
+            elif self.stage_idx in (10, 11):
+                self.set_emotion("Terry_nervous" if self.stage_idx == 11 else "Terry_original")
+                self.streak = 0
+                self.stage_idx = 12
+                emotion = "nervous" if self.stage_idx == 11 else "happy"
+                self.play_script([("Terry", "Time for the green peppers!", emotion)])
+            elif self.stage_idx in (14, 15):
+                self.set_emotion("Terry_nervous" if self.stage_idx == 15 else "Terry_original")
+                self.streak = 0
+                self.stage_idx = 16
+                emotion = "nervous" if self.stage_idx == 15 else "happy"
+                self.play_script([("Terry", "Last but not least, the eggplant!", emotion)])
+            elif self.stage_idx in (19, 20):
+                self.stage_idx = 21
+                audio.play("game_success")
+                self.play_script([("Terry", "All ingredients are prepped! Time to fire up the BBQ.", "happy")])
+            elif self.stage_idx == 21:
+                if self.lives == self.max_lives:
+                    achievements.unlock("bbq_flawless_chop")
+
+                self.window.show_view(BbqView(chop_unlocked=True, grill_unlocked=True, grill_completed=False, play_grill_unlock=True))
+            else:
+                if not self.button_active:
+                    self.spawn_button()
 
     def run_action(self, action):
         if action is None:

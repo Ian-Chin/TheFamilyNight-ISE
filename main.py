@@ -29,6 +29,9 @@ def warm_up():
     # 1. Market Dash Scene (Scene 1)
     from game.scenes.market_dash import MarketDashView
     MarketDashView()
+    # The round views load a few hundred snatcher frames; do it here once.
+    from game.scenes.market_dash import catch
+    catch.warm_up()
 
     # 2. BBQ Scene (Scene 3)
     from game.scenes.bbq import BbqView

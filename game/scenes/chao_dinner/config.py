@@ -137,7 +137,7 @@ FEAST_KEY_TOP = 168
 FEAST_SPACE_W = 250
 FEAST_KEY_GLOW = 0.28
 FEAST_KEY_HIT = (126, 214, 150)
-FEAST_KEY_FACE = (26, 29, 38)
+FEAST_KEY_FACE = (26, 29, 38, 255)
 FEAST_KEY_EDGE = (255, 255, 255, 46)
 FEAST_WORDS = (
     "the", "be", "of", "and", "a", "to", "in", "he", "have", "it", "that",

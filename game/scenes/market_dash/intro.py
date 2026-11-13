@@ -197,7 +197,7 @@ class StorySlideView(StageView):
             self.is_shaking = False
             self.stop_ring_sound()
 
-        if index == 7:  # Terry picks up phone
+        if index == 8:  # Terry picks up phone, the slide the ringing stops on
             audio.play("phone_pickup")
         elif index == 20:  # Door slams on exit
             audio.play("door_slam")

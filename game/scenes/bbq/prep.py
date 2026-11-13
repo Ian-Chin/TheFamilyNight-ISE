@@ -94,6 +94,7 @@ class BBQPrepView(StageView):
 
     def on_update(self, delta_time):
         self.backdrop.update(delta_time)
+        audio.ambience().update(delta_time)
         if self.dialog.visible:
             self.dialog.update(delta_time)
             if not self.dialog.typing:
@@ -132,6 +133,8 @@ class BBQPrepView(StageView):
 
     def on_mouse_press(self, x, y, button, modifiers):
         if self.dialog.visible:
+            if button == arcade.MOUSE_BUTTON_LEFT:
+                self.advance_dialog()
             return
             
         canvas_x, canvas_y = self.stage.to_canvas(x, y)

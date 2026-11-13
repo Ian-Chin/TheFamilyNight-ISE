@@ -230,6 +230,7 @@ class GrillingView(StageView):
         return random.uniform(min_x, max_x), random.uniform(min_y, max_y)
 
     def on_show_view(self):
+        audio.ambience().start()
         self.trigger_dialog("Click SPIN when the arrow hits the green zone! Watch the heat so we don't burn the skewers!", dialog_face="happy")
 
     def on_hide_view(self):
@@ -278,6 +279,7 @@ class GrillingView(StageView):
         return yellow_w, green_w
 
     def on_update(self, delta_time):
+        audio.ambience().update(delta_time)
         if self.exit_popup.visible:
             return
 
@@ -481,7 +483,12 @@ class GrillingView(StageView):
             self.run_action(action)
             return
 
-        if self.dialog.visible or self.game_over or self.dialog_timer > 0:
+        if self.dialog.visible:
+            if button == arcade.MOUSE_BUTTON_LEFT:
+                self.continue_dialog()
+            return
+
+        if self.game_over or self.dialog_timer > 0:
             return
             
         canvas_x, canvas_y = self.stage.to_canvas(x, y)
@@ -565,31 +572,35 @@ class GrillingView(StageView):
 
         if self.dialog.visible:
             if key in (arcade.key.ENTER, arcade.key.NUM_ENTER, arcade.key.RETURN, arcade.key.SPACE):
-                self.stop_typing_sound()
-                self.dialog.advance()
-                
-                if not self.dialog.visible and self.game_over:
-                    if self.end_phase == 1:
-                        self.end_phase = 2
-                        if self.burn_strikes >= 3:
-                            audio.play("game_failed")
-                            self.set_emotion("Terry_sad")
-                            self.trigger_dialog("Total failure at the grill... Time to clean up and head back.", dialog_face="nervous")
-                        else:
-                            audio.play("game_success")
-                            self.set_emotion("Terry_smile_excited")
-                            self.trigger_dialog("All done! Time to serve the delicious barbecue feast.", dialog_face="happy")
-                    elif self.end_phase == 2:
-                        if self.burn_strikes >= 3:
-                            achievements.unlock("bbq_charcoal")
-                            self.window.show_view(BbqView(chop_unlocked=True, grill_unlocked=True, grill_completed=False))
-                        else:
-                            if self.burn_strikes == 0:
-                                achievements.unlock("bbq_perfect_grill")
-                            elif self.burn_strikes in (1, 2):
-                                achievements.unlock("bbq_crunchy")
-                            self.window.show_view(BbqView(chop_unlocked=True, grill_unlocked=True, grill_completed=True))
+                self.continue_dialog()
             return
+
+    def continue_dialog(self):
+        """Enter, Space or a click on an open line: finish it, or move on."""
+        self.stop_typing_sound()
+        self.dialog.advance()
+
+        if not self.dialog.visible and self.game_over:
+            if self.end_phase == 1:
+                self.end_phase = 2
+                if self.burn_strikes >= 3:
+                    audio.play("game_failed")
+                    self.set_emotion("Terry_sad")
+                    self.trigger_dialog("Total failure at the grill... Time to clean up and head back.", dialog_face="nervous")
+                else:
+                    audio.play("game_success")
+                    self.set_emotion("Terry_smile_excited")
+                    self.trigger_dialog("All done! Time to serve the delicious barbecue feast.", dialog_face="happy")
+            elif self.end_phase == 2:
+                if self.burn_strikes >= 3:
+                    achievements.unlock("bbq_charcoal")
+                    self.window.show_view(BbqView(chop_unlocked=True, grill_unlocked=True, grill_completed=False))
+                else:
+                    if self.burn_strikes == 0:
+                        achievements.unlock("bbq_perfect_grill")
+                    elif self.burn_strikes in (1, 2):
+                        achievements.unlock("bbq_crunchy")
+                    self.window.show_view(BbqView(chop_unlocked=True, grill_unlocked=True, grill_completed=True))
 
     def run_action(self, action):
         if action is None:

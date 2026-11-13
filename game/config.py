@@ -366,7 +366,7 @@ SOUND_FILES = {
     "ui_hover": ("ui-hover", "sound", 0.5),
     "ui_click": ("ui-click", "sound", 0.6),
     "achievement": ("achievement-unlock", "sound", 0.8),
-    "ambience_day": ("ambience-day", "music", 0.6),
+    "ambience_day": ("ambience-day", "music", 1.0),
     "ambience_night": ("ambience-night", "music", 0.6),
     # The ending cut scene's burp, chimes and whooshes, timed to its video.
     "ending_sfx": ("ending-sfx", "sound", 1.0),

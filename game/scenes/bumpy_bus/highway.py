@@ -835,8 +835,13 @@ class BusHighwayView(BusView):
 
     # --- Input --------------------------------------------------------------
 
+    def click(self, x, y, button):
+        if (self.phase == "talking" and self.leaving is None
+                and button == arcade.MOUSE_BUTTON_LEFT):
+            self.advance()
+
     def key_down(self, key):
-        go_on = key in (arcade.key.ENTER, arcade.key.NUM_ENTER, arcade.key.RETURN, arcade.key.SPACE)
+        go_on =key in (arcade.key.ENTER, arcade.key.NUM_ENTER, arcade.key.RETURN, arcade.key.SPACE)
         if self.phase == "drive":
             if not self.title_card.finished:
                 if key == arcade.key.SPACE:

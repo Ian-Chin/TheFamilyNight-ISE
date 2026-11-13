@@ -246,12 +246,19 @@ class BbqView(StageView):
         if then is not None:
             then()
 
+    def continue_dialog(self):
+        """Enter, Space or a click on an open line: finish it, or move on."""
+        self.advance_dialog()
+        if not self.dialog.visible and self.ending_sequence_triggered:
+            self.walking_to_top = True
+
     def on_show_view(self):
         audio.ambience().start()
 
     def on_hide_view(self):
+        # The birds carry on under prep, chopping and grilling; only leaving
+        # the backyard for dinner or the menu stops them.
         self.backdrop.stop()
-        audio.ambience().stop()
         self.stop_typing_sound()
 
     def sort_by_depth(self):
@@ -395,6 +402,7 @@ class BbqView(StageView):
                 self.exit_fade_clock += delta_time
                 EXIT_FADE_TIME = 0.6
                 if self.exit_fade_clock >= EXIT_FADE_TIME:
+                    audio.ambience().stop()
                     self.window.show_view(ChaoDinnerView())
                 return
 
@@ -605,9 +613,7 @@ class BbqView(StageView):
 
         if self.dialog.visible:
             if key in (arcade.key.ENTER, arcade.key.NUM_ENTER, arcade.key.SPACE):
-                self.advance_dialog()  
-                if not self.dialog.visible and self.ending_sequence_triggered:
-                    self.walking_to_top = True
+                self.continue_dialog()
             return
 
         if self.walking_in:
@@ -648,7 +654,9 @@ class BbqView(StageView):
         if self.panel:
             self.panel = None
             return
-        if self.dialog.visible or self.walking_in or self.walking_to_top:
+        if self.dialog.visible:
+            if button == arcade.MOUSE_BUTTON_LEFT:
+                self.continue_dialog()
             return
 
     def run_action(self, action):
@@ -660,6 +668,7 @@ class BbqView(StageView):
             self.settings_panel.open()
         elif action == "menu":
             from ..menu.view import MenuView
+            audio.ambience().stop()
             self.window.show_view(MenuView())
         elif action == "quit":
             self.window.close()

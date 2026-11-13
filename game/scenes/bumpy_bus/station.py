@@ -263,8 +263,12 @@ class BusStationView(BusView):
 
     # --- Input --------------------------------------------------------------
 
+    def click(self, x, y, button):
+        if self.mode == "walk" and self.talking and button == arcade.MOUSE_BUTTON_LEFT:
+            self.advance()
+
     def key_down(self, key):
-        enter = key in (arcade.key.ENTER, arcade.key.NUM_ENTER, arcade.key.RETURN)
+        enter =key in (arcade.key.ENTER, arcade.key.NUM_ENTER, arcade.key.RETURN)
         if self.mode == "title":
             if key == arcade.key.SPACE or enter:
                 self.title_card.skip()

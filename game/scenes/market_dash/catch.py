@@ -33,6 +33,50 @@ from .sprites import (
 )
 
 
+class TrimmedBox(arcade.hitbox.HitBoxAlgorithm):
+    """A hit box hugging the opaque pixels, worked out in one call.
+
+    arcade's default walks each corner pixel by pixel in Python, which costs
+    seconds over the few hundred snatcher frames a round loads.
+    """
+
+    def calculate(self, image, **kwargs):
+        bbox = image.getchannel("A").getbbox()
+        if bbox is None:
+            return self.create_bounding_box(image)
+        left, top, right, bottom = bbox
+        half_w, half_h = image.width / 2, image.height / 2
+        return (
+            (left - half_w, half_h - bottom), (right - half_w, half_h - bottom),
+            (right - half_w, half_h - top), (left - half_w, half_h - top),
+        )
+
+
+_TRIMMED_BOX = TrimmedBox()
+_textures = {}
+
+
+def load_texture(path):
+    """Load a texture once per run; every later round reuses it."""
+    key = str(path)
+    if key not in _textures:
+        _textures[key] = arcade.load_texture(key, hit_box_algorithm=_TRIMMED_BOX)
+    return _textures[key]
+
+
+def warm_up():
+    """Slice the sprite sheets and load every round's frames ahead of time."""
+    run_prep()
+    for path in TERRY_GAME_DIR.glob("*.png"):
+        load_texture(path)
+    for path in INGREDIENTS_BASE_DIR.glob("*.png"):
+        load_texture(path)
+    if SNATCHERS_BASE_DIR.exists():
+        for path in SNATCHERS_BASE_DIR.glob("*/*_*.png"):
+            if path.stem.rsplit("_", 1)[-1].isdigit():
+                load_texture(path)
+
+
 class MarketCatchView(StageView):
     """Top-down Wall-Shelf Restock & Crowd Rush Scramble minigame."""
 
@@ -114,9 +158,9 @@ class MarketCatchView(StageView):
         self.shopper_bumps = 0
 
         # Load Terry Sprites
-        tex_without_fish = arcade.load_texture(str(TERRY_GAME_DIR / "sprite without fish.png"))
-        tex_holding_fish = arcade.load_texture(str(TERRY_GAME_DIR / "sprite holding fish.png"))
-        tex_defending    = arcade.load_texture(str(TERRY_GAME_DIR / "sprite defending.png"))
+        tex_without_fish = load_texture(TERRY_GAME_DIR / "sprite without fish.png")
+        tex_holding_fish = load_texture(TERRY_GAME_DIR / "sprite holding fish.png")
+        tex_defending    = load_texture(TERRY_GAME_DIR / "sprite defending.png")
 
         self.terry_tex_normal = tex_without_fish
         self.terry_tex_defend = tex_holding_fish
@@ -143,7 +187,7 @@ class MarketCatchView(StageView):
         self.all_ingredients = {}
         for f in sorted(list(INGREDIENTS_BASE_DIR.glob("*.png"))):
             name = f.stem.replace("_", " ").title()
-            self.all_ingredients[name] = arcade.load_texture(str(f))
+            self.all_ingredients[name] = load_texture(f)
 
         veg_names = ["Cabbage", "Carrot", "Eggplant", "Green Pepperbell", "Red Onion"]
         meat_names = ["Beef Steak", "Angus Beef Steak", "Mackerel", "Raw Lamb Steak", "Egg"]
@@ -178,17 +222,17 @@ class MarketCatchView(StageView):
         self.snatcher_types = []
         if SNATCHERS_BASE_DIR.exists():
             for folder in sorted([p for p in SNATCHERS_BASE_DIR.iterdir() if p.is_dir()]):
-                walks = [arcade.load_texture(str(folder / f"walk_{i}.png")) for i in range(16) if (folder / f"walk_{i}.png").exists()]
-                walks_right = [arcade.load_texture(str(folder / f"walk_right_{i}.png")) for i in range(16) if (folder / f"walk_right_{i}.png").exists()]
-                rushes = [arcade.load_texture(str(folder / f"rush_{i}.png")) for i in range(16) if (folder / f"rush_{i}.png").exists()]
-                rushes_right = [arcade.load_texture(str(folder / f"rush_right_{i}.png")) for i in range(16) if (folder / f"rush_right_{i}.png").exists()]
-                grabs = [arcade.load_texture(str(folder / f"grab_{i}.png")) for i in range(16) if (folder / f"grab_{i}.png").exists()]
+                walks = [load_texture(folder / f"walk_{i}.png") for i in range(16) if (folder / f"walk_{i}.png").exists()]
+                walks_right = [load_texture(folder / f"walk_right_{i}.png") for i in range(16) if (folder / f"walk_right_{i}.png").exists()]
+                rushes = [load_texture(folder / f"rush_{i}.png") for i in range(16) if (folder / f"rush_{i}.png").exists()]
+                rushes_right = [load_texture(folder / f"rush_right_{i}.png") for i in range(16) if (folder / f"rush_right_{i}.png").exists()]
+                grabs = [load_texture(folder / f"grab_{i}.png") for i in range(16) if (folder / f"grab_{i}.png").exists()]
 
                 # Fallback to legacy 6-frame sets if 16-frame sets are not present
                 if not walks:
-                    walks = [arcade.load_texture(str(folder / f"fall_{i}.png")) for i in range(6) if (folder / f"fall_{i}.png").exists()]
+                    walks = [load_texture(folder / f"fall_{i}.png") for i in range(6) if (folder / f"fall_{i}.png").exists()]
                 if not grabs:
-                    grabs = [arcade.load_texture(str(folder / f"grab_{i}.png")) for i in range(6) if (folder / f"grab_{i}.png").exists()]
+                    grabs = [load_texture(folder / f"grab_{i}.png") for i in range(6) if (folder / f"grab_{i}.png").exists()]
 
                 if walks and grabs:
                     anim_dict = {
@@ -1479,6 +1523,14 @@ class MarketCatchView(StageView):
         if self.pause_menu.visible:
             action = self.pause_menu.on_mouse_press(canvas_x, canvas_y, button)
             self.run_action(action)
+            return
+
+        if self.in_wave_dialogue:
+            if button == arcade.MOUSE_BUTTON_LEFT:
+                if self.dialog.typing:
+                    self.dialog.advance()
+                else:
+                    self.advance_wave_dialogue()
             return
 
         if button == arcade.MOUSE_BUTTON_LEFT:
