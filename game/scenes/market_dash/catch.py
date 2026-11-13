@@ -25,7 +25,7 @@ from .common import (
     SHELF_SLOT_WEIGHTS, pick_weighted_shelf_slot,
     AISLE_MIN_X, AISLE_MAX_X, AISLE_MIN_Y, AISLE_MAX_Y,
     CHECKOUT_MIN_X, CHECKOUT_MAX_X, CHECKOUT_MIN_Y,
-    DialogueController, RetryModal, InstructionModal
+    DialogueController, RetryModal, InstructionModal, market_ambience,
 )
 from .sprites import (
     SnatcherSprite, DroppedIngredient, IngredientDrop,
@@ -529,7 +529,11 @@ class MarketCatchView(StageView):
             return True
         return False
 
+    def on_show_view(self):
+        market_ambience().start()
+
     def on_update(self, delta_time):
+        market_ambience().update(delta_time)
         # Decay red damage flash
         if self.damage_alpha > 0:
             self.damage_alpha = max(0.0, self.damage_alpha - (280.0 * delta_time))
@@ -1546,6 +1550,7 @@ class MarketCatchView(StageView):
             self.settings_panel.open()
         elif action == "menu":
             from ..menu.view import MenuView
+            market_ambience().stop()
             self.window.show_view(MenuView())
         elif action == "quit":
             self.window.close()

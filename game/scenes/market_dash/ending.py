@@ -9,7 +9,7 @@ from ...core.options import SettingsPanel
 from ...core.pause import PauseMenu
 from ..menu.view import MenuView
 from ...core.stage import StageView
-from .common import DialogueController
+from .common import DialogueController, market_ambience
 from ..bumpy_bus.view import BumpyBusView
 
 
@@ -63,6 +63,7 @@ class MarketEndingView(StageView):
         self.relayout()
 
     def on_show_view(self):
+        market_ambience().start()
         achievements.unlock("market_done")
         self.in_wave_dialogue = True
         if self.dialogue_queue:
@@ -96,10 +97,12 @@ class MarketEndingView(StageView):
         self.backdrop.stop()
 
     def finish_scene(self):
+        market_ambience().stop()
         self.backdrop.stop()
         self.window.show_view(BumpyBusView())
 
     def on_update(self, delta_time):
+        market_ambience().update(delta_time)
         if self.pause_menu.visible or self.settings_panel.visible:
             return
 
@@ -202,6 +205,7 @@ class MarketEndingView(StageView):
             self.settings_panel.open()
         elif action == "menu":
             from ..menu.view import MenuView
+            market_ambience().stop()
             self.window.show_view(MenuView())
         elif action == "quit":
             self.window.close()

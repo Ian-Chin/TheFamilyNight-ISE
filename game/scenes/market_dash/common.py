@@ -2,6 +2,17 @@ import math
 import time
 import arcade
 from ...config import ASSETS, HEIGHT, WIDTH
+from ...core import audio
+
+# The market crowd loop. One shared loop runs on under the walk-around floor,
+# every catch round and the ending, so it never drops out between views; only
+# leaving the market for the bus or the menu stops it. Being an Ambience it
+# fades in and follows the music slider.
+MARKET_AMBIENCE = "market_ambience"
+
+
+def market_ambience():
+    return audio.ambience(MARKET_AMBIENCE)
 
 # Base asset paths
 ASSETS_DIR = ASSETS

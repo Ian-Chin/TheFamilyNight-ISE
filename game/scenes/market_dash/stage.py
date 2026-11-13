@@ -14,7 +14,7 @@ from ...core.audio import Footsteps
 from ...core.sprites import Terry
 from .common import (
     MARKET_WALK_BOUNDS, MARKET_OBSTACLES,
-    MARKET_STONE_AREAS
+    MARKET_STONE_AREAS, market_ambience,
 )
 from ...core.widgets import TitleCard, QuestPanel, Portraits
 
@@ -26,7 +26,6 @@ class MarketStageView(StageView):
         self.veg_done = veg_done
         self.meat_done = meat_done
         self.defend_unlocked = self.veg_done and self.meat_done
-        self.ambience_player = None
         self.walking_player = None
 
         # 1. Title Card on first entry
@@ -158,12 +157,7 @@ class MarketStageView(StageView):
         self.relayout()
 
     def start_ambience(self):
-        """Starts looping market_ambience if not already playing."""
-        if getattr(self, "ambience_player", None) is None:
-            try:
-                self.ambience_player = audio.play("market_ambience", loop=True)
-            except Exception:
-                self.ambience_player = None
+        market_ambience().start()
 
     def sort_by_depth(self):
         self.sprites.sort(key=lambda sprite: -sprite.ground_y)
@@ -193,7 +187,6 @@ class MarketStageView(StageView):
         if self.walking_player is not None:                                                                      
             audio.stop(self.walking_player)                                                                      
             self.walking_player = None                                                                           
-        self.stop_ambience()                                                                                     
         self.backdrop.stop() 
 
     def trigger_stage_dialogue(self, lines, on_finish):
@@ -223,6 +216,7 @@ class MarketStageView(StageView):
                 cb()
 
     def on_update(self, delta_time):
+        market_ambience().update(delta_time)
         if self.pause_menu.visible or self.settings_panel.visible:
             return
 
@@ -260,7 +254,6 @@ class MarketStageView(StageView):
                 ]
 
                 def start_defend_game():
-                    self.stop_ambience()
                     from .catch import MarketCatchView
                     self.window.show_view(MarketCatchView(mode="defend", veg_done=self.veg_done, meat_done=self.meat_done))
 
@@ -440,14 +433,12 @@ class MarketStageView(StageView):
 
             if self.near_meat and not self.meat_done:
                 self.held.clear()
-                self.stop_ambience()
                 audio.play("ui_click")
                 self.window.show_view(MarketCatchView(mode="meat", veg_done=self.veg_done, meat_done=self.meat_done))
                 return
 
             if self.near_veg and not self.veg_done:
                 self.held.clear()
-                self.stop_ambience()
                 audio.play("ui_click")
                 self.window.show_view(MarketCatchView(mode="veg", veg_done=self.veg_done, meat_done=self.meat_done))
                 return
@@ -458,7 +449,6 @@ class MarketStageView(StageView):
                     return
                 else:
                     self.held.clear()
-                    self.stop_ambience()
                     from .catch import MarketCatchView
                     self.window.show_view(MarketCatchView(mode="defend", veg_done=self.veg_done, meat_done=self.meat_done))
                     return
@@ -510,10 +500,4 @@ class MarketStageView(StageView):
             self.window.close()
 
     def stop_ambience(self):
-        """Stops the market_ambience loop."""
-        if getattr(self, "ambience_player", None) is not None:
-            try:
-                audio.stop(self.ambience_player)
-            except Exception:
-                pass
-            self.ambience_player = None
+        market_ambience().stop()
