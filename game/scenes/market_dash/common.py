@@ -16,8 +16,10 @@ TERRY_GAME_DIR = ASSETS_DIR / "sprites" / "terry market game"
 SNATCHERS_BASE_DIR = ASSETS_DIR / "market snatchers"
 INGREDIENTS_BASE_DIR = ASSETS_DIR / "market ingredients"
 
+# market interior side boundary
 MARKET_WALK_BOUNDS = (72, 1280 - 40, 0, 720 - 40)
 
+# market interior obstacles 
 MARKET_OBSTACLES = (
     (0, 10, 0, 720),
 
@@ -40,11 +42,13 @@ MARKET_OBSTACLES = (
     (1120, 1280, 0, 160), 
 )
 
+# game trigger area 
 MARKET_STONE_AREAS = (
-    (450, 560, 0, 720),   # Middle cobblestone path
-    (65, 375, 145, 510),     # Left patio area (red circle)
+    (450, 560, 0, 720),   
+    (65, 375, 145, 510),     
 )
 
+# mini game window width and boundaries
 PLAY_LEFT = 155
 PLAY_RIGHT = 1125
 PLAY_BOTTOM = 45
@@ -61,6 +65,7 @@ SHELF_SLOT_WEIGHTS = SHELF_Y_WEIGHTS + SHELF_Y_WEIGHTS
 
 def pick_weighted_shelf_slot():
     import random
+    # pick a shelf slot based on weights
     return random.choices(SHELF_SLOTS, weights=SHELF_SLOT_WEIGHTS, k=1)[0]
 
 AISLE_MIN_X = PLAY_LEFT + 15  
@@ -68,6 +73,7 @@ AISLE_MAX_X = PLAY_RIGHT - 15
 AISLE_MIN_Y = 55
 AISLE_MAX_Y = 665
 
+# exit door area
 CHECKOUT_MIN_X = 480
 CHECKOUT_MAX_X = 800
 CHECKOUT_MIN_Y = 615
@@ -115,8 +121,6 @@ class DialogueHistoryPanel:
         
         arcade.draw_rect_filled(arcade.XYWH(cx, cy, panel_w, panel_h), (18, 14, 12, 245))
         arcade.draw_rect_outline(arcade.XYWH(cx, cy, panel_w, panel_h), (180, 130, 70), 2)
-
-        
         arcade.draw_text("DIALOGUE LOG / HISTORY", cx, cy + (panel_h / 2) - 30, (255, 220, 150), 16, bold=True, anchor_x="center")
         arcade.draw_text("Scroll: Wheel | Click anywhere or Esc to close", cx, cy - (panel_h / 2) + 20, (170, 160, 150), 12, anchor_x="center")
 
@@ -159,20 +163,20 @@ class DialogueController:
         self.history_panel.add_entry(speaker, text)
 
     def update(self, delta_time, is_dialog_visible, is_typing):
-        if not self.auto_mode or self.history_panel.visible:
-            self.auto_timer = 0.0
+        if not self.auto_mode or self.history_panel.visible: 
+            self.auto_timer = 0.0 # pause timer
             return
 
         if is_dialog_visible:
             if not is_typing:
-                self.auto_timer += delta_time
-                if self.auto_timer >= self.auto_delay_text:
+                self.auto_timer += delta_time # timer to read dialogue
+                if self.auto_timer >= self.auto_delay_text: # read complete
                     self.auto_timer = 0.0
                     self.on_advance()
             else:
-                self.auto_timer = 0.0
+                self.auto_timer = 0.0 
         else:
-            self.auto_timer += delta_time
+            self.auto_timer += delta_time # timer see scene
             if self.auto_timer >= self.auto_delay_silent:
                 self.auto_timer = 0.0
                 self.on_advance()
@@ -207,6 +211,7 @@ class DialogueController:
 
         for btn in self.buttons:
             bx, by, bw, bh = btn["x"], btn["y"], btn["w"], btn["h"]
+            # define each click area with forgiveness area
             if (bx - bw / 2 - 8 <= canvas_x <= bx + bw / 2 + 8) and \
                (by - bh / 2 - 8 <= canvas_y <= by + bh / 2 + 8):
                 if btn["id"] == "skip":
@@ -289,7 +294,7 @@ class RetryModal:
 
         
         arcade.draw_rect_filled(arcade.XYWH(retry_x, btn_y, btn_w, btn_h), (40, 140, 65, 230))
-        arcade.draw_rect_outline(arcade.XYWH(retry_x, btn_y, btn_w, btn_h), (100, 220, 130), 2)
+        arcade.draw_rect_outline(arcade.XYWH(retry_x, btn_y, btn_w, btn_h), (100, 220, 130), 2) # third is border
         arcade.draw_text("TRY AGAIN", retry_x, btn_y, (255, 255, 255), 11, bold=True, anchor_x="center", anchor_y="center")
 
        
@@ -555,7 +560,7 @@ class InstructionModal:
 
         for idx, (badge_text, act_label, desc_text) in enumerate(controls):
             ry = row_start_y - (idx * row_h)
-         
+            
             arcade.draw_rect_filled(arcade.XYWH(cx, ry, row_w, 34), (42, 24, 14, 180))
             arcade.draw_rect_outline(arcade.XYWH(cx, ry, row_w, 34), (90, 60, 40, 140), 1)
 

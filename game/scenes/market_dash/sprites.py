@@ -46,7 +46,7 @@ class DroppedIngredient(arcade.Sprite):
             self.expired = True
             return True
         if self.timer < 1.8:
-            blink = int((self.timer * 9) % 2)
+            blink = int((self.timer * 9) % 2) # ingredients blink to remind user
             self.alpha = 255 if blink == 0 else 70
         else:
             self.alpha = 255
@@ -139,8 +139,8 @@ class SnatcherSprite(arcade.Sprite):
                 cand_x = random.randint(AISLE_MIN_X + 25, AISLE_MAX_X - 25)
                 cand_y = random.randint(AISLE_MIN_Y + 25, AISLE_MAX_Y - 25)
                 if player_pos is not None:
-                    dist = math.hypot(cand_x - player_pos[0], cand_y - player_pos[1])
-                    if dist < min_dist:
+                    dist = math.hypot(cand_x - player_pos[0], cand_y - player_pos[1]) # calculate the distance between spawn npc and terry
+                    if dist < min_dist: # reject if too close
                         continue
                 self.center_x = cand_x
                 self.center_y = cand_y
@@ -161,19 +161,19 @@ class SnatcherSprite(arcade.Sprite):
 
      
         roll = random.random()
-        if roll < 0.15:
+        if roll < 0.15: # go left
             self.target_x = random.randint(min_x, min_x + 180)
             self.target_y = random.randint(min_y, max_y)
-        elif roll < 0.30:
+        elif roll < 0.30: # go right
             self.target_x = random.randint(max_x - 180, max_x)
             self.target_y = random.randint(min_y, max_y)
-        elif roll < 0.45:
+        elif roll < 0.45: # go bottom
             self.target_x = random.randint(min_x, max_x)
             self.target_y = random.randint(max_y - 150, max_y)
-        elif roll < 0.60:
+        elif roll < 0.60: # go up
             self.target_x = random.randint(min_x, max_x)
             self.target_y = random.randint(min_y, min_y + 150)
-        else:
+        else: 
             self.target_x = random.randint(min_x, max_x)
             self.target_y = random.randint(min_y, max_y)
 
@@ -301,16 +301,16 @@ class SnatcherSprite(arcade.Sprite):
             return
 
         if self.state == STATE_WANDERING:
-            if dropped_items:
+            if dropped_items: # item dropped
                 nearest_item = None
                 nearest_dist = 260.0
-                for item in dropped_items:
+                for item in dropped_items: # calculate the distance between dropped item
                     d = math.hypot(item.center_x - self.center_x, item.center_y - self.center_y)
                     if d < nearest_dist:
                         nearest_dist = d
                         nearest_item = item
 
-                if nearest_item:
+                if nearest_item: # rush towards it
                     self.state = STATE_RUSHING_SHELF
                     self.target_x = nearest_item.center_x
                     self.target_y = nearest_item.center_y
@@ -321,7 +321,7 @@ class SnatcherSprite(arcade.Sprite):
                 dx = self.target_x - self.center_x
                 dy = self.target_y - self.center_y
                 dist = math.hypot(dx, dy)
-                if dist < 25 or self.wander_timer <= 0:
+                if dist < 25 or self.wander_timer <= 0: # if almost finish, recalculate the new direction
                     self.pick_new_wander_target()
                 else:
                     move_dist = min(dist, self.wander_speed * step)

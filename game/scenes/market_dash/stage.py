@@ -106,11 +106,13 @@ class MarketStageView(StageView):
             self.title_card, self.quests, self.portraits
         ]
 
-      
+
+        # excalation mark 
         self.indicators = arcade.SpriteList()
         exclamation_tex = textures.ui_image("Exclamation Mark Symbol.png")
         lock_tex = textures.ui_image("Lock Symbol.png")
 
+        # meat area
         self.meat_marker = arcade.Sprite(exclamation_tex, scale=0.20)
         self.meat_marker.center_x = 210
         self.meat_marker.base_y = 355
@@ -118,6 +120,7 @@ class MarketStageView(StageView):
         if not self.meat_done:
             self.indicators.append(self.meat_marker)
 
+        # veg area
         self.veg_marker = arcade.Sprite(exclamation_tex, scale=0.20)
         self.veg_marker.center_x = 1050
         self.veg_marker.base_y = 75
@@ -125,6 +128,7 @@ class MarketStageView(StageView):
         if not self.veg_done:
             self.indicators.append(self.veg_marker)
 
+        # defend game with lock
         self.defend_lock = arcade.Sprite(lock_tex, scale=0.22)
         self.defend_lock.center_x = 630
         self.defend_lock.base_y = 75
@@ -316,14 +320,14 @@ class MarketStageView(StageView):
         if dy:
             self.sort_by_depth()
 
-       
+       # floating animation
         bob_offset = math.sin(self.time_elapsed * 4.0) * 6.0
         if not self.meat_done:
             self.meat_marker.center_y = self.meat_marker.base_y + bob_offset
         if not self.veg_done:
             self.veg_marker.center_y = self.veg_marker.base_y + bob_offset
 
-       
+       # area of triggering game
         self.near_meat = (110 <= self.terry.center_x <= 310) and (230 <= self.terry.ground_y <= 480)
         self.near_veg = (1000 <= self.terry.center_x <= 1100) and (0 <= self.terry.ground_y <= 150)
         self.near_defend = (600 <= self.terry.center_x <= 660) and (0 <= self.terry.ground_y <= 150)
@@ -380,7 +384,7 @@ class MarketStageView(StageView):
         self.window.default_camera.use()
         self.hint.draw()
 
-        
+        # wooden border for task
         if not self.dialog.visible and not self.pause_menu.visible and not self.settings_panel.visible:
             plate = self.quests.plate_rect()
             arcade.draw_rect_filled(plate, (12, 10, 14, 215))
@@ -390,7 +394,7 @@ class MarketStageView(StageView):
         if self.show_title_card:
             self.title_card.draw()
 
-      
+       
         if self.dialog.visible and self.current_speaker:
             self.portraits.draw(partner=self.current_partner, speaking=self.current_speaker)
 
